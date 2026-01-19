@@ -45,6 +45,77 @@
     let pages = [];
     let current = 1;
 
+    // Proper probe implementation — starts at i = 1 so first probed file is 001
+    function probePages() {
+      let i = 1;
+      function tryNext() {
+        if (i > maxTry) {
+          finishProbe();
+          return;
+        }
+        const testImg = new Image();
+        const url = basePath + pad(i) + ext;
+        testImg.onload = () => {
+          pages.push(url);
+          i++;
+          // continue probing the next index
+          tryNext();
+        };
+        testImg.onerror = () => {
+          // stop probing on first missing page
+          finishProbe();
+        };
+        // start loading the test image
+        testImg.src = url;
+      }
+      tryNext();
+    }
+
+    function finishProbe() {
+      if (pages.length === 0) {
+        indicator.textContent = 'No pages found. Upload images to ' + basePath + ' named 001' + ext + ', 002' + ext + '...';
+        img.style.display = 'none';
+        return;
+      }
+      indicator.textContent = 'Page 1 / ' + pages.length;
+      img.src = pages[0];
+    }
+
+    function show() {
+      img.src = pages[current - 1];
+      indicator.textContent = 'Page ' + current + ' / ' + pages.length;
+    }
+    function next() { if (current < pages.length) { current++; show(); } }
+    function prev() { if (current > 1) { current--; show(); } }
+
+    document.getElementById('nextBtn').addEventListener('click', next);
+    document.getElementById('prevBtn').addEventListener('click', prev);
+    window.addEventListener('keydown', (e) => { if (e.key === 'ArrowLeft') next(); if (e.key === 'ArrowRight') prev(); });
+
+    // touch swipe support
+    let startX = 0;
+    window.addEventListener('touchstart', (e) => startX = e.touches[0].clientX);
+    window.addEventListener('touchend', (e) => {
+      const dx = e.changedTouches[0].clientX - startX;
+      if (Math.abs(dx) < 30) return;
+      if (dx < 0) next(); else prev();
+    });
+
+    // start probing for images
+    probePages();
+  </script>
+  </body>
+</html>    const basePath = '/manga/my-series/chapter-1/'; // where you uploaded images
+    const ext = '.jpg'; // you said images will be .jpg — keep as is
+    const maxTry = 200; // how many files to probe at most (safe upper bound)
+    // ============================
+
+    const pad = (n) => String(n).padStart(3, '0');
+    const indicator = document.getElementById('indicator');
+    const img = document.getElementById('pageImg');
+    let pages = [];
+    let current = 1;
+
 Img = new Image();
         const url = basePath + pad(i) + ext;
         testImg.onload = () => { pages.push(url); i++; tryNext(); };
