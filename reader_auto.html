@@ -39,57 +39,94 @@
 
   <script>
     // ====== CONFIGURE HERE ======
-    // Put your images in: /manga/my-series/chapter-1/001.jpg, 002.jpg, ...
+    // Put your images in: manga/my-series/chapter-1/ (relative to this HTML file)
     const relativeFolder = 'manga/my-series/chapter-1/';
-    const ext = '.jpg';
-    const maxTry = 200;
+    const maxTry = 300;              // how far we search
+    const maxConsecutiveMiss = 8;    // how many misses in a row before we stop
     // ============================
 
     // GitHub Pages safe base (works for username.github.io AND project repos)
-    const repoBase = document.querySelector('base')?.href
-      || (window.location.origin + window.location.pathname.replace(/\/[^\/]*$/, '/') );
+    const repoBase =
+      document.querySelector('base')?.href
+      || (window.location.origin + window.location.pathname.replace(/\/[^\/]*$/, '/'));
+
     const basePath = new URL(relativeFolder, repoBase).toString();
 
-    const pad = (n) => String(n).padStart(3, '0');
     const indicator = document.getElementById('indicator');
     const img = document.getElementById('pageImg');
 
     let pages = [];
     let current = 1;
 
-    function probePages() {
-      let i = 1;
+    // Build a list of filename candidates for a given index (supports many naming styles)
+    function candidates(i) {
+      const n = String(i);
+      const n2 = String(i).padStart(2, '0');
+      const n3 = String(i).padStart(3, '0');
 
-      function tryNext() {
-        if (i > maxTry) return finishProbe();
+      return [
+        `${n3}.jpg`, `${n3}.jpeg`, `${n3}.png`,
+        `${n2}.jpg`, `${n2}.jpeg`, `${n2}.png`,
+        `${n}.jpg`,  `${n}.jpeg`,  `${n}.png`,
+        `page${n3}.jpg`, `page${n2}.jpg`, `page${n}.jpg`,
+        `panel${n3}.jpg`, `panel${n2}.jpg`, `panel${n}.jpg`,
+        `p${n3}.jpg`, `p${n2}.jpg`, `p${n}.jpg`,
+      ];
+    }
 
-        const testImg = new Image();
-        const url = basePath + pad(i) + ext;
+    function loadFirstWorking(urls) {
+      // try each URL until one loads
+      return new Promise((resolve) => {
+        let idx = 0;
 
-        testImg.onload = () => {
-          pages.push(url);
-          i++;
-          tryNext();
-        };
+        function tryOne() {
+          if (idx >= urls.length) return resolve(null);
 
-        testImg.onerror = () => finishProbe();
+          const testImg = new Image();
+          const url = urls[idx] + '?v=' + Date.now(); // cache-buster for GH Pages
 
-        testImg.src = url + '?v=' + Date.now(); // tiny cache-buster for GitHub Pages updates
+          testImg.onload = () => resolve(urls[idx]);   // return clean URL without ?v
+          testImg.onerror = () => { idx++; tryOne(); };
+          testImg.src = url;
+        }
+
+        tryOne();
+      });
+    }
+
+    async function probePages() {
+      pages = [];
+      current = 1;
+
+      let misses = 0;
+
+      for (let i = 1; i <= maxTry; i++) {
+        const urls = candidates(i).map(name => basePath + name);
+        const hit = await loadFirstWorking(urls);
+
+        if (hit) {
+          pages.push(hit);
+          misses = 0;
+        } else {
+          misses++;
+          if (misses >= maxConsecutiveMiss) break;
+        }
       }
 
-      tryNext();
+      finishProbe();
     }
 
     function finishProbe() {
       if (pages.length === 0) {
         indicator.textContent =
           'No pages found. Upload images to ' + basePath +
-          ' named 001' + ext + ', 002' + ext + '...';
+          ' (examples: 001.jpg or panel01.jpg).';
         img.style.display = 'none';
         return;
       }
-      current = 1;
+
       img.style.display = '';
+      current = 1;
       img.src = pages[0];
       indicator.textContent = 'Page 1 / ' + pages.length;
     }
