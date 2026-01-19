@@ -3,19 +3,21 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Reader — Chapter 1 (auto)</title>
+  <title>Reader — Chapter 1</title>
   <style>
-    html,body { height:100%; margin:0; background:#000; color:#fff; font-family:-direction:column; align-items:center; justify-content:center; padding:12px; box-sizing:border-box; }
-    .reader { width:100%; max-width:900px; max-height:85vh; position:relative; background:#111; display:flex; align-items:center; justify-content:center; }
-    img.page { max-width:100%; max-height:100%; object-fit:contain; user-select:none; -webkit-user-drag:none; }
-    .controls { position:absolute; top:50%; transform:translateY(-50%); width:100%; display:flex; justify-content:space-between; pointer-events:none; }
-    button { pointer-events:auto; background:rgba(0,0,0,0.5); border:1px solid #444; color:#fff; padding:10px 14px; font-size:18px; border-radius:6px; }
-    .indicator { margin-top:8px; color:#ddd; text-align:center; }
+    html, body { height: 100%; margin: 0; background: #000; color: #fff; font-family: system-ui, sans-serif; }
+    .wrap { min-height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 12px; box-sizing: border-box; }
+    .reader { width: 100%; max-width: 900px; max-height: 85vh; position: relative; background: #111; display: flex; align-items: center; justify-content: center; }
+    img.page { max-width: 100%; max-height: 100%; object-fit: contain; user-select: none; -webkit-user-drag: none; }
+    .controls { position: absolute; top: 50%; transform: translateY(-50%); width: 100%; display: flex; justify-content: space-between; pointer-events: none; }
+    button { pointer-events: auto; background: rgba(0,0,0,0.5); border: 1px solid #444; color: #fff; padding: 10px 14px; font-size: 18px; border-radius: 6px; }
+    .indicator { margin-top: 8px; color: #ddd; text-align: center; }
   </style>
 </head>
 <body>
   <div class="wrap">
     <h2 style="margin:12px 0;">My Series — Chapter 1</h2>
+
     <div class="reader" aria-live="polite">
       <div class="controls">
         <div style="text-align:right; padding-right:12px;">
@@ -27,58 +29,69 @@
       </div>
       <img id="pageImg" class="page" src="" alt="Page" draggable="false" />
     </div>
+
     <div class="indicator" id="indicator">Detecting pages...</div>
+
     <div style="margin-top:10px; color:#aaa; max-width:900px; text-align:center;">
       Swipe or use arrow keys: Left = Next (forward), Right = Previous.
     </div>
   </div>
+
   <script>
     // ====== CONFIGURE HERE ======
-    const basePath = '/manga/my-series/chapter-1/'; // where you uploaded images
-    const ext = '.jpg'; // you said images will be .jpg — keep as is
-    const maxTry = 200; // how many files to probe at most (safe upper bound)
+    // Put your images in: /manga/my-series/chapter-1/001.jpg, 002.jpg, ...
+    const relativeFolder = 'manga/my-series/chapter-1/';
+    const ext = '.jpg';
+    const maxTry = 200;
     // ============================
+
+    // GitHub Pages safe base (works for username.github.io AND project repos)
+    const repoBase = document.querySelector('base')?.href
+      || (window.location.origin + window.location.pathname.replace(/\/[^\/]*$/, '/') );
+    const basePath = new URL(relativeFolder, repoBase).toString();
 
     const pad = (n) => String(n).padStart(3, '0');
     const indicator = document.getElementById('indicator');
     const img = document.getElementById('pageImg');
+
     let pages = [];
     let current = 1;
 
-    // Proper probe implementation — starts at i = 1 so first probed file is 001
     function probePages() {
       let i = 1;
+
       function tryNext() {
-        if (i > maxTry) {
-          finishProbe();
-          return;
-        }
+        if (i > maxTry) return finishProbe();
+
         const testImg = new Image();
         const url = basePath + pad(i) + ext;
+
         testImg.onload = () => {
           pages.push(url);
           i++;
-          // continue probing the next index
           tryNext();
         };
-        testImg.onerror = () => {
-          // stop probing on first missing page
-          finishProbe();
-        };
-        // start loading the test image
-        testImg.src = url;
+
+        testImg.onerror = () => finishProbe();
+
+        testImg.src = url + '?v=' + Date.now(); // tiny cache-buster for GitHub Pages updates
       }
+
       tryNext();
     }
 
     function finishProbe() {
       if (pages.length === 0) {
-        indicator.textContent = 'No pages found. Upload images to ' + basePath + ' named 001' + ext + ', 002' + ext + '...';
+        indicator.textContent =
+          'No pages found. Upload images to ' + basePath +
+          ' named 001' + ext + ', 002' + ext + '...';
         img.style.display = 'none';
         return;
       }
-      indicator.textContent = 'Page 1 / ' + pages.length;
+      current = 1;
+      img.style.display = '';
       img.src = pages[0];
+      indicator.textContent = 'Page 1 / ' + pages.length;
     }
 
     function show() {
@@ -90,74 +103,22 @@
 
     document.getElementById('nextBtn').addEventListener('click', next);
     document.getElementById('prevBtn').addEventListener('click', prev);
-    window.addEventListener('keydown', (e) => { if (e.key === 'ArrowLeft') next(); if (e.key === 'ArrowRight') prev(); });
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowLeft') next();
+      if (e.key === 'ArrowRight') prev();
+    });
 
     // touch swipe support
     let startX = 0;
-    window.addEventListener('touchstart', (e) => startX = e.touches[0].clientX);
+    window.addEventListener('touchstart', (e) => startX = e.touches[0].clientX, { passive: true });
     window.addEventListener('touchend', (e) => {
       const dx = e.changedTouches[0].clientX - startX;
       if (Math.abs(dx) < 30) return;
       if (dx < 0) next(); else prev();
     });
 
-    // start probing for images
     probePages();
   </script>
-  </body>
-</html>    const basePath = '/manga/my-series/chapter-1/'; // where you uploaded images
-    const ext = '.jpg'; // you said images will be .jpg — keep as is
-    const maxTry = 200; // how many files to probe at most (safe upper bound)
-    // ============================
-
-    const pad = (n) => String(n).padStart(3, '0');
-    const indicator = document.getElementById('indicator');
-    const img = document.getElementById('pageImg');
-    let pages = [];
-    let current = 1;
-
-Img = new Image();
-        const url = basePath + pad(i) + ext;
-        testImg.onload = () => { pages.push(url); i++; tryNext(); };
-        testImg.onerror = () => { finishProbe(); };
-        // start loading the test image
-        testImg.src = url;
-      }
-      tryNext();
-    }
-
-    function finishProbe() {
-      if (pages.length === 0) {
-        indicator.textContent = 'No pages found. Upload images to ' + basePath + ' named 001' + ext + ', 002' + ext + '...';
-        img.style.display = 'none';
-        return;
-      }
-      indicator.textContent = 'Page 1 / ' + pages.length;
-      img.src = pages[0];
-    }
-
-    function show() {
-      img.src = pages[current - 1];
-      indicator.textContent = 'Page ' + current + ' / ' + pages.length;
-    }
-    function next() { if (current < pages.length) { current++; show(); } }
-    function prev() { if (current > 1) { current--; show(); } }
-
-    document.getElementById('nextBtn').addEventListener('click', next);
-    document.getElementById('prevBtn').addEventListener('click', prev);
-    window.addEventListener('keydown', (e) => { if (e.key === 'ArrowLeft') next(); if (e.key === 'ArrowRight') prev(); });
-
-    // touch swipe support
-    let startX = 0;
-    window.addEventListener('touchstart', (e) => startX = e.touches[0].clientX);
-    window.addEventListener('touchend', (e) => {
-      const dx = e.changedTouches[0].clientX - startX;
-      if (Math.abs(dx) < 30) return;
-      if (dx < 0) next(); else prev();
-    });
-
-    // start probing for images
-    probePages();
-  </script>
-  </body>
+</body>
 </html>
