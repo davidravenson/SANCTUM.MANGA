@@ -29,8 +29,8 @@
     }
 
     .panel {
-      max-width: 900px;
       width: 100%;
+      max-width: 900px;
       user-select: none;
       -webkit-user-select: none;
       position: relative;
@@ -40,6 +40,7 @@
       width: 100%;
       height: auto;
       display: block;
+      background: #000;
     }
 
     .hud {
@@ -47,8 +48,8 @@
       left: 10px;
       bottom: 10px;
       font-size: 12px;
-      opacity: 0.75;
-      background: rgba(0,0,0,0.35);
+      opacity: 0.8;
+      background: rgba(0,0,0,0.45);
       padding: 6px 8px;
       border: 1px solid rgba(255,255,255,0.15);
       border-radius: 10px;
@@ -56,12 +57,12 @@
     }
 
     .player {
-      width: 70px;
+      width: 74px;
       display: flex;
       flex-direction: column;
       align-items: center;
       gap: 12px;
-      opacity: 0.9;
+      opacity: 0.92;
     }
 
     .player button,
@@ -92,17 +93,15 @@
 
   <!-- AUDIO: läuft unabhängig vom Panel -->
   <audio id="bg-audio" preload="auto">
-    <source
-      src="https://raw.githubusercontent.com/davidravenson/SANCTUM.MANGA/master/media/audio/sanctum_ch1_arcangel_instrumental.mp3"
-      type="audio/mpeg">
+    <source src="./media/audio/sanctum_ch1_arcangel_instrumental.mp3" type="audio/mpeg">
   </audio>
 
   <div class="wrap">
 
-    <!-- PANEL VIEWER (Swipe wechselt nur das Bild, NICHT die Seite) -->
+    <!-- PANEL VIEWER -->
     <div class="panel" id="panelArea">
-      <img id="panelImg" src="001.jpg" alt="SANCTUM Panel">
-      <div class="hud" id="hud">Panel 1</div>
+      <img id="panelImg" src="" alt="SANCTUM Panel">
+      <div class="hud" id="hud">Loading…</div>
     </div>
 
     <!-- PLAYER -->
@@ -110,19 +109,21 @@
       <button id="playBtn">▶</button>
       <button id="pauseBtn">⏸</button>
       <input id="volume" type="range" min="0" max="1" step="0.01" value="0.4">
-      <div class="tiny">Swipe: ⇦ / ⇨<br>Music keeps flowing</div>
+      <div class="tiny">Swipe ⇦ ⇨<br>Music keeps flowing</div>
     </div>
 
   </div>
 
   <script>
-    // ============
-    // CONFIG: Panels
-    // ============
-    // Passe hier nur die Anzahl an (oder Liste), dann läuft der Rest automatisch.
-    const TOTAL_PANELS = 20; // <-- setz das auf deine echte Anzahl (z.B. 8, 12, 37 ...)
+    // =========================
+    // CONFIG: WHERE ARE PANELS?
+    // =========================
+    // HIER anpassen, falls nötig:
+    const relativeFolder = "./manga/my-series/chapter-1/";  // e.g. "./manga/my-series/chapter-1/"
+    const TOTAL_PANELS = 20;
+
     const PAD = (n) => String(n).padStart(3, "0");
-    const panelFile = (index1based) => `${PAD(index1based)}.jpg`;
+    const panelFile = (index1based) => `${relativeFolder}${PAD(index1based)}.jpg`;
 
     // ============
     // ELEMENTS
@@ -137,55 +138,15 @@
     const hud = document.getElementById("hud");
 
     // ============
-    // AUDIO: Fade-in + Persistenz über Reloads
+    // AUDIO: Fade-in + keep playing
     // ============
-    const STORE_KEY = "sanctumAudioState_v1";
     let hasStarted = false;
-
-    // Default volume
     audio.volume = Number(volumeSlider.value);
-
-    function saveAudioState() {
-      try {
-        const state = {
-          t: audio.currentTime || 0,
-          p: !audio.paused,
-          v: audio.volume
-        };
-        sessionStorage.setItem(STORE_KEY, JSON.stringify(state));
-      } catch (e) {}
-    }
-
-    function restoreAudioState() {
-      try {
-        const raw = sessionStorage.getItem(STORE_KEY);
-        if (!raw) return;
-        const state = JSON.parse(raw);
-
-        if (typeof state.v === "number") {
-          audio.volume = Math.max(0, Math.min(1, state.v));
-          volumeSlider.value = String(audio.volume);
-        }
-
-        // currentTime setzen klappt sicher erst, wenn Metadata da ist
-        audio.addEventListener("loadedmetadata", () => {
-          if (typeof state.t === "number" && isFinite(state.t)) {
-            try { audio.currentTime = Math.max(0, state.t); } catch(e) {}
-          }
-          if (state.p) {
-            audio.play().catch(() => {});
-            hasStarted = true;
-          }
-        }, { once: true });
-      } catch (e) {}
-    }
 
     function fadeIn(duration = 2500) {
       const target = Number(volumeSlider.value);
       audio.volume = 0;
-
       audio.play().catch(() => {});
-
       const steps = 50;
       let step = 0;
       const interval = setInterval(() => {
@@ -204,51 +165,36 @@
       }
     });
 
-    pauseBtn.addEventListener("click", () => {
-      audio.pause();
-      saveAudioState();
-    });
+    pauseBtn.addEventListener("click", () => audio.pause());
 
     volumeSlider.addEventListener("input", () => {
       audio.volume = Number(volumeSlider.value);
-      saveAudioState();
     });
 
-    // Speichere regelmäßig, damit auch bei Panelwechsel/Reload nichts verloren geht
-    setInterval(saveAudioState, 1500);
-    window.addEventListener("pagehide", saveAudioState);
-    document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "hidden") saveAudioState();
-    });
-
-    restoreAudioState();
-
     // ============
-    // PANELS: Swipe ohne Reload (Audio läuft weiter)
+    // PANELS: Swipe without reload
     // ============
-    let panelIndex = 1; // 1..TOTAL_PANELS
-
-    // Optional: Panel-Index über Reloads merken
-    const PANEL_KEY = "sanctumPanelIndex_v1";
-    try {
-      const saved = Number(sessionStorage.getItem(PANEL_KEY));
-      if (saved && saved >= 1 && saved <= TOTAL_PANELS) panelIndex = saved;
-    } catch (e) {}
+    let panelIndex = 1;
 
     function renderPanel() {
       const src = panelFile(panelIndex);
       panelImg.src = src;
       hud.textContent = `Panel ${panelIndex} / ${TOTAL_PANELS}`;
-      try { sessionStorage.setItem(PANEL_KEY, String(panelIndex)); } catch(e) {}
       history.replaceState(null, "", `#${panelIndex}`);
     }
 
-    // Deep-link via #12
+    // Show useful error if image fails
+    panelImg.addEventListener("error", () => {
+      hud.textContent = `Panel ${panelIndex} not found (check folder/path)`;
+    });
+
+    // Deep link: #12
     const hashN = Number((location.hash || "").replace("#", ""));
     if (hashN && hashN >= 1 && hashN <= TOTAL_PANELS) panelIndex = hashN;
+
     renderPanel();
 
-    // Preload next/prev for smoothness
+    // Preload for smoothness
     function preload(index) {
       if (index < 1 || index > TOTAL_PANELS) return;
       const img = new Image();
@@ -283,27 +229,25 @@
       const dy = t.clientY - startY;
       const dt = Date.now() - startT;
 
-      // Horizontal swipe, nicht vertikal scroll
       if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.2 && dt < 700) {
         if (dx < 0) nextPanel();
         else prevPanel();
       }
     }, { passive: true });
 
-    // Keyboard (Desktop)
+    // Desktop arrows
     window.addEventListener("keydown", (e) => {
       if (e.key === "ArrowRight") nextPanel();
       if (e.key === "ArrowLeft") prevPanel();
     });
 
-    // Bonus: erster Tap irgendwo auf Panel kann Audio starten (nur wenn noch nie gestartet)
+    // Bonus: first tap on panel can also start audio
     panelArea.addEventListener("click", () => {
       if (!hasStarted) {
         fadeIn(2500);
         hasStarted = true;
       }
     });
-
   </script>
 
 </body>
