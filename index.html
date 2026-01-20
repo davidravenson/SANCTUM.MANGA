@@ -11,13 +11,13 @@
       background:#000; color:#fff;
       font-family:system-ui,sans-serif;
       height:100%;
-      touch-action:auto; /* allow pinch zoom */
+      touch-action:auto;
     }
 
     .wrap{
       min-height:100%;
       display:flex;
-      flex-direction:column;   /* toolbar flows below panel */
+      flex-direction:column;
       align-items:center;
       justify-content:center;
       gap:14px;
@@ -31,7 +31,7 @@
       position:relative;
       user-select:none;
       -webkit-user-select:none;
-      touch-action:auto; /* allow pinch zoom */
+      touch-action:auto;
       overflow:hidden;
       border-radius:2px;
     }
@@ -43,7 +43,6 @@
       background:#000;
     }
 
-    /* subtle left-edge guidance glow */
     .edgeGlow{
       position:absolute;
       left:0; top:0;
@@ -61,7 +60,6 @@
       mix-blend-mode:screen;
     }
 
-    /* HUD token (Panel x / y) */
     .hud{
       position:absolute;
       left:12px;
@@ -77,7 +75,6 @@
     }
     .hud.visible{ opacity:0.92; }
 
-    /* toolbar below panel (flow) */
     .toolbar{
       width:100%;
       max-width:900px;
@@ -114,7 +111,7 @@
       display:block;
     }
 
-    /* ===== Volume ring (only interactive in ring thickness) ===== */
+    /* ===== Volume ring (interactive only in ring thickness) ===== */
     .ringWrap{
       width:64px;
       height:64px;
@@ -125,7 +122,7 @@
       position:relative;
       user-select:none;
       -webkit-user-select:none;
-      touch-action:none; /* ring drag shouldn't scroll */
+      touch-action:none;
     }
 
     .ring{
@@ -134,20 +131,13 @@
       border-radius:50%;
       position:absolute;
       inset:0;
-
-      /* dynamic via JS: conic-gradient for progress */
       background: conic-gradient(#fff 0deg, rgba(255,255,255,0.16) 0deg);
-
-      /* make it a thin contour ring */
       -webkit-mask: radial-gradient(circle, transparent 61%, #000 62%);
               mask: radial-gradient(circle, transparent 61%, #000 62%);
       opacity:0.98;
-
-      /* subtle glow */
       filter: drop-shadow(0 0 6px rgba(255,255,255,0.18));
     }
 
-    /* optional center "cap" (visual only) */
     .cap{
       width:42px;
       height:42px;
@@ -163,25 +153,20 @@
 
 <body>
 
-  <!-- AUDIO -->
   <audio id="bg-audio" preload="auto">
     <source src="./media/audio/sanctum_ch1_arcangel_instrumental.mp3" type="audio/mpeg">
   </audio>
 
   <div class="wrap">
 
-    <!-- PANEL -->
     <div class="panel" id="panelArea">
       <img id="panelImg" src="" alt="SANCTUM Panel">
       <div class="edgeGlow" aria-hidden="true"></div>
       <div class="hud" id="hud">Loading…</div>
     </div>
 
-    <!-- TOOLBAR (flow, below panel) -->
     <div class="toolbar" id="toolbar">
-      <button class="btn" id="toggleBtn" aria-label="Play/Pause">
-        <!-- icon injected by JS -->
-      </button>
+      <button class="btn" id="toggleBtn" aria-label="Play/Pause"></button>
 
       <div class="ringWrap" id="ringWrap" aria-label="Volume ring">
         <div class="ring" id="ring" aria-hidden="true"></div>
@@ -234,33 +219,25 @@
     }
 
     // =========================
-    // 2) Pictograms: options + implemented clean SVG set
+    // Clean SVG pictograms
     // =========================
-    // Options you can use:
-    // - Inline SVG (like below) ✅ best: crisp, controllable, same style
-    // - Icon font (Font Awesome etc.) (needs external load; not ideal offline)
-    // - Custom images (PNG/SVG files) (extra assets to manage)
-    // We implement inline SVG icons: play triangle + pause bars (same line weight).
-
     const ICON_PLAY = `
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <path d="M8 6.8v10.4c0 .9 1 1.4 1.7.9l9-5.2c.7-.4.7-1.4 0-1.8l-9-5.2C9 5.4 8 5.9 8 6.8Z" fill="#fff"/>
       </svg>
     `;
-
     const ICON_PAUSE = `
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <path d="M8 6.5c0-.6.4-1 1-1h1.5c.6 0 1 .4 1 1v11c0 .6-.4 1-1 1H9c-.6 0-1-.4-1-1v-11Z" fill="#fff"/>
         <path d="M13.5 6.5c0-.6.4-1 1-1H16c.6 0 1 .4 1 1v11c0 .6-.4 1-1 1h-1.5c-.6 0-1-.4-1-1v-11Z" fill="#fff"/>
       </svg>
     `;
-
     function setToggleIcon() {
       toggleBtn.innerHTML = audio.paused ? ICON_PLAY : ICON_PAUSE;
     }
 
     // =========================
-    // AUDIO: autoplay attempt + reliable play button
+    // AUDIO
     // =========================
     let hasEverPlayed = false;
     let attempting = false;
@@ -296,7 +273,6 @@
     async function playNormal() {
       if (attempting) return;
       attempting = true;
-
       try {
         await audio.play();
         hasEverPlayed = true;
@@ -323,11 +299,12 @@
     audio.addEventListener("ended", setToggleIcon);
 
     // =========================
-    // 1) Volume ring: white progress ring
-    //    Only interactive when touch is inside the ring thickness
+    // VOLUME RING (NO JUMPS)
+    // Relative rotation with unwrap, only reacts inside ring.
     // =========================
     const ANGLE_MIN = -135;
     const ANGLE_MAX = 135;
+    const SWEEP_DEG = 270;
 
     function clamp(v, a, b){ return Math.max(a, Math.min(b, v)); }
 
@@ -335,8 +312,7 @@
       const v = clamp(vol, 0, 1);
       audio.volume = v;
 
-      // progress sweep 0..270deg
-      const deg = Math.round(270 * v);
+      const deg = Math.round(SWEEP_DEG * v);
       ring.style.background =
         `conic-gradient(#fff ${deg}deg, rgba(255,255,255,0.16) ${deg}deg)`;
     }
@@ -352,18 +328,13 @@
       const dy = clientY - cy;
       const r = Math.sqrt(dx*dx + dy*dy);
 
-      // ring geometry based on CSS mask:
-      // outer radius ~ 32px (64/2)
-      // inner radius ~ 0.61 * 32px = 19.5px (approx)
-      // To be safe across devices and rounding, use a slightly narrower “active band”
-      const outer = rect.width / 2;        // ~32
-      const inner = outer * 0.62;          // ~19.8
-
-      // Active only in [inner..outer]
+      const outer = rect.width / 2;
+      const inner = outer * 0.62;
       return (r >= inner && r <= outer);
     }
 
-    function angleToVolume(clientX, clientY) {
+    // Return a continuous-ish touch angle in degrees (-180..180], 0 at top.
+    function touchAngleDeg(clientX, clientY) {
       const rect = ringWrap.getBoundingClientRect();
       const cx = rect.left + rect.width / 2;
       const cy = rect.top + rect.height / 2;
@@ -371,35 +342,66 @@
       const dx = clientX - cx;
       const dy = clientY - cy;
 
-      let deg = Math.atan2(dy, dx) * (180 / Math.PI); // -180..180, 0 on +x
-      deg = deg + 90; // rotate so 0 at top
+      let deg = Math.atan2(dy, dx) * (180 / Math.PI); // -180..180, 0 at +x
+      deg = deg + 90; // rotate so 0 = top
       if (deg > 180) deg -= 360;
-
-      deg = clamp(deg, ANGLE_MIN, ANGLE_MAX);
-      return (deg - ANGLE_MIN) / (ANGLE_MAX - ANGLE_MIN);
+      return deg; // -180..180
     }
 
+    // We keep an internal "knob angle" that moves smoothly with deltas.
     let ringDragging = false;
+    let lastTouchDeg = 0;
+    let currentAngle = ANGLE_MIN + (ANGLE_MAX - ANGLE_MIN) * audio.volume; // start at volume
+
+    // Clamp to sweep
+    currentAngle = clamp(currentAngle, ANGLE_MIN, ANGLE_MAX);
+
+    function angleToVolume(angle) {
+      const a = clamp(angle, ANGLE_MIN, ANGLE_MAX);
+      return (a - ANGLE_MIN) / (ANGLE_MAX - ANGLE_MIN);
+    }
 
     function startRing(e) {
       const p = e.touches ? e.touches[0] : e;
       if (!pointerInRing(p.clientX, p.clientY)) {
-        ringDragging = false;     // touch outside ring -> no reaction
+        ringDragging = false;
         return;
       }
       ringDragging = true;
-      setVolume(angleToVolume(p.clientX, p.clientY));
+      lastTouchDeg = touchAngleDeg(p.clientX, p.clientY);
+
+      // Initialize currentAngle from current volume (so it never jumps on first touch)
+      currentAngle = ANGLE_MIN + (ANGLE_MAX - ANGLE_MIN) * audio.volume;
+      currentAngle = clamp(currentAngle, ANGLE_MIN, ANGLE_MAX);
     }
 
     function moveRing(e) {
       if (!ringDragging) return;
       const p = e.touches ? e.touches[0] : e;
-      // If user drags off-ring, stop reacting (per your rule)
+
+      // If user leaves ring: stop reacting immediately
       if (!pointerInRing(p.clientX, p.clientY)) {
         ringDragging = false;
         return;
       }
-      setVolume(angleToVolume(p.clientX, p.clientY));
+
+      const nowDeg = touchAngleDeg(p.clientX, p.clientY);
+      let delta = nowDeg - lastTouchDeg;
+
+      // UNWRAP: prevent jump across -180/180 seam
+      if (delta > 180) delta -= 360;
+      if (delta < -180) delta += 360;
+
+      // Safety: cap insane deltas (rare touch glitches)
+      delta = clamp(delta, -25, 25);
+
+      // Apply delta, clamp to sweep
+      currentAngle = clamp(currentAngle + delta, ANGLE_MIN, ANGLE_MAX);
+
+      // Convert to volume
+      setVolume(angleToVolume(currentAngle));
+
+      lastTouchDeg = nowDeg;
     }
 
     function endRing(){ ringDragging = false; }
@@ -413,8 +415,7 @@
     window.addEventListener("touchend", endRing, { passive: true });
 
     // =========================
-    // PANELS: 2-finger pinch = NO swipe, 1-finger = swipe
-    // Swipe direction: RTL (right->left advances)
+    // PANELS (pinch != swipe, RTL swipe)
     // =========================
     let panelIndex = 1;
 
@@ -458,7 +459,6 @@
       showHudFor2s();
       tryHideBrowserUI();
 
-      // Autoplay unlock on first gesture if blocked
       if (audio.paused) {
         if (!hasEverPlayed) playWithFadeIn(2500);
         else playNormal();
@@ -495,8 +495,7 @@
       const dt = Date.now() - startT;
 
       if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.2 && dt < 700) {
-        // RTL continuity: swipe right->left (dx negative) => NEXT
-        if (dx < 0) nextPanelRTL();
+        if (dx < 0) nextPanelRTL();  // right->left = next
         else prevPanelRTL();
       }
     }, { passive: true });
@@ -522,7 +521,7 @@
       renderPanel();
       setToggleIcon();
       tryHideBrowserUI();
-      playWithFadeIn(2500); // autoplay attempt (best effort)
+      playWithFadeIn(2500);
     });
   </script>
 
