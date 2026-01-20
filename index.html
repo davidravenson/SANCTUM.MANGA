@@ -11,8 +11,8 @@
       background:#000; color:#fff;
       font-family:system-ui,sans-serif;
       height:100%;
-      overscroll-behavior:none;
-      touch-action:pan-y;
+      /* Allow pinch-zoom (don’t block touch gestures) */
+      touch-action: auto;
     }
 
     .wrap{
@@ -32,6 +32,8 @@
       user-select:none;
       -webkit-user-select:none;
       position:relative;
+      /* Keep browser gestures available */
+      touch-action: auto;
     }
 
     .panel img{
@@ -47,18 +49,15 @@
       left:12px;
       bottom:12px;
       font-size:12px;
-      opacity:0.9;
+      opacity:0;
       background:rgba(0,0,0,0.45);
       padding:8px 10px;
       border:1px solid rgba(255,255,255,0.16);
       border-radius:12px;
       pointer-events:none;
-
-      transition: opacity 350ms ease;
+      transition: opacity 250ms ease;
     }
-    .hud.hidden{
-      opacity:0;
-    }
+    .hud.visible{ opacity:0.92; }
 
     .player{
       width:74px;
@@ -95,7 +94,7 @@
 
 <body>
 
-  <!-- AUDIO: runs independent from panel -->
+  <!-- AUDIO -->
   <audio id="bg-audio" preload="auto">
     <source src="./media/audio/sanctum_ch1_arcangel_instrumental.mp3" type="audio/mpeg">
   </audio>
@@ -108,11 +107,9 @@
       <div class="hud" id="hud">Loading…</div>
     </div>
 
-    <!-- PLAYER -->
+    <!-- PLAYER (2-in-1) -->
     <div class="player">
-      <!-- 2-in-1 button -->
       <button id="toggleBtn" aria-label="Play/Pause">▶</button>
-
       <input id="volume" type="range" min="0" max="1" step="0.01" value="0.4">
       <div class="tiny">Swipe ⇦ ⇨<br>Music keeps flowing</div>
     </div>
@@ -141,28 +138,23 @@
     const hud = document.getElementById("hud");
 
     // =========================
-    // HUD AUTO-FADE (2s inactivity)
+    // HUD: show ONLY when panel is touched (2s)
     // =========================
     let hudTimer = null;
 
-    function showHudTemporarily() {
-      hud.classList.remove("hidden");
+    function showHudFor2s() {
+      hud.classList.add("visible");
       if (hudTimer) clearTimeout(hudTimer);
       hudTimer = setTimeout(() => {
-        hud.classList.add("hidden");
+        hud.classList.remove("visible");
       }, 2000);
     }
 
-    // Any interaction should wake HUD
-    const wakeEvents = ["touchstart", "touchmove", "touchend", "click", "keydown", "wheel"];
-    wakeEvents.forEach(evt => {
-      window.addEventListener(evt, showHudTemporarily, { passive: true });
-    });
-
     // =========================
-    // AUDIO
+    // AUDIO: autoplay on page open (best effort) + toggle button
     // =========================
     let hasStarted = false;
+
     audio.volume = Number(volumeSlider.value);
 
     function setToggleIcon() {
@@ -173,27 +165,38 @@
       const target = Number(volumeSlider.value);
       audio.volume = 0;
 
-      audio.play().then(() => {
+      return audio.play().then(() => {
         setToggleIcon();
-      }).catch(() => {});
-
-      const steps = 50;
-      let step = 0;
-      const interval = setInterval(() => {
-        step++;
-        audio.volume = Math.min(target, (step / steps) * target);
-        if (step >= steps) clearInterval(interval);
-      }, duration / steps);
+        const steps = 50;
+        let step = 0;
+        const interval = setInterval(() => {
+          step++;
+          audio.volume = Math.min(target, (step / steps) * target);
+          if (step >= steps) clearInterval(interval);
+        }, duration / steps);
+      }).catch(() => {
+        // If autoplay is blocked, we just wait for the first user interaction.
+        setToggleIcon();
+      });
     }
 
+    function startAudioIfNeeded() {
+      if (hasStarted) return;
+      hasStarted = true;
+      fadeIn(2500);
+    }
+
+    // Try to start immediately on page open
+    window.addEventListener("load", () => {
+      startAudioIfNeeded();
+    });
+
     toggleBtn.addEventListener("click", () => {
-      // If not started yet -> start with fade in
+      // If not started yet -> start with fade-in
       if (!hasStarted) {
-        fadeIn(2500);
-        hasStarted = true;
+        startAudioIfNeeded();
         return;
       }
-
       // Toggle play/pause
       if (audio.paused) {
         audio.play().then(setToggleIcon).catch(() => {});
@@ -203,7 +206,6 @@
       }
     });
 
-    // Keep icon in sync if audio ends/fails (safety)
     audio.addEventListener("play", setToggleIcon);
     audio.addEventListener("pause", setToggleIcon);
     audio.addEventListener("ended", setToggleIcon);
@@ -212,37 +214,20 @@
       audio.volume = Number(volumeSlider.value);
     });
 
-    // Bonus: first tap on panel can start audio (fade-in) too
-    panelArea.addEventListener("click", () => {
-      if (!hasStarted) {
-        fadeIn(2500);
-        hasStarted = true;
-      }
-    });
-
     // =========================
-    // PANELS: swipe without reload
+    // PANELS: swipe without reload (pinch-zoom stays available)
     // =========================
     let panelIndex = 1;
 
     function renderPanel() {
-      const src = panelFile(panelIndex);
-      panelImg.src = src;
+      panelImg.src = panelFile(panelIndex);
       hud.textContent = `Panel ${panelIndex} / ${TOTAL_PANELS}`;
       history.replaceState(null, "", `#${panelIndex}`);
-
-      // show token then auto-fade after inactivity
-      showHudTemporarily();
-
-      // Preload neighbors
-      preload(panelIndex + 1);
-      preload(panelIndex - 1);
     }
 
-    // Helpful error signal
     panelImg.addEventListener("error", () => {
       hud.textContent = `Panel ${panelIndex} not found (check path/name)`;
-      showHudTemporarily();
+      showHudFor2s();
     });
 
     // Deep link: #12
@@ -258,17 +243,26 @@
     function nextPanel() {
       if (panelIndex < TOTAL_PANELS) panelIndex++;
       renderPanel();
+      preload(panelIndex + 1);
+      preload(panelIndex - 1);
     }
 
     function prevPanel() {
       if (panelIndex > 1) panelIndex--;
       renderPanel();
+      preload(panelIndex + 1);
+      preload(panelIndex - 1);
     }
 
-    // Touch swipe detection
+    // Touch swipe detection (do not preventDefault -> pinch zoom works)
     let startX = 0, startY = 0, startT = 0;
 
     panelArea.addEventListener("touchstart", (e) => {
+      // Show HUD only when PANEL is touched
+      showHudFor2s();
+      // Also, first user touch can unlock audio if autoplay was blocked
+      startAudioIfNeeded();
+
       const t = e.touches[0];
       startX = t.clientX;
       startY = t.clientY;
@@ -287,8 +281,15 @@
       }
     }, { passive: true });
 
+    // Click on panel (desktop / tap)
+    panelArea.addEventListener("click", () => {
+      showHudFor2s();
+      startAudioIfNeeded();
+    });
+
     // Desktop arrows
     window.addEventListener("keydown", (e) => {
+      // (HUD should NOT appear on keyboard, per your rule)
       if (e.key === "ArrowRight") nextPanel();
       if (e.key === "ArrowLeft") prevPanel();
     });
