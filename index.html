@@ -6,92 +6,96 @@
   <title>SANCTUM — Chapter 1</title>
 
   <style>
-    html, body {
-      margin: 0;
-      padding: 0;
-      background: #000;
-      color: #fff;
-      font-family: system-ui, sans-serif;
-      height: 100%;
-      overscroll-behavior: none;
-      touch-action: pan-y;
+    html, body{
+      margin:0; padding:0;
+      background:#000; color:#fff;
+      font-family:system-ui,sans-serif;
+      height:100%;
+      overscroll-behavior:none;
+      touch-action:pan-y;
     }
 
-    .wrap {
-      min-height: 100%;
-      display: flex;
-      flex-direction: row;
-      align-items: center;
-      justify-content: center;
-      gap: 16px;
-      padding: 12px;
-      box-sizing: border-box;
+    .wrap{
+      min-height:100%;
+      display:flex;
+      flex-direction:row;
+      align-items:center;
+      justify-content:center;
+      gap:16px;
+      padding:12px;
+      box-sizing:border-box;
     }
 
-    .panel {
-      width: 100%;
-      max-width: 900px;
-      user-select: none;
-      -webkit-user-select: none;
-      position: relative;
+    .panel{
+      width:100%;
+      max-width:900px;
+      user-select:none;
+      -webkit-user-select:none;
+      position:relative;
     }
 
-    .panel img {
-      width: 100%;
-      height: auto;
-      display: block;
-      background: #000;
+    .panel img{
+      width:100%;
+      height:auto;
+      display:block;
+      background:#000;
     }
 
-    .hud {
-      position: absolute;
-      left: 10px;
-      bottom: 10px;
-      font-size: 12px;
-      opacity: 0.8;
-      background: rgba(0,0,0,0.45);
-      padding: 6px 8px;
-      border: 1px solid rgba(255,255,255,0.15);
-      border-radius: 10px;
-      pointer-events: none;
+    /* HUD token (Panel x / y) */
+    .hud{
+      position:absolute;
+      left:12px;
+      bottom:12px;
+      font-size:12px;
+      opacity:0.9;
+      background:rgba(0,0,0,0.45);
+      padding:8px 10px;
+      border:1px solid rgba(255,255,255,0.16);
+      border-radius:12px;
+      pointer-events:none;
+
+      transition: opacity 350ms ease;
+    }
+    .hud.hidden{
+      opacity:0;
     }
 
-    .player {
-      width: 74px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 12px;
-      opacity: 0.92;
+    .player{
+      width:74px;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap:12px;
+      opacity:0.92;
     }
 
     .player button,
-    .player input[type="range"] {
-      width: 100%;
+    .player input[type="range"]{
+      width:100%;
     }
 
-    .player button {
-      padding: 10px 0;
-      font-size: 18px;
-      cursor: pointer;
-      background: #111;
-      color: #fff;
-      border: 1px solid #333;
-      border-radius: 12px;
+    .player button{
+      padding:14px 0;
+      font-size:20px;
+      cursor:pointer;
+      background:#111;
+      color:#fff;
+      border:1px solid #333;
+      border-radius:14px;
     }
 
-    .player .tiny {
-      font-size: 11px;
-      opacity: 0.7;
-      text-align: center;
-      line-height: 1.2;
+    .player .tiny{
+      font-size:11px;
+      opacity:0.7;
+      text-align:center;
+      line-height:1.2;
     }
   </style>
 </head>
 
 <body>
 
-  <!-- AUDIO: läuft unabhängig vom Panel -->
+  <!-- AUDIO: runs independent from panel -->
   <audio id="bg-audio" preload="auto">
     <source src="./media/audio/sanctum_ch1_arcangel_instrumental.mp3" type="audio/mpeg">
   </audio>
@@ -106,8 +110,9 @@
 
     <!-- PLAYER -->
     <div class="player">
-      <button id="playBtn">▶</button>
-      <button id="pauseBtn">⏸</button>
+      <!-- 2-in-1 button -->
+      <button id="toggleBtn" aria-label="Play/Pause">▶</button>
+
       <input id="volume" type="range" min="0" max="1" step="0.01" value="0.4">
       <div class="tiny">Swipe ⇦ ⇨<br>Music keeps flowing</div>
     </div>
@@ -116,37 +121,62 @@
 
   <script>
     // =========================
-    // CONFIG: WHERE ARE PANELS?
+    // CONFIG
     // =========================
-    // HIER anpassen, falls nötig:
-    const relativeFolder = "./manga/my-series/chapter-1/";  // e.g. "./manga/my-series/chapter-1/"
+    const relativeFolder = "./manga/my-series/chapter-1/";
     const TOTAL_PANELS = 20;
 
     const PAD = (n) => String(n).padStart(3, "0");
     const panelFile = (index1based) => `${relativeFolder}${PAD(index1based)}.jpg`;
 
-    // ============
+    // =========================
     // ELEMENTS
-    // ============
+    // =========================
     const audio = document.getElementById("bg-audio");
-    const playBtn = document.getElementById("playBtn");
-    const pauseBtn = document.getElementById("pauseBtn");
+    const toggleBtn = document.getElementById("toggleBtn");
     const volumeSlider = document.getElementById("volume");
 
     const panelArea = document.getElementById("panelArea");
     const panelImg = document.getElementById("panelImg");
     const hud = document.getElementById("hud");
 
-    // ============
-    // AUDIO: Fade-in + keep playing
-    // ============
+    // =========================
+    // HUD AUTO-FADE (2s inactivity)
+    // =========================
+    let hudTimer = null;
+
+    function showHudTemporarily() {
+      hud.classList.remove("hidden");
+      if (hudTimer) clearTimeout(hudTimer);
+      hudTimer = setTimeout(() => {
+        hud.classList.add("hidden");
+      }, 2000);
+    }
+
+    // Any interaction should wake HUD
+    const wakeEvents = ["touchstart", "touchmove", "touchend", "click", "keydown", "wheel"];
+    wakeEvents.forEach(evt => {
+      window.addEventListener(evt, showHudTemporarily, { passive: true });
+    });
+
+    // =========================
+    // AUDIO
+    // =========================
     let hasStarted = false;
     audio.volume = Number(volumeSlider.value);
+
+    function setToggleIcon() {
+      toggleBtn.textContent = audio.paused ? "▶" : "⏸";
+    }
 
     function fadeIn(duration = 2500) {
       const target = Number(volumeSlider.value);
       audio.volume = 0;
-      audio.play().catch(() => {});
+
+      audio.play().then(() => {
+        setToggleIcon();
+      }).catch(() => {});
+
       const steps = 50;
       let step = 0;
       const interval = setInterval(() => {
@@ -156,24 +186,43 @@
       }, duration / steps);
     }
 
-    playBtn.addEventListener("click", () => {
+    toggleBtn.addEventListener("click", () => {
+      // If not started yet -> start with fade in
       if (!hasStarted) {
         fadeIn(2500);
         hasStarted = true;
+        return;
+      }
+
+      // Toggle play/pause
+      if (audio.paused) {
+        audio.play().then(setToggleIcon).catch(() => {});
       } else {
-        audio.play().catch(() => {});
+        audio.pause();
+        setToggleIcon();
       }
     });
 
-    pauseBtn.addEventListener("click", () => audio.pause());
+    // Keep icon in sync if audio ends/fails (safety)
+    audio.addEventListener("play", setToggleIcon);
+    audio.addEventListener("pause", setToggleIcon);
+    audio.addEventListener("ended", setToggleIcon);
 
     volumeSlider.addEventListener("input", () => {
       audio.volume = Number(volumeSlider.value);
     });
 
-    // ============
-    // PANELS: Swipe without reload
-    // ============
+    // Bonus: first tap on panel can start audio (fade-in) too
+    panelArea.addEventListener("click", () => {
+      if (!hasStarted) {
+        fadeIn(2500);
+        hasStarted = true;
+      }
+    });
+
+    // =========================
+    // PANELS: swipe without reload
+    // =========================
     let panelIndex = 1;
 
     function renderPanel() {
@@ -181,20 +230,25 @@
       panelImg.src = src;
       hud.textContent = `Panel ${panelIndex} / ${TOTAL_PANELS}`;
       history.replaceState(null, "", `#${panelIndex}`);
+
+      // show token then auto-fade after inactivity
+      showHudTemporarily();
+
+      // Preload neighbors
+      preload(panelIndex + 1);
+      preload(panelIndex - 1);
     }
 
-    // Show useful error if image fails
+    // Helpful error signal
     panelImg.addEventListener("error", () => {
-      hud.textContent = `Panel ${panelIndex} not found (check folder/path)`;
+      hud.textContent = `Panel ${panelIndex} not found (check path/name)`;
+      showHudTemporarily();
     });
 
     // Deep link: #12
     const hashN = Number((location.hash || "").replace("#", ""));
     if (hashN && hashN >= 1 && hashN <= TOTAL_PANELS) panelIndex = hashN;
 
-    renderPanel();
-
-    // Preload for smoothness
     function preload(index) {
       if (index < 1 || index > TOTAL_PANELS) return;
       const img = new Image();
@@ -204,13 +258,11 @@
     function nextPanel() {
       if (panelIndex < TOTAL_PANELS) panelIndex++;
       renderPanel();
-      preload(panelIndex + 1);
     }
 
     function prevPanel() {
       if (panelIndex > 1) panelIndex--;
       renderPanel();
-      preload(panelIndex - 1);
     }
 
     // Touch swipe detection
@@ -241,13 +293,9 @@
       if (e.key === "ArrowLeft") prevPanel();
     });
 
-    // Bonus: first tap on panel can also start audio
-    panelArea.addEventListener("click", () => {
-      if (!hasStarted) {
-        fadeIn(2500);
-        hasStarted = true;
-      }
-    });
+    // Initial paint
+    renderPanel();
+    setToggleIcon();
   </script>
 
 </body>
