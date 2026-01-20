@@ -1,9 +1,9 @@
 <script>
-  // ===== Pfade anpassen =====
-  const IMG_SRC   = "./manga/my-series/chapter-1/001.jpg?v=3";
-  const AUDIO_SRC = "./audio/sanctum_ch1_arcangel_instrumental.mp3?v=3";
+  const IMG_SRC = "./manga/my-series/chapter-1/001.jpg?v=9";
 
-  // ===== Fade / Lautstaerke =====
+  // Dateiname exakt wie im audio-Ordner:
+  const AUDIO_FILE = "sanctum_ch1_arcangel_instrumental.mp3";
+
   const FADE_MS = 2500;
   const TARGET_VOL_DEFAULT = 0.45;
 
@@ -18,16 +18,26 @@
 
   img.src = IMG_SRC;
 
-  // Audio Setup
-  audio.src = AUDIO_SRC;
-  audio.preload = "auto";
-  audio.loop = true;
-  audio.playsInline = true;
-
   function setStatus(t){ if (status) status.textContent = t; }
 
-  // Soft barrier gegen "Speichern unter"
   document.addEventListener("contextmenu", e => e.preventDefault());
+
+  // Kandidaten (funktioniert je nach dem, ob index.html im Root oder in Unterordnern liegt)
+  const candidates = [
+    new URL("./audio/" + AUDIO_FILE, document.baseURI).href,      // neben index.html
+    new URL("/audio/" + AUDIO_FILE, location.origin).href,        // Root der Domain
+    new URL("/SANCTUM.MANGA/audio/" + AUDIO_FILE, location.origin).href // Projekt-Repo Pages
+  ];
+
+  async function pickFirstWorkingUrl(urls){
+    for (const u of urls){
+      try{
+        const r = await fetch(u, { method: "HEAD", cache: "no-store" });
+        if (r.ok) return u;
+      }catch(_){}
+    }
+    return null;
+  }
 
   let fadeRAF = null;
   function fadeTo(target, ms){
@@ -44,27 +54,44 @@
     fadeRAF = requestAnimationFrame(step);
   }
 
+  async function ensureAudioSrc(){
+    if (audio.src) return true;
+
+    setStatus("suche audio…");
+    const chosen = await pickFirstWorkingUrl(candidates);
+
+    if (!chosen){
+      setStatus("Audio-Pfad nicht gefunden");
+      console.log("Audio candidates failed:", candidates);
+      return false;
+    }
+
+    audio.src = chosen + "?v=9";
+    audio.preload = "auto";
+    audio.loop = true;
+    audio.playsInline = true;
+
+    setStatus("audio bereit");
+    console.log("Audio chosen:", audio.src);
+    return true;
+  }
+
   async function startWithFade(){
+    const ok = await ensureAudioSrc();
+    if (!ok) return;
+
     const target = Math.max(0, Math.min(1, parseFloat(vol.value) || TARGET_VOL_DEFAULT));
 
     try{
-      // wichtig auf Android: erst laden, dann play
-      audio.pause();
-      audio.currentTime = Math.max(0, audio.currentTime || 0);
       audio.volume = 0;
       audio.muted = false;
-
-      // force reload attempt (helps if src changed / cached weird)
       audio.load();
 
-      const p = audio.play();
-      if (p && typeof p.then === "function") await p;
-
+      await audio.play();
       setStatus("läuft…");
       fadeTo(target, FADE_MS);
-    } catch (e){
-      // Zeig den Fehler an (super hilfreich)
-      setStatus("Audio blockiert: " + (e?.name || "Error"));
+    }catch(e){
+      setStatus("blockiert: " + (e?.name || "Error"));
       console.log("Audio play error:", e);
     }
   }
@@ -74,44 +101,22 @@
     setStatus("pausiert");
   }
 
-  // moderate Default
   vol.value = TARGET_VOL_DEFAULT.toFixed(2);
-  audio.volume = 0;
 
-  // Lautstärke-Regler
   vol.addEventListener("input", () => {
     const v = Math.max(0, Math.min(1, parseFloat(vol.value)));
     if (!audio.paused) fadeTo(v, 200);
     else audio.volume = v;
   });
 
-  // Android: pointerdown ist zuverlässiger als click
-  btnStart.addEventListener("pointerdown", (e) => {
-    e.preventDefault();
-    startWithFade();
-  }, { passive: false });
+  // Android: pointerdown > click
+  btnStart.addEventListener("pointerdown", (e) => { e.preventDefault(); startWithFade(); }, { passive:false });
+  btnPause.addEventListener("pointerdown", (e) => { e.preventDefault(); pauseAudio(); }, { passive:false });
+  panel.addEventListener("pointerdown", () => { if (audio.paused) startWithFade(); }, { passive:true });
 
-  btnPause.addEventListener("pointerdown", (e) => {
-    e.preventDefault();
-    pauseAudio();
-  }, { passive: false });
-
-  // Tap aufs Panel startet auch
-  panel.addEventListener("pointerdown", () => {
-    if (audio.paused) startWithFade();
-  }, { passive: true });
-
-  // Autoplay nur "versuchen" — wenn blockiert, egal
+  // Autostart versuchen (kann blockiert werden)
   window.addEventListener("load", () => {
     setStatus("bereit");
-    // Versuch, aber keine Erwartung: Android blockt oft
     startWithFade();
   });
-
-  // Debug-Events (hilft bei "läuft nicht" schnell)
-  audio.addEventListener("playing", () => setStatus("läuft…"));
-  audio.addEventListener("pause",   () => setStatus("pausiert"));
-  audio.addEventListener("waiting", () => setStatus("lädt…"));
-  audio.addEventListener("error",   () => setStatus("Audio-Fehler"));
-
 </script>
