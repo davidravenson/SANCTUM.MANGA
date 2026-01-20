@@ -11,17 +11,16 @@
       background:#000; color:#fff;
       font-family:system-ui,sans-serif;
       height:100%;
-      /* pinch-zoom allowed everywhere */
-      touch-action:auto;
+      touch-action:auto; /* allow pinch zoom */
     }
 
     .wrap{
       min-height:100%;
       display:flex;
-      flex-direction:row;
+      flex-direction:column;   /* toolbar flows below panel */
       align-items:center;
       justify-content:center;
-      gap:16px;
+      gap:14px;
       padding:12px;
       box-sizing:border-box;
     }
@@ -29,10 +28,10 @@
     .panel{
       width:100%;
       max-width:900px;
+      position:relative;
       user-select:none;
       -webkit-user-select:none;
-      position:relative;
-      touch-action:auto;
+      touch-action:auto; /* allow pinch zoom */
       overflow:hidden;
       border-radius:2px;
     }
@@ -44,21 +43,20 @@
       background:#000;
     }
 
-    /* intuitive white light glow on LEFT side of panel */
+    /* subtle left-edge guidance glow */
     .edgeGlow{
       position:absolute;
       left:0; top:0;
-      width:12%;
+      width:10%;
       height:100%;
       pointer-events:none;
       background:linear-gradient(
         to right,
-        rgba(255,255,255,0.22),
-        rgba(255,255,255,0.10),
-        rgba(255,255,255,0.04),
+        rgba(255,255,255,0.18),
+        rgba(255,255,255,0.08),
+        rgba(255,255,255,0.03),
         rgba(255,255,255,0.00)
       );
-      filter: blur(0.2px);
       opacity:0.9;
       mix-blend-mode:screen;
     }
@@ -79,28 +77,86 @@
     }
     .hud.visible{ opacity:0.92; }
 
-    .player{
-      width:74px;
-      display:flex;
-      flex-direction:column;
-      align-items:center;
-      gap:12px;
-      opacity:0.92;
-    }
-
-    .player button,
-    .player input[type="range"]{
+    /* toolbar below panel (flow) */
+    .toolbar{
       width:100%;
+      max-width:900px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:14px;
+      padding:10px 12px;
+      box-sizing:border-box;
+      border:1px solid rgba(255,255,255,0.12);
+      background:rgba(10,10,10,0.55);
+      border-radius:16px;
+      backdrop-filter: blur(6px);
     }
 
-    .player button{
-      padding:14px 0;
-      font-size:20px;
+    .btn{
+      width:64px;
+      height:56px;
+      font-size:22px;
       cursor:pointer;
       background:#111;
       color:#fff;
       border:1px solid #333;
       border-radius:14px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      flex:0 0 auto;
+    }
+
+    /* DJ knob */
+    .knobWrap{
+      width:64px;
+      height:64px;
+      flex:0 0 auto;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      position:relative;
+      user-select:none;
+      -webkit-user-select:none;
+      touch-action:none; /* knob drag shouldn't scroll page */
+    }
+
+    .knobRing{
+      width:64px;
+      height:64px;
+      border-radius:50%;
+      position:absolute;
+      inset:0;
+      background: conic-gradient(rgba(255,255,255,0.85) 0deg, rgba(255,255,255,0.12) 0deg);
+      -webkit-mask: radial-gradient(circle, transparent 61%, #000 62%);
+              mask: radial-gradient(circle, transparent 61%, #000 62%);
+      opacity:0.95;
+    }
+
+    .knob{
+      width:52px;
+      height:52px;
+      border-radius:50%;
+      background: radial-gradient(circle at 30% 30%, #2a2a2a, #0f0f0f 70%);
+      border:1px solid rgba(255,255,255,0.18);
+      box-shadow: 0 6px 18px rgba(0,0,0,0.55);
+      position:relative;
+      transform: rotate(-135deg);
+      transition: transform 40ms linear;
+    }
+
+    .knob::after{
+      content:"";
+      position:absolute;
+      left:50%;
+      top:10px;
+      width:3px;
+      height:14px;
+      transform: translateX(-50%);
+      border-radius:2px;
+      background: rgba(255,255,255,0.9);
+      box-shadow: 0 0 10px rgba(255,255,255,0.25);
     }
   </style>
 </head>
@@ -114,17 +170,21 @@
 
   <div class="wrap">
 
-    <!-- PANEL VIEWER -->
+    <!-- PANEL -->
     <div class="panel" id="panelArea">
       <img id="panelImg" src="" alt="SANCTUM Panel">
       <div class="edgeGlow" aria-hidden="true"></div>
       <div class="hud" id="hud">Loading…</div>
     </div>
 
-    <!-- PLAYER (2-in-1) -->
-    <div class="player">
-      <button id="toggleBtn" aria-label="Play/Pause">▶</button>
-      <input id="volume" type="range" min="0" max="1" step="0.01" value="0.4">
+    <!-- TOOLBAR (flow, below panel) -->
+    <div class="toolbar" id="toolbar">
+      <button class="btn" id="toggleBtn" aria-label="Play/Pause">▶</button>
+
+      <div class="knobWrap" id="knobWrap" aria-label="Volume knob">
+        <div class="knobRing" id="knobRing" aria-hidden="true"></div>
+        <div class="knob" id="knob" aria-hidden="true"></div>
+      </div>
     </div>
 
   </div>
@@ -144,17 +204,28 @@
     // =========================
     const audio = document.getElementById("bg-audio");
     const toggleBtn = document.getElementById("toggleBtn");
-    const volumeSlider = document.getElementById("volume");
 
     const panelArea = document.getElementById("panelArea");
     const panelImg = document.getElementById("panelImg");
     const hud = document.getElementById("hud");
 
+    const knobWrap = document.getElementById("knobWrap");
+    const knob = document.getElementById("knob");
+    const knobRing = document.getElementById("knobRing");
+
+    // =========================
+    // Scroll-hide browser UI (best effort)
+    // =========================
+    function tryHideBrowserUI() {
+      setTimeout(() => window.scrollTo(0, 1), 50);
+      setTimeout(() => window.scrollTo(0, 1), 250);
+      setTimeout(() => window.scrollTo(0, 1), 650);
+    }
+
     // =========================
     // HUD: show ONLY when panel touched (2s)
     // =========================
     let hudTimer = null;
-
     function showHudFor2s() {
       hud.classList.add("visible");
       if (hudTimer) clearTimeout(hudTimer);
@@ -162,34 +233,25 @@
     }
 
     // =========================
-    // AUDIO: autoplay on page open (best effort)
-    // Fix: if autoplay fails, DON'T leave volume at 0 / DON'T mark as started.
+    // AUDIO: autoplay attempt + reliable play button
     // =========================
-    let hasStarted = false;       // becomes true only after at least one successful play()
+    let hasEverPlayed = false;
     let attempting = false;
 
     function setToggleIcon() {
       toggleBtn.textContent = audio.paused ? "▶" : "⏸";
     }
 
-    function syncVolumeFromSlider() {
-      const v = Number(volumeSlider.value);
-      // Ensure we never get stuck at 0 after a failed autoplay attempt
-      if (!isFinite(v)) return;
-      audio.volume = v;
-    }
-
     async function playWithFadeIn(durationMs = 2500) {
       if (attempting) return;
       attempting = true;
 
-      const target = Number(volumeSlider.value);
-      // Start from current volume if already playing; otherwise fade from 0
+      const target = audio.volume;
       audio.volume = 0;
 
       try {
-        await audio.play();          // may throw if autoplay blocked
-        hasStarted = true;
+        await audio.play();
+        hasEverPlayed = true;
         setToggleIcon();
 
         const steps = 50;
@@ -201,9 +263,7 @@
         }, durationMs / steps);
 
       } catch (e) {
-        // Autoplay blocked: keep ready for manual play, and restore volume
-        hasStarted = false;
-        syncVolumeFromSlider();
+        audio.volume = target;
         setToggleIcon();
       } finally {
         attempting = false;
@@ -214,32 +274,20 @@
       if (attempting) return;
       attempting = true;
 
-      // Crucial fix: ensure volume isn't stuck at 0 when user presses play
-      if (audio.volume === 0) syncVolumeFromSlider();
-
       try {
         await audio.play();
-        hasStarted = true;
+        hasEverPlayed = true;
         setToggleIcon();
       } catch (e) {
-        // If somehow blocked, keep icon correct
         setToggleIcon();
       } finally {
         attempting = false;
       }
     }
 
-    // Autoplay attempt on page open
-    window.addEventListener("load", () => {
-      // try to start immediately (some browsers allow, many require a tap)
-      playWithFadeIn(2500);
-    });
-
-    // 2-in-1 toggle button
     toggleBtn.addEventListener("click", () => {
       if (audio.paused) {
-        // If it never successfully started, do the nice fade-in on first real play
-        if (!hasStarted) playWithFadeIn(2500);
+        if (!hasEverPlayed) playWithFadeIn(2500);
         else playNormal();
       } else {
         audio.pause();
@@ -251,22 +299,71 @@
     audio.addEventListener("pause", setToggleIcon);
     audio.addEventListener("ended", setToggleIcon);
 
-    volumeSlider.addEventListener("input", () => {
-      syncVolumeFromSlider();
-    });
+    // =========================
+    // DJ KNOB: volume + progress ring
+    // =========================
+    const ANGLE_MIN = -135;
+    const ANGLE_MAX = 135;
 
-    // Also: first interaction on panel can unlock audio if autoplay was blocked
-    function userUnlockAudio() {
-      // only attempt if currently paused (don’t fight the user)
-      if (audio.paused) {
-        // If never started successfully, use fade-in; else normal play
-        if (!hasStarted) playWithFadeIn(2500);
-        else playNormal();
-      }
+    function clamp(v, a, b){ return Math.max(a, Math.min(b, v)); }
+
+    function setVolume(vol) {
+      const v = clamp(vol, 0, 1);
+      audio.volume = v;
+
+      const angle = ANGLE_MIN + (ANGLE_MAX - ANGLE_MIN) * v;
+      knob.style.transform = `rotate(${angle}deg)`;
+
+      const sweep = (angle - ANGLE_MIN) / (ANGLE_MAX - ANGLE_MIN);
+      const deg = Math.round(270 * sweep);
+      knobRing.style.background =
+        `conic-gradient(rgba(255,255,255,0.85) ${deg}deg, rgba(255,255,255,0.12) ${deg}deg)`;
     }
 
+    // default volume
+    setVolume(0.4);
+
+    let knobDragging = false;
+
+    function angleToVolume(clientX, clientY) {
+      const rect = knobWrap.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+
+      const dx = clientX - cx;
+      const dy = clientY - cy;
+
+      let deg = Math.atan2(dy, dx) * (180 / Math.PI); // -180..180
+      deg = deg + 90; // 0 at top
+      if (deg > 180) deg -= 360;
+
+      deg = clamp(deg, ANGLE_MIN, ANGLE_MAX);
+      return (deg - ANGLE_MIN) / (ANGLE_MAX - ANGLE_MIN);
+    }
+
+    function startKnob(e) {
+      knobDragging = true;
+      const t = e.touches ? e.touches[0] : e;
+      setVolume(angleToVolume(t.clientX, t.clientY));
+    }
+    function moveKnob(e) {
+      if (!knobDragging) return;
+      const t = e.touches ? e.touches[0] : e;
+      setVolume(angleToVolume(t.clientX, t.clientY));
+    }
+    function endKnob(){ knobDragging = false; }
+
+    knobWrap.addEventListener("mousedown", startKnob);
+    window.addEventListener("mousemove", moveKnob);
+    window.addEventListener("mouseup", endKnob);
+
+    knobWrap.addEventListener("touchstart", (e) => startKnob(e), { passive: true });
+    window.addEventListener("touchmove", (e) => moveKnob(e), { passive: true });
+    window.addEventListener("touchend", endKnob, { passive: true });
+
     // =========================
-    // PANELS: swipe without reload (pinch-zoom stays available)
+    // PANELS: 2-finger pinch = NO swipe, 1-finger = swipe
+    // Swipe direction: RTL (right->left advances)
     // =========================
     let panelIndex = 1;
 
@@ -280,7 +377,6 @@
       panelImg.src = panelFile(panelIndex);
       hud.textContent = `Panel ${panelIndex} / ${TOTAL_PANELS}`;
       history.replaceState(null, "", `#${panelIndex}`);
-
       preload(panelIndex + 1);
       preload(panelIndex - 1);
     }
@@ -290,29 +386,45 @@
       showHudFor2s();
     });
 
-    // Deep link: #12
     const hashN = Number((location.hash || "").replace("#", ""));
     if (hashN && hashN >= 1 && hashN <= TOTAL_PANELS) panelIndex = hashN;
 
-    function nextPanel() {
+    function nextPanelRTL() {
       if (panelIndex < TOTAL_PANELS) panelIndex++;
       renderPanel();
     }
 
-    function prevPanel() {
+    function prevPanelRTL() {
       if (panelIndex > 1) panelIndex--;
       renderPanel();
     }
 
-    // Touch swipe detection (do not preventDefault -> pinch zoom works)
+    let isPinching = false;
+    let isSwiping = false;
     let startX = 0, startY = 0, startT = 0;
 
     panelArea.addEventListener("touchstart", (e) => {
-      // Requirement #3: show page count ONLY when panel touched
+      // Show HUD only on panel touch
       showHudFor2s();
 
-      // Also try to unlock audio on first user touch if autoplay was blocked
-      userUnlockAudio();
+      // Try hide browser UI after entering / first touch too
+      tryHideBrowserUI();
+
+      // Autoplay unlock on first gesture if blocked
+      if (audio.paused) {
+        if (!hasEverPlayed) playWithFadeIn(2500);
+        else playNormal();
+      }
+
+      // 2+ touches => pinch mode, disable swipe tracking
+      if (e.touches.length >= 2) {
+        isPinching = true;
+        isSwiping = false;
+        return;
+      }
+
+      isPinching = false;
+      isSwiping = true;
 
       const t = e.touches[0];
       startX = t.clientX;
@@ -320,34 +432,53 @@
       startT = Date.now();
     }, { passive: true });
 
+    panelArea.addEventListener("touchmove", (e) => {
+      // If second finger appears => cancel swipe (pinch only)
+      if (e.touches.length >= 2) {
+        isPinching = true;
+        isSwiping = false;
+      }
+    }, { passive: true });
+
     panelArea.addEventListener("touchend", (e) => {
+      if (!isSwiping || isPinching) return;
+
       const t = e.changedTouches[0];
       const dx = t.clientX - startX;
       const dy = t.clientY - startY;
       const dt = Date.now() - startT;
 
       if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.2 && dt < 700) {
-        if (dx < 0) nextPanel();
-        else prevPanel();
+        // RTL continuity: swipe right->left (dx negative) => NEXT
+        if (dx < 0) nextPanelRTL();
+        else prevPanelRTL();
       }
     }, { passive: true });
 
-    // Desktop click on panel shows HUD (and can unlock audio)
     panelArea.addEventListener("click", () => {
       showHudFor2s();
-      userUnlockAudio();
+      tryHideBrowserUI();
+      if (audio.paused) {
+        if (!hasEverPlayed) playWithFadeIn(2500);
+        else playNormal();
+      }
     });
 
-    // Desktop arrows (no HUD per your rule)
+    // Desktop arrows: right = next (RTL), left = prev
     window.addEventListener("keydown", (e) => {
-      if (e.key === "ArrowRight") nextPanel();
-      if (e.key === "ArrowLeft") prevPanel();
+      if (e.key === "ArrowRight") nextPanelRTL();
+      if (e.key === "ArrowLeft") prevPanelRTL();
     });
 
-    // Initial paint
-    renderPanel();
-    syncVolumeFromSlider();
-    setToggleIcon();
+    // =========================
+    // INIT
+    // =========================
+    window.addEventListener("load", () => {
+      renderPanel();
+      setToggleIcon();
+      tryHideBrowserUI();
+      playWithFadeIn(2500); // autoplay attempt
+    });
   </script>
 
 </body>
