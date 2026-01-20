@@ -96,7 +96,6 @@
     .btn{
       width:64px;
       height:56px;
-      font-size:22px;
       cursor:pointer;
       background:#111;
       color:#fff;
@@ -106,10 +105,17 @@
       align-items:center;
       justify-content:center;
       flex:0 0 auto;
+      padding:0;
     }
 
-    /* DJ knob */
-    .knobWrap{
+    .btn svg{
+      width:22px;
+      height:22px;
+      display:block;
+    }
+
+    /* ===== Volume ring (only interactive in ring thickness) ===== */
+    .ringWrap{
       width:64px;
       height:64px;
       flex:0 0 auto;
@@ -119,44 +125,38 @@
       position:relative;
       user-select:none;
       -webkit-user-select:none;
-      touch-action:none; /* knob drag shouldn't scroll page */
+      touch-action:none; /* ring drag shouldn't scroll */
     }
 
-    .knobRing{
+    .ring{
       width:64px;
       height:64px;
       border-radius:50%;
       position:absolute;
       inset:0;
-      background: conic-gradient(rgba(255,255,255,0.85) 0deg, rgba(255,255,255,0.12) 0deg);
+
+      /* dynamic via JS: conic-gradient for progress */
+      background: conic-gradient(#fff 0deg, rgba(255,255,255,0.16) 0deg);
+
+      /* make it a thin contour ring */
       -webkit-mask: radial-gradient(circle, transparent 61%, #000 62%);
               mask: radial-gradient(circle, transparent 61%, #000 62%);
-      opacity:0.95;
+      opacity:0.98;
+
+      /* subtle glow */
+      filter: drop-shadow(0 0 6px rgba(255,255,255,0.18));
     }
 
-    .knob{
-      width:52px;
-      height:52px;
+    /* optional center "cap" (visual only) */
+    .cap{
+      width:42px;
+      height:42px;
       border-radius:50%;
-      background: radial-gradient(circle at 30% 30%, #2a2a2a, #0f0f0f 70%);
-      border:1px solid rgba(255,255,255,0.18);
+      background: radial-gradient(circle at 30% 30%, #1e1e1e, #0b0b0b 70%);
+      border:1px solid rgba(255,255,255,0.12);
       box-shadow: 0 6px 18px rgba(0,0,0,0.55);
-      position:relative;
-      transform: rotate(-135deg);
-      transition: transform 40ms linear;
-    }
-
-    .knob::after{
-      content:"";
-      position:absolute;
-      left:50%;
-      top:10px;
-      width:3px;
-      height:14px;
-      transform: translateX(-50%);
-      border-radius:2px;
-      background: rgba(255,255,255,0.9);
-      box-shadow: 0 0 10px rgba(255,255,255,0.25);
+      opacity:0.9;
+      pointer-events:none;
     }
   </style>
 </head>
@@ -179,11 +179,13 @@
 
     <!-- TOOLBAR (flow, below panel) -->
     <div class="toolbar" id="toolbar">
-      <button class="btn" id="toggleBtn" aria-label="Play/Pause">▶</button>
+      <button class="btn" id="toggleBtn" aria-label="Play/Pause">
+        <!-- icon injected by JS -->
+      </button>
 
-      <div class="knobWrap" id="knobWrap" aria-label="Volume knob">
-        <div class="knobRing" id="knobRing" aria-hidden="true"></div>
-        <div class="knob" id="knob" aria-hidden="true"></div>
+      <div class="ringWrap" id="ringWrap" aria-label="Volume ring">
+        <div class="ring" id="ring" aria-hidden="true"></div>
+        <div class="cap" aria-hidden="true"></div>
       </div>
     </div>
 
@@ -209,9 +211,8 @@
     const panelImg = document.getElementById("panelImg");
     const hud = document.getElementById("hud");
 
-    const knobWrap = document.getElementById("knobWrap");
-    const knob = document.getElementById("knob");
-    const knobRing = document.getElementById("knobRing");
+    const ringWrap = document.getElementById("ringWrap");
+    const ring = document.getElementById("ring");
 
     // =========================
     // Scroll-hide browser UI (best effort)
@@ -233,14 +234,36 @@
     }
 
     // =========================
+    // 2) Pictograms: options + implemented clean SVG set
+    // =========================
+    // Options you can use:
+    // - Inline SVG (like below) ✅ best: crisp, controllable, same style
+    // - Icon font (Font Awesome etc.) (needs external load; not ideal offline)
+    // - Custom images (PNG/SVG files) (extra assets to manage)
+    // We implement inline SVG icons: play triangle + pause bars (same line weight).
+
+    const ICON_PLAY = `
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M8 6.8v10.4c0 .9 1 1.4 1.7.9l9-5.2c.7-.4.7-1.4 0-1.8l-9-5.2C9 5.4 8 5.9 8 6.8Z" fill="#fff"/>
+      </svg>
+    `;
+
+    const ICON_PAUSE = `
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M8 6.5c0-.6.4-1 1-1h1.5c.6 0 1 .4 1 1v11c0 .6-.4 1-1 1H9c-.6 0-1-.4-1-1v-11Z" fill="#fff"/>
+        <path d="M13.5 6.5c0-.6.4-1 1-1H16c.6 0 1 .4 1 1v11c0 .6-.4 1-1 1h-1.5c-.6 0-1-.4-1-1v-11Z" fill="#fff"/>
+      </svg>
+    `;
+
+    function setToggleIcon() {
+      toggleBtn.innerHTML = audio.paused ? ICON_PLAY : ICON_PAUSE;
+    }
+
+    // =========================
     // AUDIO: autoplay attempt + reliable play button
     // =========================
     let hasEverPlayed = false;
     let attempting = false;
-
-    function setToggleIcon() {
-      toggleBtn.textContent = audio.paused ? "▶" : "⏸";
-    }
 
     async function playWithFadeIn(durationMs = 2500) {
       if (attempting) return;
@@ -300,7 +323,8 @@
     audio.addEventListener("ended", setToggleIcon);
 
     // =========================
-    // DJ KNOB: volume + progress ring
+    // 1) Volume ring: white progress ring
+    //    Only interactive when touch is inside the ring thickness
     // =========================
     const ANGLE_MIN = -135;
     const ANGLE_MAX = 135;
@@ -311,55 +335,82 @@
       const v = clamp(vol, 0, 1);
       audio.volume = v;
 
-      const angle = ANGLE_MIN + (ANGLE_MAX - ANGLE_MIN) * v;
-      knob.style.transform = `rotate(${angle}deg)`;
-
-      const sweep = (angle - ANGLE_MIN) / (ANGLE_MAX - ANGLE_MIN);
-      const deg = Math.round(270 * sweep);
-      knobRing.style.background =
-        `conic-gradient(rgba(255,255,255,0.85) ${deg}deg, rgba(255,255,255,0.12) ${deg}deg)`;
+      // progress sweep 0..270deg
+      const deg = Math.round(270 * v);
+      ring.style.background =
+        `conic-gradient(#fff ${deg}deg, rgba(255,255,255,0.16) ${deg}deg)`;
     }
 
     // default volume
     setVolume(0.4);
 
-    let knobDragging = false;
+    function pointerInRing(clientX, clientY) {
+      const rect = ringWrap.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      const dx = clientX - cx;
+      const dy = clientY - cy;
+      const r = Math.sqrt(dx*dx + dy*dy);
+
+      // ring geometry based on CSS mask:
+      // outer radius ~ 32px (64/2)
+      // inner radius ~ 0.61 * 32px = 19.5px (approx)
+      // To be safe across devices and rounding, use a slightly narrower “active band”
+      const outer = rect.width / 2;        // ~32
+      const inner = outer * 0.62;          // ~19.8
+
+      // Active only in [inner..outer]
+      return (r >= inner && r <= outer);
+    }
 
     function angleToVolume(clientX, clientY) {
-      const rect = knobWrap.getBoundingClientRect();
+      const rect = ringWrap.getBoundingClientRect();
       const cx = rect.left + rect.width / 2;
       const cy = rect.top + rect.height / 2;
 
       const dx = clientX - cx;
       const dy = clientY - cy;
 
-      let deg = Math.atan2(dy, dx) * (180 / Math.PI); // -180..180
-      deg = deg + 90; // 0 at top
+      let deg = Math.atan2(dy, dx) * (180 / Math.PI); // -180..180, 0 on +x
+      deg = deg + 90; // rotate so 0 at top
       if (deg > 180) deg -= 360;
 
       deg = clamp(deg, ANGLE_MIN, ANGLE_MAX);
       return (deg - ANGLE_MIN) / (ANGLE_MAX - ANGLE_MIN);
     }
 
-    function startKnob(e) {
-      knobDragging = true;
-      const t = e.touches ? e.touches[0] : e;
-      setVolume(angleToVolume(t.clientX, t.clientY));
-    }
-    function moveKnob(e) {
-      if (!knobDragging) return;
-      const t = e.touches ? e.touches[0] : e;
-      setVolume(angleToVolume(t.clientX, t.clientY));
-    }
-    function endKnob(){ knobDragging = false; }
+    let ringDragging = false;
 
-    knobWrap.addEventListener("mousedown", startKnob);
-    window.addEventListener("mousemove", moveKnob);
-    window.addEventListener("mouseup", endKnob);
+    function startRing(e) {
+      const p = e.touches ? e.touches[0] : e;
+      if (!pointerInRing(p.clientX, p.clientY)) {
+        ringDragging = false;     // touch outside ring -> no reaction
+        return;
+      }
+      ringDragging = true;
+      setVolume(angleToVolume(p.clientX, p.clientY));
+    }
 
-    knobWrap.addEventListener("touchstart", (e) => startKnob(e), { passive: true });
-    window.addEventListener("touchmove", (e) => moveKnob(e), { passive: true });
-    window.addEventListener("touchend", endKnob, { passive: true });
+    function moveRing(e) {
+      if (!ringDragging) return;
+      const p = e.touches ? e.touches[0] : e;
+      // If user drags off-ring, stop reacting (per your rule)
+      if (!pointerInRing(p.clientX, p.clientY)) {
+        ringDragging = false;
+        return;
+      }
+      setVolume(angleToVolume(p.clientX, p.clientY));
+    }
+
+    function endRing(){ ringDragging = false; }
+
+    ringWrap.addEventListener("mousedown", startRing);
+    window.addEventListener("mousemove", moveRing);
+    window.addEventListener("mouseup", endRing);
+
+    ringWrap.addEventListener("touchstart", (e) => startRing(e), { passive: true });
+    window.addEventListener("touchmove", (e) => moveRing(e), { passive: true });
+    window.addEventListener("touchend", endRing, { passive: true });
 
     // =========================
     // PANELS: 2-finger pinch = NO swipe, 1-finger = swipe
@@ -404,10 +455,7 @@
     let startX = 0, startY = 0, startT = 0;
 
     panelArea.addEventListener("touchstart", (e) => {
-      // Show HUD only on panel touch
       showHudFor2s();
-
-      // Try hide browser UI after entering / first touch too
       tryHideBrowserUI();
 
       // Autoplay unlock on first gesture if blocked
@@ -416,7 +464,6 @@
         else playNormal();
       }
 
-      // 2+ touches => pinch mode, disable swipe tracking
       if (e.touches.length >= 2) {
         isPinching = true;
         isSwiping = false;
@@ -433,7 +480,6 @@
     }, { passive: true });
 
     panelArea.addEventListener("touchmove", (e) => {
-      // If second finger appears => cancel swipe (pinch only)
       if (e.touches.length >= 2) {
         isPinching = true;
         isSwiping = false;
@@ -464,7 +510,6 @@
       }
     });
 
-    // Desktop arrows: right = next (RTL), left = prev
     window.addEventListener("keydown", (e) => {
       if (e.key === "ArrowRight") nextPanelRTL();
       if (e.key === "ArrowLeft") prevPanelRTL();
@@ -477,7 +522,7 @@
       renderPanel();
       setToggleIcon();
       tryHideBrowserUI();
-      playWithFadeIn(2500); // autoplay attempt
+      playWithFadeIn(2500); // autoplay attempt (best effort)
     });
   </script>
 
