@@ -1,381 +1,310 @@
 <!doctype html>
-<html lang="de">
+<html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>SANCTUM — Chapter 1</title>
 
   <style>
-    :root{
-      --bg:#000;
-      --fg:#fff;
-      --muted:rgba(255,255,255,.75);
-      --stroke:rgba(255,255,255,.22);
-      --card:rgba(255,255,255,.08);
-      --card2:rgba(255,255,255,.12);
-      --r:18px;
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #000;
+      color: #fff;
+      font-family: system-ui, sans-serif;
+      height: 100%;
+      overscroll-behavior: none;
+      touch-action: pan-y;
     }
 
-    html,body{
-      height:100%;
-      margin:0;
-      background:var(--bg);
-      color:var(--fg);
-      font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
-    }
-    *{ box-sizing:border-box; }
-
-    /* ===== PANEL ===== */
-    .wrap{
-      min-height:100%;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      padding:12px;
-      padding-bottom: 110px; /* Platz fuer Mobile-Player */
-    }
-    .panel{
-      width:100%;
-      max-width:900px;
-      border:1px solid var(--stroke);
-      border-radius:12px;
-      overflow:hidden;
-      background:#000;
-    }
-    .panel img{
-      width:100%;
-      height:auto;
-      display:block;
-      user-select:none;
-      -webkit-user-drag:none;
+    .wrap {
+      min-height: 100%;
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      padding: 12px;
+      box-sizing: border-box;
     }
 
-    /* ===== CUSTOM PLAYER (immer sichtbar) ===== */
-    .player{
-      position:fixed;
-      right:12px;
-      top:50%;
-      transform:translateY(-50%);
-      z-index:9999;
-
-      width:150px;
-      border:1px solid var(--stroke);
-      border-radius:var(--r);
-      background:rgba(0,0,0,.62);
-      backdrop-filter:blur(8px);
-      padding:10px;
-
-      display:flex;
-      flex-direction:column;
-      gap:10px;
+    .panel {
+      max-width: 900px;
+      width: 100%;
+      user-select: none;
+      -webkit-user-select: none;
+      position: relative;
     }
 
-    .title{
-      text-align:center;
-      font-size:12px;
-      line-height:1.1;
-      color:var(--muted);
-    }
-    .title b{ color:var(--fg); font-weight:800; }
-
-    .btn{
-      width:100%;
-      padding:14px 10px;
-      border-radius:16px;
-      border:1px solid var(--stroke);
-      background:var(--card2);
-      color:var(--fg);
-      font-weight:800;
-      font-size:15px;
-      cursor:pointer;
-      touch-action:manipulation;
-    }
-    .btn:active{ transform:translateY(1px); }
-
-    .volBox{
-      border:1px solid rgba(255,255,255,.16);
-      background:var(--card);
-      border-radius:16px;
-      padding:10px;
-      display:flex;
-      flex-direction:column;
-      gap:8px;
-      align-items:center;
-    }
-    .label{
-      font-size:12px;
-      color:var(--muted);
-      text-align:center;
+    .panel img {
+      width: 100%;
+      height: auto;
+      display: block;
     }
 
-    /* Vertikaler Slider (Desktop) */
-    input[type="range"]{
-      -webkit-appearance:none;
-      appearance:none;
-      width:18px;
-      height:170px;
-      background:transparent;
-      transform:rotate(180deg); /* oben = laut */
-    }
-    input[type="range"]::-webkit-slider-runnable-track{
-      width:18px;
-      height:170px;
-      background:rgba(255,255,255,.18);
-      border-radius:999px;
-    }
-    input[type="range"]::-webkit-slider-thumb{
-      -webkit-appearance:none;
-      appearance:none;
-      width:26px;
-      height:26px;
-      border-radius:999px;
-      background:rgba(255,255,255,.92);
-      border:2px solid rgba(0,0,0,.35);
-      margin-top:-4px;
-    }
-    input[type="range"]::-moz-range-track{
-      width:18px;
-      height:170px;
-      background:rgba(255,255,255,.18);
-      border-radius:999px;
-    }
-    input[type="range"]::-moz-range-thumb{
-      width:26px;
-      height:26px;
-      border-radius:999px;
-      background:rgba(255,255,255,.92);
-      border:2px solid rgba(0,0,0,.35);
+    .hud {
+      position: absolute;
+      left: 10px;
+      bottom: 10px;
+      font-size: 12px;
+      opacity: 0.75;
+      background: rgba(0,0,0,0.35);
+      padding: 6px 8px;
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 10px;
+      pointer-events: none;
     }
 
-    .status{
-      text-align:center;
-      font-size:12px;
-      color:var(--muted);
-      min-height:1.2em;
+    .player {
+      width: 70px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      opacity: 0.9;
     }
 
-    /* Mobile: Player unten quer + horizontaler Slider */
-    @media (max-width:720px){
-      .wrap{ padding-bottom: 130px; }
-      .player{
-        left:12px;
-        right:12px;
-        top:auto;
-        bottom:12px;
-        transform:none;
-        width:auto;
-        flex-direction:row;
-        align-items:center;
-        justify-content:space-between;
-        gap:10px;
-      }
-      .title{ display:none; }
-      .volBox{
-        flex:1;
-        align-items:stretch;
-        gap:6px;
-      }
-      input[type="range"]{
-        width:100%;
-        height:18px;
-        transform:none;
-      }
-      input[type="range"]::-webkit-slider-runnable-track{
-        width:100%;
-        height:18px;
-      }
-      input[type="range"]::-moz-range-track{
-        width:100%;
-        height:18px;
-      }
-      .status{ display:none; }
-      .btn{ width:110px; }
+    .player button,
+    .player input[type="range"] {
+      width: 100%;
+    }
+
+    .player button {
+      padding: 10px 0;
+      font-size: 18px;
+      cursor: pointer;
+      background: #111;
+      color: #fff;
+      border: 1px solid #333;
+      border-radius: 12px;
+    }
+
+    .player .tiny {
+      font-size: 11px;
+      opacity: 0.7;
+      text-align: center;
+      line-height: 1.2;
     }
   </style>
 </head>
 
 <body>
+
+  <!-- AUDIO: läuft unabhängig vom Panel -->
+  <audio id="bg-audio" preload="auto">
+    <source
+      src="https://raw.githubusercontent.com/davidravenson/SANCTUM.MANGA/master/media/audio/sanctum_ch1_arcangel_instrumental.mp3"
+      type="audio/mpeg">
+  </audio>
+
   <div class="wrap">
-    <div class="panel" id="panel">
-      <img id="panelImg" alt="SANCTUM Panel">
+
+    <!-- PANEL VIEWER (Swipe wechselt nur das Bild, NICHT die Seite) -->
+    <div class="panel" id="panelArea">
+      <img id="panelImg" src="001.jpg" alt="SANCTUM Panel">
+      <div class="hud" id="hud">Panel 1</div>
     </div>
+
+    <!-- PLAYER -->
+    <div class="player">
+      <button id="playBtn">▶</button>
+      <button id="pauseBtn">⏸</button>
+      <input id="volume" type="range" min="0" max="1" step="0.01" value="0.4">
+      <div class="tiny">Swipe: ⇦ / ⇨<br>Music keeps flowing</div>
+    </div>
+
   </div>
 
-  <!-- Sichtbarer Custom Player -->
-  <aside class="player" aria-label="Audio Player">
-    <div class="title"><b>SANCTUM</b><br>ARCANGEL</div>
-
-    <button class="btn" id="btnStart" type="button">START</button>
-    <button class="btn" id="btnPause" type="button">PAUSE</button>
-
-    <div class="volBox">
-      <div class="label">VOLUME</div>
-      <input id="vol" type="range" min="0" max="1" step="0.01" value="0.45" aria-label="Volume">
-    </div>
-
-    <div class="status" id="status">bereit</div>
-  </aside>
-
-  <!-- Audio ohne native Controls -->
-  <audio id="bgAudio" preload="auto" playsinline></audio>
-
   <script>
-    // ====== VERSION (Cache brechen bei Updates) ======
-    const V = 12; // hochzaehlen, wenn du was aenderst
+    // ============
+    // CONFIG: Panels
+    // ============
+    // Passe hier nur die Anzahl an (oder Liste), dann läuft der Rest automatisch.
+    const TOTAL_PANELS = 20; // <-- setz das auf deine echte Anzahl (z.B. 8, 12, 37 ...)
+    const PAD = (n) => String(n).padStart(3, "0");
+    const panelFile = (index1based) => `${PAD(index1based)}.jpg`;
 
-    // ====== DEINE DATEIEN ======
-    const IMG_FILE   = "001.jpg";
-    const AUDIO_FILE = "sanctum_ch1_arcangel_instrumental.mp3";
+    // ============
+    // ELEMENTS
+    // ============
+    const audio = document.getElementById("bg-audio");
+    const playBtn = document.getElementById("playBtn");
+    const pauseBtn = document.getElementById("pauseBtn");
+    const volumeSlider = document.getElementById("volume");
 
-    // Panel-Pfad (so wie du's vorher hattest)
-    const IMG_SRC = `./manga/my-series/chapter-1/${IMG_FILE}?v=${V}`;
+    const panelArea = document.getElementById("panelArea");
+    const panelImg = document.getElementById("panelImg");
+    const hud = document.getElementById("hud");
 
-    // ===== Fade / Lautstaerke =====
-    const FADE_MS = 2500;
-    const TARGET_VOL_DEFAULT = 0.45;
+    // ============
+    // AUDIO: Fade-in + Persistenz über Reloads
+    // ============
+    const STORE_KEY = "sanctumAudioState_v1";
+    let hasStarted = false;
 
-    const img   = document.getElementById("panelImg");
-    const audio = document.getElementById("bgAudio");
+    // Default volume
+    audio.volume = Number(volumeSlider.value);
 
-    const btnStart = document.getElementById("btnStart");
-    const btnPause = document.getElementById("btnPause");
-    const vol      = document.getElementById("vol");
-    const status   = document.getElementById("status");
-    const panel    = document.getElementById("panel");
-
-    img.src = IMG_SRC;
-
-    function setStatus(t){ if (status) status.textContent = t; }
-
-    // Soft barrier (kein echter Schutz, aber entfernt "Speichern unter" per long-press/rechtsklick)
-    document.addEventListener("contextmenu", e => e.preventDefault());
-
-    // Audio Setup (ohne Controls, wir haben eigene Buttons)
-    audio.preload = "auto";
-    audio.loop = true;
-    audio.playsInline = true;
-    audio.volume = 0;
-    vol.value = TARGET_VOL_DEFAULT.toFixed(2);
-
-    // Kandidaten fuer GitHub Pages Pfade:
-    // 1) Neben index.html: ./audio/...
-    // 2) Root der Domain: /audio/...
-    // 3) Repo-Unterordner: /<repo>/audio/... (repo wird automatisch aus dem Pfad extrahiert)
-    function inferRepoNameFromPath(){
-      // Beispiel: /SANCTUM.MANGA/ oder /SANCTUM.MANGA/something
-      const parts = location.pathname.split("/").filter(Boolean);
-      // Wenn Pages als User-Site laufen (username.github.io), dann ist parts[0] oft leer oder index.html
-      // Wenn Project Pages, ist parts[0] typischerweise der Repo-Name.
-      return parts.length ? parts[0] : "";
+    function saveAudioState() {
+      try {
+        const state = {
+          t: audio.currentTime || 0,
+          p: !audio.paused,
+          v: audio.volume
+        };
+        sessionStorage.setItem(STORE_KEY, JSON.stringify(state));
+      } catch (e) {}
     }
 
-    const repo = inferRepoNameFromPath();
+    function restoreAudioState() {
+      try {
+        const raw = sessionStorage.getItem(STORE_KEY);
+        if (!raw) return;
+        const state = JSON.parse(raw);
 
-    const candidates = [
-      new URL(`./audio/${AUDIO_FILE}`, document.baseURI).href,
-      new URL(`/audio/${AUDIO_FILE}`, location.origin).href,
-      repo ? new URL(`/${repo}/audio/${AUDIO_FILE}`, location.origin).href : null
-    ].filter(Boolean);
+        if (typeof state.v === "number") {
+          audio.volume = Math.max(0, Math.min(1, state.v));
+          volumeSlider.value = String(audio.volume);
+        }
 
-    async function pickFirstWorkingUrl(urls){
-      for (const u of urls){
-        try{
-          const r = await fetch(u, { method: "HEAD", cache: "no-store" });
-          if (r.ok) return u;
-        }catch(_){}
+        // currentTime setzen klappt sicher erst, wenn Metadata da ist
+        audio.addEventListener("loadedmetadata", () => {
+          if (typeof state.t === "number" && isFinite(state.t)) {
+            try { audio.currentTime = Math.max(0, state.t); } catch(e) {}
+          }
+          if (state.p) {
+            audio.play().catch(() => {});
+            hasStarted = true;
+          }
+        }, { once: true });
+      } catch (e) {}
+    }
+
+    function fadeIn(duration = 2500) {
+      const target = Number(volumeSlider.value);
+      audio.volume = 0;
+
+      audio.play().catch(() => {});
+
+      const steps = 50;
+      let step = 0;
+      const interval = setInterval(() => {
+        step++;
+        audio.volume = Math.min(target, (step / steps) * target);
+        if (step >= steps) clearInterval(interval);
+      }, duration / steps);
+    }
+
+    playBtn.addEventListener("click", () => {
+      if (!hasStarted) {
+        fadeIn(2500);
+        hasStarted = true;
+      } else {
+        audio.play().catch(() => {});
       }
-      return null;
-    }
+    });
 
-    let audioReady = false;
-
-    async function ensureAudioSrc(){
-      if (audioReady && audio.src) return true;
-
-      setStatus("suche audio…");
-      const chosen = await pickFirstWorkingUrl(candidates);
-
-      if (!chosen){
-        setStatus("Audio nicht gefunden");
-        console.log("Audio candidates failed:", candidates);
-        return false;
-      }
-
-      audio.src = `${chosen}?v=${V}`;
-      audio.load();
-      audioReady = true;
-
-      setStatus("audio bereit");
-      console.log("Audio chosen:", audio.src);
-      return true;
-    }
-
-    let fadeRAF = null;
-    function fadeTo(target, ms){
-      if (fadeRAF) cancelAnimationFrame(fadeRAF);
-      const start = performance.now();
-      const from = audio.volume;
-      const delta = target - from;
-
-      function step(now){
-        const p = Math.min(1, (now - start) / ms);
-        audio.volume = from + delta * p;
-        if (p < 1) fadeRAF = requestAnimationFrame(step);
-      }
-      fadeRAF = requestAnimationFrame(step);
-    }
-
-    async function startWithFade(){
-      const ok = await ensureAudioSrc();
-      if (!ok) return;
-
-      const target = Math.max(0, Math.min(1, parseFloat(vol.value) || TARGET_VOL_DEFAULT));
-
-      try{
-        audio.muted = false;
-        audio.volume = 0;
-
-        const p = audio.play();
-        if (p && typeof p.then === "function") await p;
-
-        setStatus("läuft…");
-        fadeTo(target, FADE_MS);
-      }catch(e){
-        setStatus("blockiert: " + (e?.name || "Error"));
-        console.log("Audio play error:", e);
-      }
-    }
-
-    function pauseAudio(){
+    pauseBtn.addEventListener("click", () => {
       audio.pause();
-      setStatus("pausiert");
+      saveAudioState();
+    });
+
+    volumeSlider.addEventListener("input", () => {
+      audio.volume = Number(volumeSlider.value);
+      saveAudioState();
+    });
+
+    // Speichere regelmäßig, damit auch bei Panelwechsel/Reload nichts verloren geht
+    setInterval(saveAudioState, 1500);
+    window.addEventListener("pagehide", saveAudioState);
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "hidden") saveAudioState();
+    });
+
+    restoreAudioState();
+
+    // ============
+    // PANELS: Swipe ohne Reload (Audio läuft weiter)
+    // ============
+    let panelIndex = 1; // 1..TOTAL_PANELS
+
+    // Optional: Panel-Index über Reloads merken
+    const PANEL_KEY = "sanctumPanelIndex_v1";
+    try {
+      const saved = Number(sessionStorage.getItem(PANEL_KEY));
+      if (saved && saved >= 1 && saved <= TOTAL_PANELS) panelIndex = saved;
+    } catch (e) {}
+
+    function renderPanel() {
+      const src = panelFile(panelIndex);
+      panelImg.src = src;
+      hud.textContent = `Panel ${panelIndex} / ${TOTAL_PANELS}`;
+      try { sessionStorage.setItem(PANEL_KEY, String(panelIndex)); } catch(e) {}
+      history.replaceState(null, "", `#${panelIndex}`);
     }
 
-    // Lautstärke-Regler
-    vol.addEventListener("input", () => {
-      const v = Math.max(0, Math.min(1, parseFloat(vol.value)));
-      if (!audio.paused) fadeTo(v, 200);
-      else audio.volume = v;
+    // Deep-link via #12
+    const hashN = Number((location.hash || "").replace("#", ""));
+    if (hashN && hashN >= 1 && hashN <= TOTAL_PANELS) panelIndex = hashN;
+    renderPanel();
+
+    // Preload next/prev for smoothness
+    function preload(index) {
+      if (index < 1 || index > TOTAL_PANELS) return;
+      const img = new Image();
+      img.src = panelFile(index);
+    }
+
+    function nextPanel() {
+      if (panelIndex < TOTAL_PANELS) panelIndex++;
+      renderPanel();
+      preload(panelIndex + 1);
+    }
+
+    function prevPanel() {
+      if (panelIndex > 1) panelIndex--;
+      renderPanel();
+      preload(panelIndex - 1);
+    }
+
+    // Touch swipe detection
+    let startX = 0, startY = 0, startT = 0;
+
+    panelArea.addEventListener("touchstart", (e) => {
+      const t = e.touches[0];
+      startX = t.clientX;
+      startY = t.clientY;
+      startT = Date.now();
+    }, { passive: true });
+
+    panelArea.addEventListener("touchend", (e) => {
+      const t = e.changedTouches[0];
+      const dx = t.clientX - startX;
+      const dy = t.clientY - startY;
+      const dt = Date.now() - startT;
+
+      // Horizontal swipe, nicht vertikal scroll
+      if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.2 && dt < 700) {
+        if (dx < 0) nextPanel();
+        else prevPanel();
+      }
+    }, { passive: true });
+
+    // Keyboard (Desktop)
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowRight") nextPanel();
+      if (e.key === "ArrowLeft") prevPanel();
     });
 
-    // Android: pointerdown ist zuverlässiger als click
-    btnStart.addEventListener("pointerdown", (e) => { e.preventDefault(); startWithFade(); }, { passive:false });
-    btnPause.addEventListener("pointerdown", (e) => { e.preventDefault(); pauseAudio(); }, { passive:false });
-
-    // Tap aufs Panel startet auch
-    panel.addEventListener("pointerdown", () => { if (audio.paused) startWithFade(); }, { passive:true });
-
-    // Autostart: versuchen (wenn Android blockt, egal — dann START tippen)
-    window.addEventListener("load", () => {
-      setStatus("bereit");
-      startWithFade();
+    // Bonus: erster Tap irgendwo auf Panel kann Audio starten (nur wenn noch nie gestartet)
+    panelArea.addEventListener("click", () => {
+      if (!hasStarted) {
+        fadeIn(2500);
+        hasStarted = true;
+      }
     });
 
-    // Status-Events
-    audio.addEventListener("playing", () => setStatus("läuft…"));
-    audio.addEventListener("pause",   () => setStatus("pausiert"));
-    audio.addEventListener("waiting", () => setStatus("lädt…"));
-    audio.addEventListener("error",   () => setStatus("Audio-Fehler"));
   </script>
+
 </body>
 </html>
