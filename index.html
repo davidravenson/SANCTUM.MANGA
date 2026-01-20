@@ -6,12 +6,22 @@
   <title>SANCTUM — Chapter 1</title>
 
   <style>
+    :root{
+      --paper: #f4f1e8; /* mangapaper-white */
+    }
+
     html, body{
       margin:0; padding:0;
-      background:#000; color:#fff;
+      color:#fff;
       font-family:system-ui,sans-serif;
       height:100%;
       touch-action:auto;
+
+      /* 1) Background: black fade tilt into paper-white on LEFT side */
+      background:
+        radial-gradient(900px 1200px at 10% 50%, rgba(244,241,232,0.20), rgba(0,0,0,0.0) 55%),
+        linear-gradient(110deg, rgba(244,241,232,0.18) 0%, rgba(0,0,0,0.0) 28%),
+        linear-gradient(#000, #000);
     }
 
     .wrap{
@@ -23,6 +33,26 @@
       gap:14px;
       padding:12px;
       box-sizing:border-box;
+      position:relative;
+    }
+
+    /* 2) version label top-right */
+    .version{
+      position:fixed;
+      top:10px;
+      right:12px;
+      z-index:50;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size:11px;
+      letter-spacing:0.02em;
+      opacity:0.7;
+      background: rgba(0,0,0,0.28);
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius:10px;
+      padding:6px 8px;
+      user-select:none;
+      -webkit-user-select:none;
+      backdrop-filter: blur(6px);
     }
 
     .panel{
@@ -104,14 +134,13 @@
       flex:0 0 auto;
       padding:0;
     }
-
     .btn svg{
       width:22px;
       height:22px;
       display:block;
     }
 
-    /* ===== Volume ring (interactive only in ring thickness) ===== */
+    /* Volume ring */
     .ringWrap{
       width:64px;
       height:64px;
@@ -152,6 +181,8 @@
 </head>
 
 <body>
+
+  <div class="version">v. 1.0</div>
 
   <audio id="bg-audio" preload="auto">
     <source src="./media/audio/sanctum_ch1_arcangel_instrumental.mp3" type="audio/mpeg">
@@ -219,7 +250,7 @@
     }
 
     // =========================
-    // Clean SVG pictograms
+    // SVG pictograms (same style)
     // =========================
     const ICON_PLAY = `
       <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -299,8 +330,7 @@
     audio.addEventListener("ended", setToggleIcon);
 
     // =========================
-    // VOLUME RING (NO JUMPS)
-    // Relative rotation with unwrap, only reacts inside ring.
+    // VOLUME RING (no jumps, wider touch band)
     // =========================
     const ANGLE_MIN = -135;
     const ANGLE_MAX = 135;
@@ -317,9 +347,9 @@
         `conic-gradient(#fff ${deg}deg, rgba(255,255,255,0.16) ${deg}deg)`;
     }
 
-    // default volume
     setVolume(0.4);
 
+    // 3) widen touch access band: double thickness (accept farther inside + outside)
     function pointerInRing(clientX, clientY) {
       const rect = ringWrap.getBoundingClientRect();
       const cx = rect.left + rect.width / 2;
@@ -328,12 +358,18 @@
       const dy = clientY - cy;
       const r = Math.sqrt(dx*dx + dy*dy);
 
-      const outer = rect.width / 2;
-      const inner = outer * 0.62;
-      return (r >= inner && r <= outer);
+      const outer = rect.width / 2;     // ~32
+      const inner = outer * 0.62;       // ~19.8
+
+      // Original active band roughly [inner..outer]
+      // "Double thickness" -> expand inward and outward by same amount:
+      const thickness = outer - inner;  // ~12.2
+      const expandedInner = Math.max(0, inner - thickness); // expands inward
+      const expandedOuter = outer + thickness;              // expands outward
+
+      return (r >= expandedInner && r <= expandedOuter);
     }
 
-    // Return a continuous-ish touch angle in degrees (-180..180], 0 at top.
     function touchAngleDeg(clientX, clientY) {
       const rect = ringWrap.getBoundingClientRect();
       const cx = rect.left + rect.width / 2;
@@ -342,18 +378,15 @@
       const dx = clientX - cx;
       const dy = clientY - cy;
 
-      let deg = Math.atan2(dy, dx) * (180 / Math.PI); // -180..180, 0 at +x
-      deg = deg + 90; // rotate so 0 = top
+      let deg = Math.atan2(dy, dx) * (180 / Math.PI);
+      deg = deg + 90;
       if (deg > 180) deg -= 360;
-      return deg; // -180..180
+      return deg;
     }
 
-    // We keep an internal "knob angle" that moves smoothly with deltas.
     let ringDragging = false;
     let lastTouchDeg = 0;
-    let currentAngle = ANGLE_MIN + (ANGLE_MAX - ANGLE_MIN) * audio.volume; // start at volume
-
-    // Clamp to sweep
+    let currentAngle = ANGLE_MIN + (ANGLE_MAX - ANGLE_MIN) * audio.volume;
     currentAngle = clamp(currentAngle, ANGLE_MIN, ANGLE_MAX);
 
     function angleToVolume(angle) {
@@ -369,8 +402,6 @@
       }
       ringDragging = true;
       lastTouchDeg = touchAngleDeg(p.clientX, p.clientY);
-
-      // Initialize currentAngle from current volume (so it never jumps on first touch)
       currentAngle = ANGLE_MIN + (ANGLE_MAX - ANGLE_MIN) * audio.volume;
       currentAngle = clamp(currentAngle, ANGLE_MIN, ANGLE_MAX);
     }
@@ -379,7 +410,6 @@
       if (!ringDragging) return;
       const p = e.touches ? e.touches[0] : e;
 
-      // If user leaves ring: stop reacting immediately
       if (!pointerInRing(p.clientX, p.clientY)) {
         ringDragging = false;
         return;
@@ -388,17 +418,12 @@
       const nowDeg = touchAngleDeg(p.clientX, p.clientY);
       let delta = nowDeg - lastTouchDeg;
 
-      // UNWRAP: prevent jump across -180/180 seam
       if (delta > 180) delta -= 360;
       if (delta < -180) delta += 360;
 
-      // Safety: cap insane deltas (rare touch glitches)
       delta = clamp(delta, -25, 25);
 
-      // Apply delta, clamp to sweep
       currentAngle = clamp(currentAngle + delta, ANGLE_MIN, ANGLE_MAX);
-
-      // Convert to volume
       setVolume(angleToVolume(currentAngle));
 
       lastTouchDeg = nowDeg;
@@ -415,7 +440,7 @@
     window.addEventListener("touchend", endRing, { passive: true });
 
     // =========================
-    // PANELS (pinch != swipe, RTL swipe)
+    // PANELS: pinch != swipe; fix swipe direction
     // =========================
     let panelIndex = 1;
 
@@ -495,7 +520,11 @@
       const dt = Date.now() - startT;
 
       if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.2 && dt < 700) {
-        if (dx < 0) nextPanelRTL();  // right->left = next
+        // 4) FIX: dx > 0 is a swipe to the RIGHT (left->right gesture)
+        // For RTL continuity we want:
+        // - swipe LEFT->RIGHT (dx positive) => NEXT
+        // - swipe RIGHT->LEFT (dx negative) => PREV
+        if (dx > 0) nextPanelRTL();
         else prevPanelRTL();
       }
     }, { passive: true });
