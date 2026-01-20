@@ -1,166 +1,296 @@
 <!doctype html>
-<html lang="en">
+<html lang="de">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Reader — Chapter 1</title>
   <style>
-    html, body { height: 100%; margin: 0; background: #000; color: #fff; font-family: system-ui, sans-serif; }
-    .wrap { min-height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 12px; box-sizing: border-box; }
-    .reader { width: 100%; max-width: 900px; max-height: 85vh; position: relative; background: #111; display: flex; align-items: center; justify-content: center; }
-    img.page { max-width: 100%; max-height: 100%; object-fit: contain; user-select: none; -webkit-user-drag: none; }
-    .controls { position: absolute; top: 50%; transform: translateY(-50%); width: 100%; display: flex; justify-content: space-between; pointer-events: none; }
-    button { pointer-events: auto; background: rgba(0,0,0,0.5); border: 1px solid #444; color: #fff; padding: 10px 14px; font-size: 18px; border-radius: 6px; }
-    .indicator { margin-top: 8px; color: #ddd; text-align: center; }
+    :root{
+      --bg:#000;
+      --fg:#fff;
+      --muted:rgba(255,255,255,.75);
+      --card:rgba(255,255,255,.06);
+      --card2:rgba(255,255,255,.10);
+      --stroke:rgba(255,255,255,.18);
+      --radius:18px;
+    }
 
-    /* === AUDIO (added) === */
-    .audioWrap{
+    html, body { height: 100%; margin: 0; background: var(--bg); color: var(--fg); font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+    *{ box-sizing:border-box; }
+
+    .wrap{
+      min-height:100%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:12px;
+    }
+
+    /* Layout: Panel + Player daneben */
+    .stage{
+      width: 100%;
+      max-width: 980px;
+      display:flex;
+      gap:12px;
+      align-items:stretch;
+    }
+
+    /* Panel */
+    .panel{
+      flex:1;
+      border-radius: var(--radius);
+      overflow:hidden;
+      border:1px solid var(--stroke);
+      background:#000;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      min-height: 60vh;
+    }
+    .panel img{
       width:100%;
-      max-width:900px;
-      margin-top:12px;
+      height:auto;
+      display:block;
+      user-select:none;
+      -webkit-user-drag:none;
+    }
+
+    /* Vertikaler Player */
+    .player{
+      width: 118px;
+      border-radius: var(--radius);
+      border:1px solid var(--stroke);
+      background: linear-gradient(180deg, var(--card), rgba(0,0,0,.2));
+      padding:10px;
       display:flex;
       flex-direction:column;
-      align-items:center;
-      gap:8px;
+      gap:10px;
+      justify-content:space-between;
     }
-    .audioNote{
-      color:#aaa;
-      font-size:0.95rem;
-      text-align:center;
-      max-width:900px;
-      line-height:1.35;
-    }
-    audio{
+
+    .btn{
       width:100%;
-      max-width:900px;
-      background:#0b0b0b;
-      border:1px solid #222;
-      border-radius:10px;
-      padding:6px;
-      box-sizing:border-box;
+      border:1px solid var(--stroke);
+      background: var(--card2);
+      color: var(--fg);
+      border-radius: 16px;
+      padding:14px 10px;
+      font-size: 15px;
+      font-weight: 650;
+      letter-spacing:.2px;
+      cursor:pointer;
+      touch-action: manipulation;
+    }
+    .btn:active{ transform: translateY(1px); }
+
+    .label{
+      font-size:12px;
+      color: var(--muted);
+      text-align:center;
+      line-height:1.15;
+    }
+
+    .volWrap{
+      border:1px solid var(--stroke);
+      border-radius:16px;
+      background: rgba(255,255,255,.04);
+      padding:10px;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      align-items:center;
+    }
+
+    /* Vertikaler Slider */
+    input[type="range"]{
+      -webkit-appearance:none;
+      appearance:none;
+      width: 18px;
+      height: 180px;
+      writing-mode: bt-lr; /* fallback */
+      transform: rotate(180deg); /* so oben = laut */
+      background: transparent;
+    }
+    input[type="range"]::-webkit-slider-runnable-track{
+      width: 18px;
+      height: 180px;
+      background: rgba(255,255,255,.18);
+      border-radius: 999px;
+    }
+    input[type="range"]::-webkit-slider-thumb{
+      -webkit-appearance:none;
+      appearance:none;
+      width: 26px;
+      height: 26px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.92);
+      border: 2px solid rgba(0,0,0,.35);
+      margin-top: -4px;
+    }
+    input[type="range"]::-moz-range-track{
+      width: 18px;
+      height: 180px;
+      background: rgba(255,255,255,.18);
+      border-radius: 999px;
+    }
+    input[type="range"]::-moz-range-thumb{
+      width: 26px;
+      height: 26px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.92);
+      border: 2px solid rgba(0,0,0,.35);
+    }
+
+    /* Mobile: Player unter Panel */
+    @media (max-width: 720px){
+      .stage{ flex-direction:column; }
+      .player{
+        width:100%;
+        flex-direction:row;
+        align-items:stretch;
+      }
+      .volWrap{
+        flex-direction:row;
+        justify-content:center;
+        gap:10px;
+        width: 45%;
+      }
+      input[type="range"]{
+        width: 100%;
+        height: 18px;
+        transform:none;
+      }
+      input[type="range"]::-webkit-slider-runnable-track{
+        width: 100%;
+        height: 18px;
+      }
+      input[type="range"]::-moz-range-track{
+        width: 100%;
+        height: 18px;
+      }
     }
   </style>
 </head>
 <body>
   <div class="wrap">
-    <h2 style="margin:12px 0;">My Series — Chapter 1</h2>
-
-    <div class="reader" aria-live="polite">
-      <div class="controls">
-        <div style="padding-right:12px;">
-          <button id="prevBtn" aria-label="Previous page">◀</button>
-        </div>
-        <div style="padding-left:12px;">
-          <button id="nextBtn" aria-label="Next page">▶</button>
-        </div>
+    <div class="stage">
+      <!-- Panel -->
+      <div class="panel" id="panel">
+        <!-- Beispielbild (pass deinen Pfad an) -->
+        <img src="./manga/my-series/chapter-1/001.jpg" alt="Panel 001">
       </div>
-      <img id="pageImg" class="page" src="" alt="Page" draggable="false" />
-    </div>
 
-    <!-- === AUDIO PLAYER (added) === -->
-    <div class="audioWrap">
-      <div class="audioNote">
-        Optional sound layer. Felt, not required.
-      </div>
-      <audio controls preload="metadata">
-        <source src="media/audio/sanctum_ch1_arcangel_instrumental.mp3" type="audio/mpeg">
-        Dein Browser kann dieses Audio nicht abspielen.
+      <!-- Player (sichtbar, große Bedienfelder) -->
+      <aside class="player" aria-label="Audio Player">
+        <div>
+          <div class="label">SANCTUM<br><span style="opacity:.9">ARCANGEL</span></div>
+        </div>
+
+        <button class="btn" id="btnPlay" type="button">START</button>
+        <button class="btn" id="btnPause" type="button">PAUSE</button>
+
+        <div class="volWrap">
+          <div class="label">VOLUME</div>
+          <input id="vol" type="range" min="0" max="1" step="0.01" value="0.45" aria-label="Volume">
+        </div>
+
+        <div class="label" id="status">bereit</div>
+      </aside>
+
+      <!-- Audio Element -->
+      <audio
+        id="bgAudio"
+        src="./audio/sanctum_ch1_arcangel_instrumental.mp3"
+        preload="auto"
+        playsinline
+        controls
+        controlsList="nodownload noplaybackrate">
       </audio>
-    </div>
-
-    <div class="indicator" id="indicator">Detecting pages...</div>
-
-    <div style="margin-top:10px; color:#aaa; max-width:900px; text-align:center;">
-      Swipe or use arrow keys: Left = Next (forward), Right = Previous.
     </div>
   </div>
 
   <script>
-    // ====== CONFIGURE HERE ======
-    const relativeFolder = './manga/my-series/chapter-1/'; // IMPORTANT: stays relative
-    const ext = '.jpg';
-    const maxTry = 200;
-    const DEBUG = true; // set false later
-    // ============================
+    // --- Einstellungen ---
+    const FADE_MS = 2500;       // 2.5 Sekunden Fade-In
+    const TARGET_VOL = 0.45;    // moderate Lautstärke
+    const START_ON_LOAD = true; // Autostart versuchen (Browser kann blocken)
 
-    // This derives the correct base from the current HTML URL automatically
-    const basePath = new URL(relativeFolder, window.location.href).toString();
+    // --- Elemente ---
+    const audio = document.getElementById('bgAudio');
+    const btnPlay = document.getElementById('btnPlay');
+    const btnPause = document.getElementById('btnPause');
+    const vol = document.getElementById('vol');
+    const status = document.getElementById('status');
 
-    const pad = (n) => String(n).padStart(3, '0');
-    const indicator = document.getElementById('indicator');
-    const img = document.getElementById('pageImg');
+    // Verstecke die nativen Controls (wir nutzen unsere eigenen)
+    audio.controls = false;
 
-    let pages = [];
-    let current = 1;
-    let probed = 0;
+    // Download-Button + Kontextmenü: Hürde erhöhen
+    document.addEventListener('contextmenu', e => e.preventDefault());
 
-    function probePages() {
-      let i = 1;
+    // Lautstärke initial: 0, dann Fade hoch
+    function setStatus(t){ status.textContent = t; }
 
-      function tryNext() {
-        if (i > maxTry) return finishProbe();
+    let fadeRAF = null;
 
-        const testImg = new Image();
-        const url = basePath + pad(i) + ext;
+    function fadeTo(target, ms){
+      if (fadeRAF) cancelAnimationFrame(fadeRAF);
 
-        probed++;
-        if (DEBUG && probed === 1) {
-          indicator.textContent = 'Testing: ' + url;
-        }
+      const start = performance.now();
+      const from = audio.volume;
+      const delta = target - from;
 
-        testImg.onload = () => {
-          pages.push(url);
-          i++;
-          tryNext();
-        };
-
-        testImg.onerror = () => {
-          finishProbe();
-        };
-
-        // IMPORTANT: no cache-buster here (some setups act weird with querystrings)
-        testImg.src = url;
+      function step(now){
+        const p = Math.min(1, (now - start) / ms);
+        audio.volume = from + delta * p;
+        if (p < 1) fadeRAF = requestAnimationFrame(step);
       }
-
-      tryNext();
+      fadeRAF = requestAnimationFrame(step);
     }
 
-    function finishProbe() {
-      if (pages.length === 0) {
-        indicator.textContent = 'No pages found at: ' + basePath;
-        img.style.display = 'none';
-        return;
+    async function startWithFade(){
+      try{
+        // immer erst leise starten, dann hoch
+        audio.volume = 0;
+        audio.muted = false;
+
+        await audio.play();
+        setStatus('läuft…');
+
+        // Ziel-Lautstärke aus Slider nehmen (moderate default)
+        const target = Math.max(0, Math.min(1, parseFloat(vol.value) || TARGET_VOL));
+        fadeTo(target, FADE_MS);
+      } catch (err){
+        // Autoplay kann blockiert werden, dann muss User klicken
+        setStatus('tippe START');
       }
-      indicator.textContent = 'Page 1 / ' + pages.length;
-      img.style.display = '';
-      current = 1;
-      img.src = pages[0];
     }
 
-    function show() {
-      img.src = pages[current - 1];
-      indicator.textContent = 'Page ' + current + ' / ' + pages.length;
-    }
-    function next() { if (current < pages.length) { current++; show(); } }
-    function prev() { if (current > 1) { current--; show(); } }
+    btnPlay.addEventListener('click', () => startWithFade());
+    btnPause.addEventListener('click', () => { audio.pause(); setStatus('pausiert'); });
 
-    document.getElementById('nextBtn').addEventListener('click', next);
-    document.getElementById('prevBtn').addEventListener('click', prev);
-
-    window.addEventListener('keydown', (e) => {
-      if (e.key === 'ArrowLeft') next();
-      if (e.key === 'ArrowRight') prev();
+    vol.addEventListener('input', () => {
+      const v = Math.max(0, Math.min(1, parseFloat(vol.value)));
+      audio.volume = v;
+      // Wenn gerade gefadet wird: weiterfaden auf neues Ziel
+      // (macht es "musikalisch" statt ruckelig)
+      if (!audio.paused) fadeTo(v, 200);
     });
 
-    let startX = 0;
-    window.addEventListener('touchstart', (e) => startX = e.touches[0].clientX, { passive: true });
-    window.addEventListener('touchend', (e) => {
-      const dx = e.changedTouches[0].clientX - startX;
-      if (Math.abs(dx) < 30) return;
-      if (dx < 0) next(); else prev();
-    });
+    // Optional: beim Seitenstart versuchen
+    if (START_ON_LOAD){
+      // kleine Verzögerung, damit Layout da ist
+      window.addEventListener('load', () => {
+        // Setze Slider auf moderate Default
+        vol.value = TARGET_VOL.toFixed(2);
+        startWithFade();
+      });
+    }
 
-    probePages();
+    // Bonus: wenn User irgendwo tippt (z.B. aufs Panel), Audio starten falls blockiert
+    document.getElementById('panel').addEventListener('click', () => {
+      if (audio.paused) startWithFade();
+    }, { passive: true });
   </script>
 </body>
 </html>
