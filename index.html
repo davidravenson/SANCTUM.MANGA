@@ -6,137 +6,292 @@
   <title>SANCTUM — Chapter 1</title>
 
   <style>
-    html, body {
-      margin: 0;
-      padding: 0;
-      background: #000;
-      color: #fff;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    :root{
+      --bg:#000;
+      --fg:#fff;
+      --muted:rgba(255,255,255,.75);
+      --stroke:rgba(255,255,255,.22);
+      --card:rgba(255,255,255,.08);
+      --card2:rgba(255,255,255,.12);
+      --r:18px;
     }
 
-    /* ===== PANEL / READER ===== */
-    .wrap {
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 12px;
+    html,body{
+      height:100%;
+      margin:0;
+      background:var(--bg);
+      color:var(--fg);
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+    }
+    *{ box-sizing:border-box; }
+
+    /* ===== PANEL ===== */
+    .wrap{
+      min-height:100%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:12px;
+    }
+    .panel{
+      width:100%;
+      max-width:900px;
+      border:1px solid var(--stroke);
+      border-radius:12px;
+      overflow:hidden;
+      background:#000;
+    }
+    .panel img{
+      width:100%;
+      height:auto;
+      display:block;
+      user-select:none;
+      -webkit-user-drag:none;
     }
 
-    .panel {
-      max-width: 900px;
-      width: 100%;
-      border: 1px solid rgba(255,255,255,.25);
-      background: #000;
+    /* ===== CUSTOM PLAYER (immer sichtbar) ===== */
+    .player{
+      position:fixed;
+      right:12px;
+      top:50%;
+      transform:translateY(-50%);
+      z-index:9999;
+
+      width:150px;
+      border:1px solid var(--stroke);
+      border-radius:var(--r);
+      background:rgba(0,0,0,.62);
+      backdrop-filter:blur(8px);
+      padding:10px;
+
+      display:flex;
+      flex-direction:column;
+      gap:10px;
     }
 
-    .panel img {
-      width: 100%;
-      height: auto;
-      display: block;
-      user-select: none;
-      -webkit-user-drag: none;
+    .title{
+      text-align:center;
+      font-size:12px;
+      line-height:1.1;
+      color:var(--muted);
+    }
+    .title b{ color:var(--fg); font-weight:800; }
+
+    .btn{
+      width:100%;
+      padding:14px 10px;
+      border-radius:16px;
+      border:1px solid var(--stroke);
+      background:var(--card2);
+      color:var(--fg);
+      font-weight:800;
+      font-size:15px;
+      cursor:pointer;
+      touch-action:manipulation;
+    }
+    .btn:active{ transform:translateY(1px); }
+
+    .volBox{
+      border:1px solid rgba(255,255,255,.16);
+      background:var(--card);
+      border-radius:16px;
+      padding:10px;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      align-items:center;
+    }
+    .label{
+      font-size:12px;
+      color:var(--muted);
+      text-align:center;
     }
 
-    /* ===== AUDIO PLAYER (FIXIERT, IMMER SICHTBAR) ===== */
-    #bgAudio {
-      position: fixed;
-      right: 12px;
-      top: 50%;
-      transform: translateY(-50%);
-      z-index: 9999;
-
-      width: 150px;
-      max-width: 42vw;
-
-      background: rgba(0,0,0,.65);
-      border-radius: 18px;
-      padding: 10px;
-
-      box-shadow: 0 0 0 1px rgba(255,255,255,.2);
-      backdrop-filter: blur(6px);
+    /* Vertikaler Slider (Desktop) */
+    input[type="range"]{
+      -webkit-appearance:none;
+      appearance:none;
+      width:18px;
+      height:170px;
+      background:transparent;
+      transform:rotate(180deg); /* oben = laut */
+    }
+    input[type="range"]::-webkit-slider-runnable-track{
+      width:18px;
+      height:170px;
+      background:rgba(255,255,255,.18);
+      border-radius:999px;
+    }
+    input[type="range"]::-webkit-slider-thumb{
+      -webkit-appearance:none;
+      appearance:none;
+      width:26px;
+      height:26px;
+      border-radius:999px;
+      background:rgba(255,255,255,.92);
+      border:2px solid rgba(0,0,0,.35);
+      margin-top:-4px;
+    }
+    input[type="range"]::-moz-range-track{
+      width:18px;
+      height:170px;
+      background:rgba(255,255,255,.18);
+      border-radius:999px;
+    }
+    input[type="range"]::-moz-range-thumb{
+      width:26px;
+      height:26px;
+      border-radius:999px;
+      background:rgba(255,255,255,.92);
+      border:2px solid rgba(0,0,0,.35);
     }
 
-    /* Mobile: unten */
-    @media (max-width: 720px) {
-      #bgAudio {
-        top: auto;
-        bottom: 12px;
-        left: 12px;
-        right: 12px;
-        width: auto;
-        transform: none;
+    .status{
+      text-align:center;
+      font-size:12px;
+      color:var(--muted);
+      min-height:1.2em;
+    }
+
+    /* Mobile: Player unten quer + horizontaler Slider */
+    @media (max-width:720px){
+      .player{
+        left:12px;
+        right:12px;
+        top:auto;
+        bottom:12px;
+        transform:none;
+        width:auto;
+        flex-direction:row;
+        align-items:center;
+        justify-content:space-between;
+        gap:10px;
       }
+      .title{ display:none; }
+      .volBox{
+        flex:1;
+        align-items:stretch;
+        gap:6px;
+      }
+      input[type="range"]{
+        width:100%;
+        height:18px;
+        transform:none;
+      }
+      input[type="range"]::-webkit-slider-runnable-track{
+        width:100%;
+        height:18px;
+      }
+      input[type="range"]::-moz-range-track{
+        width:100%;
+        height:18px;
+      }
+      .status{ display:none; }
+      .btn{ width:110px; }
     }
   </style>
 </head>
 
 <body>
-
   <div class="wrap">
-    <div class="panel">
-      <!-- Panel Bild -->
-      <img
-        src="./manga/my-series/chapter-1/001.jpg"
-        alt="SANCTUM Panel 001">
+    <div class="panel" id="panel">
+      <img id="panelImg" alt="SANCTUM Panel">
     </div>
   </div>
 
-  <!-- AUDIO -->
-  <audio
-    id="bgAudio"
-    src="./audio/sanctum_ch1_arcangel_instrumental.mp3"
-    preload="auto"
-    playsinline
-    controls
-    controlsList="nodownload noplaybackrate">
-  </audio>
+  <!-- Sichtbarer Custom Player -->
+  <aside class="player" aria-label="Audio Player">
+    <div class="title"><b>SANCTUM</b><br>ARCANGEL</div>
 
-  <!-- SCRIPT -->
+    <button class="btn" id="btnStart" type="button">START</button>
+    <button class="btn" id="btnPause" type="button">PAUSE</button>
+
+    <div class="volBox">
+      <div class="label">VOLUME</div>
+      <input id="vol" type="range" min="0" max="1" step="0.01" value="0.45" aria-label="Volume">
+    </div>
+
+    <div class="status" id="status">bereit</div>
+  </aside>
+
+  <!-- Audio ohne native Controls (die sind auf Android unzuverlaessig sichtbar) -->
+  <audio id="bgAudio" preload="auto" playsinline></audio>
+
   <script>
-    const audio = document.getElementById('bgAudio');
+    // ===== Pfade anpassen =====
+    const IMG_SRC   = "./manga/my-series/chapter-1/001.jpg?v=2";
+    const AUDIO_SRC = "./audio/sanctum_ch1_arcangel_instrumental.mp3?v=2";
 
+    // ===== Fade / Lautstaerke =====
     const FADE_MS = 2500;
-    const TARGET_VOL = 0.45;
+    const TARGET_VOL_DEFAULT = 0.45;
 
-    // Native Controls bleiben, Download raus
-    audio.controls = true;
-    audio.volume = 0;
+    const img   = document.getElementById("panelImg");
+    const audio = document.getElementById("bgAudio");
 
-    // Rechtsklick unterdrücken (soft barrier)
-    document.addEventListener('contextmenu', e => e.preventDefault());
+    const btnStart = document.getElementById("btnStart");
+    const btnPause = document.getElementById("btnPause");
+    const vol      = document.getElementById("vol");
+    const status   = document.getElementById("status");
 
-    function fadeIn() {
-      let start = null;
+    img.src = IMG_SRC;
+    audio.src = AUDIO_SRC;
 
-      function step(ts) {
-        if (!start) start = ts;
-        const p = Math.min((ts - start) / FADE_MS, 1);
-        audio.volume = p * TARGET_VOL;
-        if (p < 1) requestAnimationFrame(step);
+    function setStatus(t){ status.textContent = t; }
+
+    // Soft barrier gegen "Speichern unter"
+    document.addEventListener("contextmenu", e => e.preventDefault());
+
+    let fadeRAF = null;
+    function fadeTo(target, ms){
+      if (fadeRAF) cancelAnimationFrame(fadeRAF);
+      const start = performance.now();
+      const from = audio.volume;
+      const delta = target - from;
+
+      function step(now){
+        const p = Math.min(1, (now - start) / ms);
+        audio.volume = from + delta * p;
+        if (p < 1) fadeRAF = requestAnimationFrame(step);
       }
-
-      requestAnimationFrame(step);
+      fadeRAF = requestAnimationFrame(step);
     }
 
-    // Autostart versuchen
-    window.addEventListener('load', async () => {
-      try {
-        await audio.play();
-        fadeIn();
-      } catch (e) {
-        // Autoplay blockiert → User klickt Play
-      }
-    });
-
-    // Wenn User manuell startet → Fade trotzdem sauber
-    audio.addEventListener('play', () => {
-      if (audio.volume < TARGET_VOL * 0.9) {
+    async function startWithFade(){
+      try{
+        const target = Math.max(0, Math.min(1, parseFloat(vol.value) || TARGET_VOL_DEFAULT));
+        audio.muted = false;
         audio.volume = 0;
-        fadeIn();
+        await audio.play();
+        setStatus("läuft…");
+        fadeTo(target, FADE_MS);
+      }catch(e){
+        setStatus("Tippe START");
       }
-    });
-  </script>
+    }
 
+    btnStart.addEventListener("click", startWithFade);
+    btnPause.addEventListener("click", () => { audio.pause(); setStatus("pausiert"); });
+
+    vol.addEventListener("input", () => {
+      const v = Math.max(0, Math.min(1, parseFloat(vol.value)));
+      // wenn läuft: weich nachziehen, wenn pausiert: direkt setzen
+      if (!audio.paused) fadeTo(v, 200);
+      else audio.volume = v;
+    });
+
+    // moderate Default
+    vol.value = TARGET_VOL_DEFAULT.toFixed(2);
+
+    // Autoplay versuchen (kann blockiert werden, dann bleibt "Tippe START")
+    window.addEventListener("load", () => {
+      startWithFade();
+    });
+
+    // Bonus: Tap aufs Panel startet, falls Autoplay blockiert
+    document.getElementById("panel").addEventListener("click", () => {
+      if (audio.paused) startWithFade();
+    }, { passive:true });
+  </script>
 </body>
 </html>
