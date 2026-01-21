@@ -14,8 +14,10 @@
   }
 
   .ver{
-    position:fixed; top:8px; right:10px;
-    font-size:11px; opacity:.55;
+    position:fixed;
+    top:8px; right:10px;
+    font-size:11px;
+    opacity:.55;
     font-family:ui-monospace,monospace;
     pointer-events:none;
   }
@@ -37,6 +39,7 @@
     position:relative;
     background:rgba(0,0,0,.15);
   }
+
   .panel img{
     width:100%;
     display:block;
@@ -52,10 +55,10 @@
     border-radius:10px;
     opacity:0;
     white-space:pre-line;
-    max-width:calc(100% - 24px);
     pointer-events:none;
     transition:opacity 160ms ease;
   }
+
   .hud.on{ opacity:.92; }
 
   .toolbar{
@@ -63,38 +66,13 @@
     max-width:900px;
     display:flex;
     flex-direction:column;
-    gap:10px;
+    gap:12px;
     padding:12px;
     background:rgba(20,20,20,.72);
     border:1px solid rgba(255,255,255,.12);
     border-radius:16px;
     box-sizing:border-box;
   }
-
-  .toprow{
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    gap:12px;
-  }
-
-  .track{
-    font-size:13px;
-    line-height:1.25;
-    white-space:pre-line;
-    opacity:.92;
-  }
-
-  .scLink{
-    font-size:12px;
-    opacity:.85;
-    text-decoration:none;
-    color:#fff;
-    border:1px solid rgba(255,255,255,.14);
-    padding:6px 10px;
-    border-radius:999px;
-  }
-  .scLink:active{ opacity:1; }
 
   .playerWrap{
     overflow:hidden;
@@ -109,29 +87,52 @@
     border:0;
     display:block;
   }
+
+  .trackRow{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+  }
+
+  .track{
+    font-size:13px;
+    line-height:1.25;
+    opacity:.92;
+  }
+
+  .scLink{
+    font-size:12px;
+    opacity:.85;
+    text-decoration:none;
+    color:#fff;
+    border:1px solid rgba(255,255,255,.14);
+    padding:6px 10px;
+    border-radius:999px;
+    white-space:nowrap;
+  }
+
+  .scLink:active{ opacity:1; }
 </style>
 </head>
 
 <body>
-<div class="ver">v0.17</div>
+
+<div class="ver">v0.18</div>
 
 <div class="wrap">
 
+  <!-- PANEL -->
   <div class="panel" id="panel">
     <img id="img" src="manga/chapter-00/panel01.jpg" alt="Panel 01">
-    <div class="hud on" id="hud">Ready.\nSwipe right to continue.</div>
+    <div class="hud on" id="hud">Ready.
+Swipe right to continue.</div>
   </div>
 
+  <!-- TOOLBAR -->
   <div class="toolbar">
-    <div class="toprow">
-      <div class="track">Sentinel 2 (SoundCloud)\n— Artist</div>
-      <a class="scLink"
-         href="https://soundcloud.com/user-543596862/sentinel-2"
-         target="_blank" rel="noopener noreferrer">
-        Open on SoundCloud
-      </a>
-    </div>
 
+    <!-- 1️⃣ SoundCloud Player FIRST -->
     <div class="playerWrap" aria-label="SoundCloud player">
       <iframe
         scrolling="no"
@@ -139,70 +140,80 @@
         src="https://w.soundcloud.com/player/?url=https%3A//soundcloud.com/user-543596862/sentinel-2&color=%23000000&auto_play=false&hide_related=true&show_comments=false&show_user=true&show_reposts=false&show_teaser=false&visual=false">
       </iframe>
     </div>
+
+    <!-- 2️⃣ Track info SECOND -->
+    <div class="trackRow">
+      <div class="track">
+        Sentinel 2 (SoundCloud)<br>
+        — Artist
+      </div>
+
+      <a class="scLink"
+         href="https://soundcloud.com/user-543596862/sentinel-2"
+         target="_blank"
+         rel="noopener noreferrer">
+        Open on SoundCloud
+      </a>
+    </div>
+
   </div>
 
 </div>
 
 <script>
-  // =========================
-  // v0.17 — Panels (simple placeholder)
-  // =========================
+  // v0.18 — Panel swipe logic
   const panel = document.getElementById("panel");
   const img = document.getElementById("img");
   const hud = document.getElementById("hud");
 
-  function showHud(msg, ms=1200){
-    hud.textContent = msg;
-    hud.classList.add("on");
-    if (ms > 0){
-      clearTimeout(showHud._t);
-      showHud._t = setTimeout(()=>hud.classList.remove("on"), ms);
-    }
-  }
-
   let panelIndex = 1;
   const TOTAL_PANELS = 20;
 
-  // panel01.jpg ... panel20.jpg
   function panelFile(i){
-    return `manga/chapter-00/panel${String(i).padStart(2,"0")}.jpg`;
+    return "manga/chapter-00/panel" + String(i).padStart(2,"0") + ".jpg";
   }
 
-  function setPanel(){
+  function showHud(text){
+    hud.textContent = text;
+    hud.classList.add("on");
+    clearTimeout(showHud.t);
+    showHud.t = setTimeout(()=>hud.classList.remove("on"),1200);
+  }
+
+  function render(){
     img.src = panelFile(panelIndex);
-    showHud(`Panel ${panelIndex} / ${TOTAL_PANELS}`, 1200);
+    showHud("Panel " + panelIndex + " / " + TOTAL_PANELS);
   }
 
-  let isPinching=false, sx=0, sy=0, t0=0;
+  let sx=0, sy=0, t0=0, pinching=false;
 
-  panel.addEventListener("touchstart",(e)=>{
-    if (e.touches.length >= 2){ isPinching=true; return; }
-    isPinching=false;
-    const t = e.touches[0];
+  panel.addEventListener("touchstart",e=>{
+    if(e.touches.length>1){ pinching=true; return; }
+    pinching=false;
+    const t=e.touches[0];
     sx=t.clientX; sy=t.clientY; t0=Date.now();
-  }, {passive:true});
+  },{passive:true});
 
-  panel.addEventListener("touchmove",(e)=>{
-    if (e.touches.length >= 2) isPinching=true;
-  }, {passive:true});
+  panel.addEventListener("touchmove",e=>{
+    if(e.touches.length>1) pinching=true;
+  },{passive:true});
 
-  panel.addEventListener("touchend",(e)=>{
-    if (isPinching) return;
-    const t = e.changedTouches[0];
+  panel.addEventListener("touchend",e=>{
+    if(pinching) return;
+    const t=e.changedTouches[0];
     const dx=t.clientX-sx;
     const dy=t.clientY-sy;
     const dt=Date.now()-t0;
 
-    if (Math.abs(dx)>40 && Math.abs(dx)>Math.abs(dy)*1.2 && dt<700){
-      // RIGHT swipe => next (continue)
-      if (dx > 0 && panelIndex < TOTAL_PANELS) panelIndex++;
-      // LEFT swipe => previous
-      if (dx < 0 && panelIndex > 1) panelIndex--;
-      setPanel();
+    if(Math.abs(dx)>40 && Math.abs(dx)>Math.abs(dy)*1.2 && dt<700){
+      if(dx>0 && panelIndex<TOTAL_PANELS) panelIndex++;
+      if(dx<0 && panelIndex>1) panelIndex--;
+      render();
     }
-  }, {passive:true});
+  },{passive:true});
 
-  panel.addEventListener("click", ()=> showHud(`Panel ${panelIndex} / ${TOTAL_PANELS}`, 1200));
+  panel.addEventListener("click",()=>showHud("Panel "+panelIndex+" / "+TOTAL_PANELS));
+
 </script>
 
 </body>
