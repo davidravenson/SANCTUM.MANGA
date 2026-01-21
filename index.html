@@ -6,29 +6,21 @@
   <title>SANCTUM — Pilot</title>
 
   <style>
-    :root{
-      --paper-bg: url("./media/ui/manga_paper_bg.png");
-    }
+    :root{ --paper-bg: url("./media/ui/manga_paper_bg.png"); }
 
     html, body{
-      margin:0;
-      padding:0;
-      height:100%;
-      background:#000;
-      color:#fff;
-      font-family: system-ui, sans-serif;
+      margin:0; padding:0; height:100%;
+      background:#000; color:#fff;
+      font-family:system-ui,sans-serif;
       touch-action:auto;
     }
 
-    /* Paper texture background */
     body::before{
       content:"";
-      position:fixed;
-      inset:0;
-      z-index:-1;
+      position:fixed; inset:0; z-index:-1;
       background-image: var(--paper-bg);
-      background-size: cover;
-      background-position: center;
+      background-size:cover;
+      background-position:center;
       background-repeat:no-repeat;
     }
 
@@ -63,13 +55,15 @@
       bottom:12px;
       font-size:12px;
       opacity:0;
-      background:rgba(0,0,0,0.45);
-      padding:6px 10px;
+      background:rgba(0,0,0,0.55);
+      padding:7px 10px;
       border-radius:10px;
-      transition:opacity 250ms ease;
+      transition:opacity 180ms ease;
       pointer-events:none;
+      max-width: calc(100% - 24px);
+      white-space:pre-line;
     }
-    .hud.visible{ opacity:0.9; }
+    .hud.visible{ opacity:0.92; }
 
     .toolbar{
       width:100%;
@@ -89,15 +83,16 @@
       flex:1;
       font-size:13px;
       line-height:1.25;
-      white-space:pre-line;
+      white-space:pre-line; /* newline shows */
       opacity:0.95;
       overflow:hidden;
+      display:-webkit-box;
+      -webkit-line-clamp:2;
+      -webkit-box-orient:vertical;
     }
 
-    /* Play / Volume ring */
     .ringWrap{
-      width:72px;
-      height:72px;
+      width:72px; height:72px;
       position:relative;
       display:grid;
       place-items:center;
@@ -105,8 +100,7 @@
     }
 
     .ring{
-      position:absolute;
-      inset:0;
+      position:absolute; inset:0;
       border-radius:50%;
       background:conic-gradient(#fff 0deg, rgba(255,255,255,0.14) 0deg);
       -webkit-mask: radial-gradient(circle, transparent 60%, #000 61%);
@@ -115,27 +109,23 @@
     }
 
     .centerBtn{
-      width:46px;
-      height:46px;
+      width:46px; height:46px;
       border-radius:50%;
       border:1px solid rgba(255,255,255,0.16);
       background:rgba(20,20,20,0.95);
       display:grid;
       place-items:center;
       cursor:pointer;
+      padding:0;
     }
 
-    .centerBtn svg{
-      width:20px;
-      height:20px;
-      fill:#fff;
-    }
+    .centerBtn svg{ width:20px; height:20px; fill:#fff; display:block; }
   </style>
 </head>
 
 <body>
 
-<audio id="bg-audio" preload="auto"></audio>
+<audio id="bg-audio" preload="auto" playsinline></audio>
 
 <div class="wrap">
 
@@ -149,147 +139,218 @@
 
     <div class="ringWrap" id="ringWrap">
       <div class="ring" id="ring"></div>
-      <button class="centerBtn" id="centerBtn"></button>
+      <button class="centerBtn" id="centerBtn" aria-label="Play/Pause"></button>
     </div>
   </div>
 
 </div>
 
 <script>
-/* =======================
-   CONFIG / PLACEHOLDERS
-======================= */
-const CHAPTER = 0;            // Pilot = chapter-00
-const TOTAL_PANELS = 20;
-const AUDIO_VERSION = 1;
+  // =======================
+  // CONFIG
+  // =======================
+  const CHAPTER = 0;                 // Pilot
+  const TOTAL_PANELS = 20;
+  const AUDIO_VERSION = 2;           // bump when replacing mp3
 
-/* RAW GitHub audio (IMPORTANT) */
-const AUDIO_SRC =
-  "https://raw.githubusercontent.com/davidravenson/SANCTUM.MANGA/master/media/audio/chapter-00/instrumental.mp3";
+  // Prefer SAME-ORIGIN (GitHub Pages). Fallback to RAW if needed.
+  const AUDIO_SRC_LOCAL = "./media/audio/chapter-00/instrumental.mp3";
+  const AUDIO_SRC_RAW   = "https://raw.githubusercontent.com/davidravenson/SANCTUM.MANGA/master/media/audio/chapter-00/instrumental.mp3";
 
-/* Display text only */
-const TRACK_TITLE = "Arcangel (Placeholder)";
-const TRACK_ARTIST = "— (Artist later)";
+  const TRACK_TITLE  = "Arcangel (Placeholder)";
+  const TRACK_ARTIST = "— (Artist later)";
 
-/* =======================
-   ELEMENTS
-======================= */
-const audio = document.getElementById("bg-audio");
-const panelImg = document.getElementById("panelImg");
-const panelArea = document.getElementById("panelArea");
-const hud = document.getElementById("hud");
-const ring = document.getElementById("ring");
-const ringWrap = document.getElementById("ringWrap");
-const centerBtn = document.getElementById("centerBtn");
-const trackNameEl = document.getElementById("trackName");
+  // =======================
+  // ELEMENTS
+  // =======================
+  const audio = document.getElementById("bg-audio");
+  const panelImg = document.getElementById("panelImg");
+  const panelArea = document.getElementById("panelArea");
+  const hud = document.getElementById("hud");
+  const ring = document.getElementById("ring");
+  const ringWrap = document.getElementById("ringWrap");
+  const centerBtn = document.getElementById("centerBtn");
+  const trackNameEl = document.getElementById("trackName");
 
-/* =======================
-   ICONS
-======================= */
-const ICON_PLAY = `
-<svg viewBox="0 0 24 24">
-  <path d="M8 6.8v10.4c0 .9 1 1.4 1.7.9l9-5.2c.7-.4.7-1.4 0-1.8l-9-5.2c-.7-.4-1.7.1-1.7.9z"/>
-</svg>`;
-const ICON_PAUSE = `
-<svg viewBox="0 0 24 24">
-  <path d="M8 6h3v12H8zM13 6h3v12h-3z"/>
-</svg>`;
-
-function updateIcon(){
-  centerBtn.innerHTML = audio.paused ? ICON_PLAY : ICON_PAUSE;
-}
-
-/* =======================
-   AUDIO SETUP
-======================= */
-function setupAudio(){
-  audio.innerHTML = "";
-  const src = document.createElement("source");
-  src.src = `${AUDIO_SRC}?v=${AUDIO_VERSION}`;
-  src.type = "audio/mpeg";
-  audio.appendChild(src);
-
-  trackNameEl.textContent = `${TRACK_TITLE}\n${TRACK_ARTIST}`;
-  audio.volume = 0.4;
-  updateIcon();
-}
-
-centerBtn.addEventListener("click", async ()=>{
-  if(audio.paused){
-    try{ await audio.play(); }catch(e){}
-  }else{
-    audio.pause();
+  // =======================
+  // HUD helper
+  // =======================
+  let hudTimer=null;
+  function showHud(msg, ms=2000){
+    if (msg !== undefined) hud.textContent = msg;
+    hud.classList.add("visible");
+    if (hudTimer) clearTimeout(hudTimer);
+    hudTimer = setTimeout(()=>hud.classList.remove("visible"), ms);
   }
-  updateIcon();
-});
 
-audio.addEventListener("play", updateIcon);
-audio.addEventListener("pause", updateIcon);
+  // =======================
+  // ICONS
+  // =======================
+  const ICON_PLAY = `
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M8 6.8v10.4c0 .9 1 1.4 1.7.9l9-5.2c.7-.4.7-1.4 0-1.8l-9-5.2C9 5.4 8 5.9 8 6.8Z"/>
+    </svg>`;
+  const ICON_PAUSE = `
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M8 6h3v12H8zM13 6h3v12h-3z"/>
+    </svg>`;
 
-/* =======================
-   VOLUME RING
-======================= */
-function setVolume(v){
-  v = Math.max(0, Math.min(1, v));
-  audio.volume = v;
-  const deg = Math.round(360 * v);
-  ring.style.background =
-    `conic-gradient(#fff ${deg}deg, rgba(255,255,255,0.14) ${deg}deg)`;
-}
-setVolume(0.4);
+  function updateIcon(){
+    centerBtn.innerHTML = audio.paused ? ICON_PLAY : ICON_PAUSE;
+  }
 
-/* =======================
-   PANELS
-======================= */
-let panelIndex = 1;
-const chapterFolder = `./manga/chapter-${String(CHAPTER).padStart(2,"0")}/`;
-const panelFile = i =>
-  `${chapterFolder}panel${String(i).padStart(2,"0")}.jpg`;
+  // =======================
+  // AUDIO loading (local -> raw fallback)
+  // =======================
+  function setAudioSrc(url){
+    audio.innerHTML = "";
+    const s = document.createElement("source");
+    s.src = `${url}?v=${AUDIO_VERSION}`;
+    s.type = "audio/mpeg";
+    audio.appendChild(s);
+    audio.load();
+  }
 
-function renderPanel(){
-  panelImg.src = panelFile(panelIndex);
-  hud.textContent = `Panel ${panelIndex} / ${TOTAL_PANELS}`;
-}
+  let usingRawFallback = false;
 
-panelImg.onerror = ()=>{
-  hud.textContent = "Panel not found";
-  hud.classList.add("visible");
-};
+  function setupAudio(){
+    trackNameEl.textContent = `${TRACK_TITLE}\n${TRACK_ARTIST}`;
+    audio.volume = 0.4;
+    updateIcon();
 
-/* =======================
-   SWIPE
-======================= */
-let sx=0, sy=0, t0=0;
+    // start with local (GitHub Pages)
+    usingRawFallback = false;
+    setAudioSrc(AUDIO_SRC_LOCAL);
+  }
 
-panelArea.addEventListener("touchstart", e=>{
-  if(e.touches.length>1) return;
-  const t=e.touches[0];
-  sx=t.clientX; sy=t.clientY; t0=Date.now();
-  hud.classList.add("visible");
-});
+  async function tryPlay(){
+    try{
+      await audio.play();
+      updateIcon();
+      return true;
+    }catch(e){
+      // If local failed, try RAW once
+      if (!usingRawFallback){
+        usingRawFallback = true;
+        setAudioSrc(AUDIO_SRC_RAW);
+        try{
+          await audio.play();
+          updateIcon();
+          showHud("Audio: switched to RAW source ✅", 1200);
+          return true;
+        }catch(e2){
+          updateIcon();
+          showHud("Audio error:\n" + (e2?.message || "play() blocked / source not reachable"), 3200);
+          return false;
+        }
+      }else{
+        updateIcon();
+        showHud("Audio error:\n" + (e?.message || "play() blocked / source not reachable"), 3200);
+        return false;
+      }
+    }
+  }
 
-panelArea.addEventListener("touchend", e=>{
-  const t=e.changedTouches[0];
-  const dx=t.clientX-sx;
-  const dy=t.clientY-sy;
-  const dt=Date.now()-t0;
+  centerBtn.addEventListener("click", async ()=>{
+    if (audio.paused) {
+      await tryPlay();
+    } else {
+      audio.pause();
+      updateIcon();
+    }
+  });
 
-  if(Math.abs(dx)>40 && Math.abs(dx)>Math.abs(dy)*1.2 && dt<700){
-    if(dx<0 && panelIndex<TOTAL_PANELS) panelIndex++;
-    if(dx>0 && panelIndex>1) panelIndex--;
+  audio.addEventListener("play", updateIcon);
+  audio.addEventListener("pause", updateIcon);
+  audio.addEventListener("error", ()=>{
+    showHud("Audio loading failed (404/path/mime).", 2800);
+  });
+
+  // =======================
+  // VOLUME ring (simple set by tap angle optional later)
+  // For now: keep it visual & correct fill.
+  // =======================
+  function setVolume(v){
+    v = Math.max(0, Math.min(1, v));
+    audio.volume = v;
+    const deg = Math.round(360 * v);
+    ring.style.background = `conic-gradient(#fff ${deg}deg, rgba(255,255,255,0.14) ${deg}deg)`;
+  }
+  setVolume(0.4);
+
+  // =======================
+  // PANELS (NEW PATH)
+  // manga/chapter-00/panel01.jpg
+  // =======================
+  let panelIndex = 1;
+  const chapterFolder = `./manga/chapter-${String(CHAPTER).padStart(2,"0")}/`;
+  const panelFile = i => `${chapterFolder}panel${String(i).padStart(2,"0")}.jpg`;
+
+  function renderPanel(){
+    panelImg.src = panelFile(panelIndex);
+    showHud(`Panel ${panelIndex} / ${TOTAL_PANELS}`, 1200);
+  }
+
+  panelImg.onerror = ()=>{
+    showHud(`Panel not found:\n${panelFile(panelIndex)}`, 3500);
+  };
+
+  // =======================
+  // SWIPE (FIXED DIRECTION + pinch ignores swipe)
+  // Desired:
+  // swipe RIGHT->LEFT (dx negative) => NEXT
+  // swipe LEFT->RIGHT (dx positive) => PREV
+  // =======================
+  let isPinching=false;
+  let sx=0, sy=0, t0=0;
+
+  panelArea.addEventListener("touchstart", e=>{
+    if (e.touches.length >= 2){
+      isPinching = true;
+      return;
+    }
+    isPinching = false;
+    const t = e.touches[0];
+    sx=t.clientX; sy=t.clientY; t0=Date.now();
+    showHud(`Panel ${panelIndex} / ${TOTAL_PANELS}`, 2000);
+  }, {passive:true});
+
+  panelArea.addEventListener("touchmove", e=>{
+    if (e.touches.length >= 2) isPinching = true;
+  }, {passive:true});
+
+  panelArea.addEventListener("touchend", e=>{
+    if (isPinching) return;
+
+    const t = e.changedTouches[0];
+    const dx=t.clientX-sx;
+    const dy=t.clientY-sy;
+    const dt=Date.now()-t0;
+
+    if(Math.abs(dx)>40 && Math.abs(dx)>Math.abs(dy)*1.2 && dt<700){
+      // ✅ RIGHT->LEFT => NEXT
+      if(dx < 0 && panelIndex < TOTAL_PANELS) panelIndex++;
+      // ✅ LEFT->RIGHT => PREV
+      if(dx > 0 && panelIndex > 1) panelIndex--;
+      renderPanel();
+    }
+  }, {passive:true});
+
+  // Tap on panel: show HUD + (optional) attempt play if paused
+  panelArea.addEventListener("click", ()=>{
+    showHud(`Panel ${panelIndex} / ${TOTAL_PANELS}`, 2000);
+  });
+
+  // =======================
+  // INIT
+  // =======================
+  window.addEventListener("load", ()=>{
+    setupAudio();
     renderPanel();
-  }
-  setTimeout(()=>hud.classList.remove("visible"),2000);
-});
 
-/* =======================
-   INIT
-======================= */
-window.addEventListener("load", ()=>{
-  setupAudio();
-  renderPanel();
-  audio.play().catch(()=>{});
-});
+    // Autoplay attempt (may fail on mobile; button tap will work)
+    tryPlay();
+  });
 </script>
 
 </body>
