@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>SANCTUM — Pilot</title>
+  <title>SANCTUM — Pilot (v0.9)</title>
 
   <style>
     :root{ --paper-bg: url("./media/ui/manga_paper_bg.png"); }
@@ -22,6 +22,13 @@
       background-size:cover;
       background-position:center;
       background-repeat:no-repeat;
+    }
+
+    .ver{
+      position:fixed; top:8px; right:10px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size:11px; opacity:0.55;
+      user-select:none; pointer-events:none;
     }
 
     .wrap{
@@ -51,8 +58,7 @@
 
     .hud{
       position:absolute;
-      left:12px;
-      bottom:12px;
+      left:12px; bottom:12px;
       font-size:12px;
       opacity:0;
       background:rgba(0,0,0,0.55);
@@ -91,7 +97,6 @@
       -webkit-box-orient:vertical;
     }
 
-    /* Volume + Play ring */
     .ringWrap{
       width:72px; height:72px;
       position:relative;
@@ -99,7 +104,7 @@
       place-items:center;
       user-select:none;
       -webkit-user-select:none;
-      touch-action:none; /* important: ring drag shouldn't scroll */
+      touch-action:none;
     }
 
     .ring{
@@ -127,378 +132,310 @@
 </head>
 
 <body>
+  <div class="ver">v0.9</div>
 
-<audio id="bg-audio" preload="auto" playsinline></audio>
+  <audio id="bg-audio" preload="auto" playsinline></audio>
 
-<div class="wrap">
+  <div class="wrap">
+    <div class="panel" id="panelArea">
+      <img id="panelImg" src="" alt="SANCTUM Panel">
+      <div class="hud" id="hud">Loading…</div>
+    </div>
 
-  <div class="panel" id="panelArea">
-    <img id="panelImg" src="" alt="SANCTUM Panel">
-    <div class="hud" id="hud">Loading…</div>
-  </div>
+    <div class="toolbar">
+      <div class="trackName" id="trackName"></div>
 
-  <div class="toolbar">
-    <div class="trackName" id="trackName"></div>
-
-    <div class="ringWrap" id="ringWrap" aria-label="Volume ring with Play/Pause">
-      <div class="ring" id="ring" aria-hidden="true"></div>
-      <button class="centerBtn" id="centerBtn" aria-label="Play/Pause"></button>
+      <div class="ringWrap" id="ringWrap" aria-label="Volume ring with Play/Pause">
+        <div class="ring" id="ring" aria-hidden="true"></div>
+        <button class="centerBtn" id="centerBtn" aria-label="Play/Pause"></button>
+      </div>
     </div>
   </div>
 
-</div>
+  <script>
+    // =======================
+    // CONFIG (v0.9)
+    // =======================
+    const CHAPTER = 0;
+    const TOTAL_PANELS = 20;
+    const ASSET_VERSION = 9; // bump when replacing files to beat cache
 
-<script>
-  // =======================
-  // CONFIG
-  // =======================
-  const CHAPTER = 0;
-  const TOTAL_PANELS = 20;
+    const TRACK_TITLE  = "Arcangel (Placeholder)";
+    const TRACK_ARTIST = "— (Artist later)";
 
-  // Bump if you replaced the mp3 and cache is annoying
-  const AUDIO_VERSION = 4;
+    // ✅ Absolute GitHub Pages base (works no matter where this HTML file sits)
+    const PAGES_BASE = "https://davidravenson.github.io/SANCTUM.MANGA/";
 
-  // First try SAME-ORIGIN (GitHub Pages), then RAW fallback
-  const AUDIO_URL_PAGES = "./media/audio/chapter-00/instrumental.mp3";
-  const AUDIO_URL_RAW =
-    "https://raw.githubusercontent.com/davidravenson/SANCTUM.MANGA/master/media/audio/chapter-00/instrumental.mp3";
+    // ✅ Absolute URLs: eliminates relative-path 404 => eliminates Error 4 from HTML/404 pages
+    const AUDIO_URL = `${PAGES_BASE}media/audio/chapter-00/instrumental.mp3?v=${ASSET_VERSION}`;
 
-  const TRACK_TITLE  = "Arcangel (Placeholder)";
-  const TRACK_ARTIST = "— (Artist later)";
+    const chapterFolder = `${PAGES_BASE}manga/chapter-${String(CHAPTER).padStart(2,"0")}/`;
+    const panelFile = (i) => `${chapterFolder}panel${String(i).padStart(2,"0")}.jpg?v=${ASSET_VERSION}`;
 
-  // =======================
-  // ELEMENTS
-  // =======================
-  const audio = document.getElementById("bg-audio");
-  const panelImg = document.getElementById("panelImg");
-  const panelArea = document.getElementById("panelArea");
-  const hud = document.getElementById("hud");
+    // =======================
+    // ELEMENTS
+    // =======================
+    const audio = document.getElementById("bg-audio");
+    const panelImg = document.getElementById("panelImg");
+    const panelArea = document.getElementById("panelArea");
+    const hud = document.getElementById("hud");
 
-  const ringWrap = document.getElementById("ringWrap");
-  const ring = document.getElementById("ring");
-  const centerBtn = document.getElementById("centerBtn");
-  const trackNameEl = document.getElementById("trackName");
+    const ringWrap = document.getElementById("ringWrap");
+    const ring = document.getElementById("ring");
+    const centerBtn = document.getElementById("centerBtn");
+    const trackNameEl = document.getElementById("trackName");
 
-  // Ensure not muted
-  audio.muted = false;
-  audio.setAttribute("playsinline", "");
+    audio.muted = false;
+    audio.setAttribute("playsinline", "");
 
-  // =======================
-  // HUD helper
-  // =======================
-  let hudTimer=null;
-  function showHud(msg, ms=2000){
-    if (msg !== undefined) hud.textContent = msg;
-    hud.classList.add("visible");
-    if (hudTimer) clearTimeout(hudTimer);
-    hudTimer = setTimeout(()=>hud.classList.remove("visible"), ms);
-  }
+    // =======================
+    // HUD
+    // =======================
+    let hudTimer=null;
+    function showHud(msg, ms=2000){
+      if (msg !== undefined) hud.textContent = msg;
+      hud.classList.add("visible");
+      if (hudTimer) clearTimeout(hudTimer);
+      hudTimer = setTimeout(()=>hud.classList.remove("visible"), ms);
+    }
 
-  // =======================
-  // ICONS
-  // =======================
-  const ICON_PLAY = `
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M8 6.8v10.4c0 .9 1 1.4 1.7.9l9-5.2c.7-.4.7-1.4 0-1.8l-9-5.2C9 5.4 8 5.9 8 6.8Z"/>
-    </svg>`;
-  const ICON_PAUSE = `
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M8 6h3v12H8zM13 6h3v12h-3z"/>
-    </svg>`;
+    // =======================
+    // ICONS
+    // =======================
+    const ICON_PLAY = `
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M8 6.8v10.4c0 .9 1 1.4 1.7.9l9-5.2c.7-.4.7-1.4 0-1.8l-9-5.2C9 5.4 8 5.9 8 6.8Z"/>
+      </svg>`;
+    const ICON_PAUSE = `
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M8 6h3v12H8zM13 6h3v12h-3z"/>
+      </svg>`;
 
-  function updateIcon(){
-    centerBtn.innerHTML = audio.paused ? ICON_PLAY : ICON_PAUSE;
-  }
+    function updateIcon(){
+      centerBtn.innerHTML = audio.paused ? ICON_PLAY : ICON_PAUSE;
+    }
 
-  // =======================
-  // AUDIO SOURCE + START (needs user gesture)
-  // =======================
-  let usingRaw = false;
-  let audioUnlocked = false;
-  let attempting = false;
+    // =======================
+    // AUDIO
+    // =======================
+    let audioUnlocked = false;
+    let attempting = false;
 
-  function setAudioSrc(url){
-    audio.src = `${url}?v=${AUDIO_VERSION}`;
-    audio.load();
-  }
-
-  function setupAudio(){
-    trackNameEl.textContent = `${TRACK_TITLE}\n${TRACK_ARTIST}`;
-    setVolume(0.45);
-    updateIcon();
-
-    usingRaw = false;
-    setAudioSrc(AUDIO_URL_PAGES);
-  }
-
-  async function playWithFadeIn(durationMs=2500){
-    if (attempting) return false;
-    attempting = true;
-
-    const target = Math.max(0, Math.min(1, audio.volume || 0.45));
-    audio.volume = 0;
-
-    try{
-      await audio.play();
-      audioUnlocked = true;
+    function setupAudio(){
+      trackNameEl.textContent = `${TRACK_TITLE}\n${TRACK_ARTIST}`;
+      audio.src = AUDIO_URL;
+      audio.load();
+      setVolume(0.45);
       updateIcon();
+    }
 
-      const steps = 45;
-      let step = 0;
-      const it = setInterval(()=>{
-        step++;
-        audio.volume = Math.min(target, (step/steps)*target);
-        if (step >= steps) clearInterval(it);
-      }, durationMs/steps);
+    function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
 
-      return true;
-    }catch(e){
-      // try RAW once if PAGES source fails
-      if (!usingRaw){
-        usingRaw = true;
-        setAudioSrc(AUDIO_URL_RAW);
-        try{
-          await audio.play();
-          audioUnlocked = true;
-          updateIcon();
-          showHud("Audio source fallback: RAW ✅", 1200);
+    async function playWithFadeIn(durationMs=2500){
+      if (attempting) return false;
+      attempting = true;
 
-          const steps = 45;
-          let step = 0;
-          const it = setInterval(()=>{
-            step++;
-            audio.volume = Math.min(target, (step/steps)*target);
-            if (step >= steps) clearInterval(it);
-          }, durationMs/steps);
+      const target = clamp(audio.volume || 0.45, 0, 1);
+      audio.volume = 0;
 
-          return true;
-        }catch(e2){
-          // Autoplay policy / still blocked
-          audio.volume = target;
-          updateIcon();
-          showHud("Tap Play or Panel once to start audio.", 2200);
-          return false;
-        }
-      }else{
+      try{
+        await audio.play();
+        audioUnlocked = true;
+        updateIcon();
+
+        const steps = 45;
+        let step = 0;
+        const it = setInterval(()=>{
+          step++;
+          audio.volume = Math.min(target, (step/steps)*target);
+          if (step >= steps) clearInterval(it);
+        }, durationMs/steps);
+
+        return true;
+      }catch(e){
         audio.volume = target;
         updateIcon();
-        showHud("Tap Play or Panel once to start audio.", 2200);
+        showHud("Audio blocked. Tap once.\n(autoplay policy)", 2200);
         return false;
+      }finally{
+        attempting = false;
       }
-    }finally{
-      attempting = false;
     }
-  }
 
-  function audioDebugLine(){
-    // readyState: 0..4  | networkState: 0..3
-    return `readyState=${audio.readyState} network=${audio.networkState} t=${audio.currentTime.toFixed(2)} vol=${audio.volume.toFixed(2)} muted=${audio.muted}`;
-  }
+    centerBtn.addEventListener("click", async ()=>{
+      if (audio.paused) await playWithFadeIn(2500);
+      else { audio.pause(); updateIcon(); }
+    });
 
-  centerBtn.addEventListener("click", async ()=>{
-    if (audio.paused) {
-      const ok = await playWithFadeIn(2500);
-      if (!ok) showHud("Audio blocked.\n" + audioDebugLine(), 2600);
-    } else {
-      audio.pause();
-      updateIcon();
+    audio.addEventListener("play", ()=>{ audioUnlocked=true; updateIcon(); showHud("Audio playing ✅", 800); });
+    audio.addEventListener("error", ()=>{
+      const err = audio.error ? audio.error.code : 0;
+      showHud(`Audio error ${err}\nCheck URL:\n${AUDIO_URL}`, 3600);
+    });
+
+    // =======================
+    // VOLUME RING (smooth drag)
+    // =======================
+    function setVolume(v){
+      v = clamp(v, 0, 1);
+      audio.volume = v;
+      const deg = Math.round(360 * v);
+      ring.style.background = `conic-gradient(#fff ${deg}deg, rgba(255,255,255,0.14) ${deg}deg)`;
     }
-  });
 
-  audio.addEventListener("play", ()=>{ audioUnlocked = true; updateIcon(); });
-  audio.addEventListener("pause", updateIcon);
-  audio.addEventListener("error", ()=>{
-    const err = audio.error ? `code=${audio.error.code}` : "unknown";
-    showHud("Audio error ("+err+").\n" + audioDebugLine(), 3200);
-  });
-  audio.addEventListener("stalled", ()=> showHud("Audio stalled.\n" + audioDebugLine(), 2200));
-  audio.addEventListener("waiting", ()=> showHud("Audio loading…\n" + audioDebugLine(), 1200));
-  audio.addEventListener("playing", ()=> showHud("Audio playing ✅", 900));
+    function pointerInWideBand(clientX, clientY){
+      const rect = ringWrap.getBoundingClientRect();
+      const cx = rect.left + rect.width/2;
+      const cy = rect.top + rect.height/2;
+      const dx = clientX - cx;
+      const dy = clientY - cy;
+      const r = Math.sqrt(dx*dx + dy*dy);
 
-  // =======================
-  // VOLUME RING (smooth drag, no jumps)
-  // =======================
-  function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
+      const outer = rect.width/2;
+      const inner = outer * 0.60;
+      const thickness = outer - inner;
 
-  function setVolume(v){
-    v = clamp(v, 0, 1);
-    audio.volume = v;
+      const expandedInner = Math.max(0, inner - thickness);
+      const expandedOuter = outer + thickness;
 
-    const deg = Math.round(360 * v);
-    ring.style.background =
-      `conic-gradient(#fff ${deg}deg, rgba(255,255,255,0.14) ${deg}deg)`;
-  }
+      return (r >= expandedInner && r <= expandedOuter);
+    }
 
-  // Wide interaction band: allow touch inside/outside ring thickness
-  function pointerInWideBand(clientX, clientY){
-    const rect = ringWrap.getBoundingClientRect();
-    const cx = rect.left + rect.width/2;
-    const cy = rect.top + rect.height/2;
-    const dx = clientX - cx;
-    const dy = clientY - cy;
-    const r = Math.sqrt(dx*dx + dy*dy);
+    function touchAngleDeg(clientX, clientY){
+      const rect = ringWrap.getBoundingClientRect();
+      const cx = rect.left + rect.width/2;
+      const cy = rect.top + rect.height/2;
+      const dx = clientX - cx;
+      const dy = clientY - cy;
 
-    const outer = rect.width/2;
-    const inner = outer * 0.60;
-    const thickness = outer - inner;
+      let deg = Math.atan2(dy, dx) * (180/Math.PI);
+      deg = deg + 90;
+      if (deg > 180) deg -= 360;
+      return deg;
+    }
 
-    const expandedInner = Math.max(0, inner - thickness);
-    const expandedOuter = outer + thickness;
+    const ANGLE_MIN = -135;
+    const ANGLE_MAX = 135;
 
-    return (r >= expandedInner && r <= expandedOuter);
-  }
+    let dragging=false;
+    let lastDeg=0;
+    let currentAngle = ANGLE_MIN + (ANGLE_MAX-ANGLE_MIN) * 0.45;
 
-  function touchAngleDeg(clientX, clientY){
-    const rect = ringWrap.getBoundingClientRect();
-    const cx = rect.left + rect.width/2;
-    const cy = rect.top + rect.height/2;
-    const dx = clientX - cx;
-    const dy = clientY - cy;
+    function angleToVolume(angle){
+      const a = clamp(angle, ANGLE_MIN, ANGLE_MAX);
+      return (a - ANGLE_MIN) / (ANGLE_MAX - ANGLE_MIN);
+    }
 
-    let deg = Math.atan2(dy, dx) * (180/Math.PI);
-    deg = deg + 90; // 0 at top
-    if (deg > 180) deg -= 360;
-    return deg; // -180..180
-  }
+    function startRing(e){
+      const p = e.touches ? e.touches[0] : e;
 
-  const ANGLE_MIN = -135;
-  const ANGLE_MAX = 135;
+      const cb = centerBtn.getBoundingClientRect();
+      if (p.clientX >= cb.left && p.clientX <= cb.right &&
+          p.clientY >= cb.top  && p.clientY <= cb.bottom) return;
 
-  let dragging=false;
-  let lastDeg=0;
-  let currentAngle = ANGLE_MIN + (ANGLE_MAX-ANGLE_MIN) * (audio.volume || 0.45);
+      if (!pointerInWideBand(p.clientX, p.clientY)) { dragging=false; return; }
 
-  function angleToVolume(angle){
-    const a = clamp(angle, ANGLE_MIN, ANGLE_MAX);
-    return (a - ANGLE_MIN) / (ANGLE_MAX - ANGLE_MIN);
-  }
+      dragging=true;
+      lastDeg = touchAngleDeg(p.clientX, p.clientY);
+      currentAngle = ANGLE_MIN + (ANGLE_MAX-ANGLE_MIN) * audio.volume;
+      currentAngle = clamp(currentAngle, ANGLE_MIN, ANGLE_MAX);
+    }
 
-  function startRing(e){
-    const p = e.touches ? e.touches[0] : e;
+    function moveRing(e){
+      if (!dragging) return;
+      const p = e.touches ? e.touches[0] : e;
 
-    // ignore if on center button
-    const cb = centerBtn.getBoundingClientRect();
-    if (p.clientX >= cb.left && p.clientX <= cb.right &&
-        p.clientY >= cb.top  && p.clientY <= cb.bottom) return;
+      if (!pointerInWideBand(p.clientX, p.clientY)) { dragging=false; return; }
 
-    if (!pointerInWideBand(p.clientX, p.clientY)) { dragging=false; return; }
+      const now = touchAngleDeg(p.clientX, p.clientY);
+      let delta = now - lastDeg;
 
-    dragging=true;
-    lastDeg = touchAngleDeg(p.clientX, p.clientY);
+      if (delta > 180) delta -= 360;
+      if (delta < -180) delta += 360;
 
-    currentAngle = ANGLE_MIN + (ANGLE_MAX-ANGLE_MIN) * audio.volume;
-    currentAngle = clamp(currentAngle, ANGLE_MIN, ANGLE_MAX);
-  }
+      delta = clamp(delta, -25, 25);
 
-  function moveRing(e){
-    if (!dragging) return;
-    const p = e.touches ? e.touches[0] : e;
+      currentAngle = clamp(currentAngle + delta, ANGLE_MIN, ANGLE_MAX);
+      setVolume(angleToVolume(currentAngle));
 
-    if (!pointerInWideBand(p.clientX, p.clientY)) { dragging=false; return; }
+      lastDeg = now;
+    }
 
-    const now = touchAngleDeg(p.clientX, p.clientY);
-    let delta = now - lastDeg;
+    function endRing(){ dragging=false; }
 
-    // unwrap seam
-    if (delta > 180) delta -= 360;
-    if (delta < -180) delta += 360;
+    ringWrap.addEventListener("touchstart", startRing, {passive:true});
+    window.addEventListener("touchmove", moveRing, {passive:true});
+    window.addEventListener("touchend", endRing, {passive:true});
 
-    // cap glitches (no wild jumps)
-    delta = clamp(delta, -25, 25);
+    ringWrap.addEventListener("mousedown", startRing);
+    window.addEventListener("mousemove", moveRing);
+    window.addEventListener("mouseup", endRing);
 
-    currentAngle = clamp(currentAngle + delta, ANGLE_MIN, ANGLE_MAX);
-    setVolume(angleToVolume(currentAngle));
+    // =======================
+    // PANELS + SWIPE (RIGHT = CONTINUE)
+    // =======================
+    let panelIndex = 1;
 
-    lastDeg = now;
-  }
+    function renderPanel(){
+      panelImg.src = panelFile(panelIndex);
+      showHud(`Panel ${panelIndex} / ${TOTAL_PANELS}`, 1200);
+    }
 
-  function endRing(){ dragging=false; }
+    panelImg.onerror = ()=>{
+      showHud(`Panel not found:\n${panelFile(panelIndex)}`, 3500);
+    };
 
-  ringWrap.addEventListener("mousedown", startRing);
-  window.addEventListener("mousemove", moveRing);
-  window.addEventListener("mouseup", endRing);
+    let isPinching=false;
+    let sx=0, sy=0, t0=0;
 
-  ringWrap.addEventListener("touchstart", startRing, {passive:true});
-  window.addEventListener("touchmove", moveRing, {passive:true});
-  window.addEventListener("touchend", endRing, {passive:true});
+    async function unlockOnGesture(){
+      if (audioUnlocked) return;
+      await playWithFadeIn(2500);
+    }
 
-  // =======================
-  // PANELS
-  // manga/chapter-00/panel01.jpg
-  // =======================
-  let panelIndex = 1;
-  const chapterFolder = `./manga/chapter-${String(CHAPTER).padStart(2,"0")}/`;
-  const panelFile = i => `${chapterFolder}panel${String(i).padStart(2,"0")}.jpg`;
+    panelArea.addEventListener("touchstart", (e)=>{
+      if (e.touches.length >= 2){ isPinching=true; return; }
+      isPinching=false;
 
-  function renderPanel(){
-    panelImg.src = panelFile(panelIndex);
-    showHud(`Panel ${panelIndex} / ${TOTAL_PANELS}`, 1200);
-  }
+      const t = e.touches[0];
+      sx=t.clientX; sy=t.clientY; t0=Date.now();
 
-  panelImg.onerror = ()=>{
-    showHud(`Panel not found:\n${panelFile(panelIndex)}`, 3500);
-  };
+      showHud(`Panel ${panelIndex} / ${TOTAL_PANELS}`, 2000);
+      unlockOnGesture();
+    }, {passive:true});
 
-  // =======================
-  // SWIPE (RIGHT = CONTINUE)
-  // + first gesture unlocks audio
-  // =======================
-  let isPinching=false;
-  let sx=0, sy=0, t0=0;
+    panelArea.addEventListener("touchmove", (e)=>{
+      if (e.touches.length >= 2) isPinching=true;
+    }, {passive:true});
 
-  async function unlockOnGesture(){
-    if (audioUnlocked) return;
-    const ok = await playWithFadeIn(2500);
-    if (!ok) showHud("Tap Play to start audio.\n" + audioDebugLine(), 2600);
-  }
+    panelArea.addEventListener("touchend", (e)=>{
+      if (isPinching) return;
 
-  panelArea.addEventListener("touchstart", (e)=>{
-    if (e.touches.length >= 2){ isPinching=true; return; }
-    isPinching=false;
+      const t = e.changedTouches[0];
+      const dx=t.clientX-sx;
+      const dy=t.clientY-sy;
+      const dt=Date.now()-t0;
 
-    const t = e.touches[0];
-    sx=t.clientX; sy=t.clientY; t0=Date.now();
+      if(Math.abs(dx)>40 && Math.abs(dx)>Math.abs(dy)*1.2 && dt<700){
+        if(dx > 0 && panelIndex < TOTAL_PANELS) panelIndex++; // RIGHT = next
+        if(dx < 0 && panelIndex > 1) panelIndex--;            // LEFT = prev
+        renderPanel();
+      }
+    }, {passive:true});
 
-    showHud(`Panel ${panelIndex} / ${TOTAL_PANELS}`, 2000);
-    unlockOnGesture();
-  }, {passive:true});
+    panelArea.addEventListener("click", ()=>{
+      showHud(`Panel ${panelIndex} / ${TOTAL_PANELS}`, 2000);
+      unlockOnGesture();
+    });
 
-  panelArea.addEventListener("touchmove", (e)=>{
-    if (e.touches.length >= 2) isPinching=true;
-  }, {passive:true});
-
-  panelArea.addEventListener("touchend", (e)=>{
-    if (isPinching) return;
-
-    const t = e.changedTouches[0];
-    const dx=t.clientX-sx;
-    const dy=t.clientY-sy;
-    const dt=Date.now()-t0;
-
-    if(Math.abs(dx)>40 && Math.abs(dx)>Math.abs(dy)*1.2 && dt<700){
-      // RIGHT swipe = continue
-      if(dx > 0 && panelIndex < TOTAL_PANELS) panelIndex++;
-      // LEFT swipe = back
-      if(dx < 0 && panelIndex > 1) panelIndex--;
+    // =======================
+    // INIT
+    // =======================
+    window.addEventListener("load", ()=>{
+      setupAudio();
       renderPanel();
-    }
-  }, {passive:true});
-
-  panelArea.addEventListener("click", ()=>{
-    showHud(`Panel ${panelIndex} / ${TOTAL_PANELS}`, 2000);
-    unlockOnGesture();
-  });
-
-  // =======================
-  // INIT
-  // =======================
-  window.addEventListener("load", ()=>{
-    setupAudio();
-    renderPanel();
-    // Do NOT force play here — will be blocked. We wait for gesture.
-    showHud("Tap Play or swipe once to start audio.", 1800);
-  });
-</script>
-
+      showHud("Tap/Swipe once to start audio.", 1600);
+    });
+  </script>
 </body>
 </html>
