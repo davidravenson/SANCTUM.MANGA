@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>SANCTUM — Chapter 1</title>
+  <title>SANCTUM — Reader</title>
 
   <style>
     :root{
@@ -15,11 +15,10 @@
       height:100%;
       color:#fff;
       font-family:system-ui,sans-serif;
-      touch-action:auto; /* pinch zoom allowed */
+      touch-action:auto;
       background:#000;
     }
 
-    /* Background layer (paper texture) */
     body::before{
       content:"";
       position:fixed;
@@ -31,8 +30,6 @@
       background-repeat:no-repeat;
       opacity: 1;
     }
-
-    /* ✅ REMOVED: body::after overlay layer */
 
     .wrap{
       min-height:100%;
@@ -55,7 +52,7 @@
       touch-action:auto;
       overflow:hidden;
       border-radius:2px;
-      background: rgba(0,0,0,0.25);
+      background: rgba(0,0,0,0.18);
     }
 
     .panel img{
@@ -102,8 +99,8 @@
       max-width:900px;
       display:flex;
       align-items:center;
-      justify-content:flex-end;
-      gap:14px;
+      justify-content:space-between;
+      gap:12px;
       padding:10px 12px;
       box-sizing:border-box;
       border:1px solid rgba(255,255,255,0.12);
@@ -112,7 +109,22 @@
       backdrop-filter: blur(6px);
     }
 
-    /* ===== Combined Volume + Play/Pause Ring ===== */
+    /* ✅ Track name inside toolbar, left side */
+    .trackName{
+      min-width:0;
+      flex:1 1 auto;
+      user-select:none;
+      -webkit-user-select:none;
+      font-size:13px;
+      letter-spacing:0.02em;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      opacity:0.92;
+      padding-left:4px;
+    }
+
+    /* Combined Volume + Play/Pause Ring */
     .ringWrap{
       width:72px;
       height:72px;
@@ -120,7 +132,7 @@
       position:relative;
       user-select:none;
       -webkit-user-select:none;
-      touch-action:none; /* ring drag shouldn't scroll */
+      touch-action:none;
       display:grid;
       place-items:center;
     }
@@ -160,9 +172,7 @@
 
 <body>
 
-  <audio id="bg-audio" preload="auto">
-    <source src="./media/audio/sanctum_ch1_arcangel_instrumental.mp3" type="audio/mpeg">
-  </audio>
+  <audio id="bg-audio" preload="auto"></audio>
 
   <div class="wrap">
 
@@ -173,6 +183,9 @@
     </div>
 
     <div class="toolbar">
+      <!-- ✅ Track name left of the ring -->
+      <div class="trackName" id="trackName">Loading…</div>
+
       <div class="ringWrap" id="ringWrap" aria-label="Volume ring with Play/Pause">
         <div class="ring" id="ring" aria-hidden="true"></div>
         <button class="centerBtn" id="centerBtn" aria-label="Play/Pause"></button>
@@ -182,12 +195,44 @@
   </div>
 
   <script>
-    const relativeFolder = "./manga/my-series/chapter-1/";
+    // ============================================================
+    // PLACEHOLDER SYSTEM
+    // ============================================================
+    const CHAPTER = 1;
     const TOTAL_PANELS = 20;
+    const AUDIO_KIND = "instrumental";
+    const AUDIO_VERSION = 1;
 
-    const PAD = (n) => String(n).padStart(3, "0");
-    const panelFile = (index1based) => `${relativeFolder}${PAD(index1based)}.jpg`;
+    const TRACK_DB = {
+      1: {
+        title: "Arcangel (Placeholder)",
+        artist: "— (Artist later)",
+        audio: {
+          instrumental: "./media/audio/ch01_instrumental.mp3",
+          full: "./media/audio/ch01_full.mp3"
+        },
+        panelsFolder: "./manga/my-series/chapter-1/"
+      }
+    };
 
+    function chapterFallback(ch){
+      const ch2 = String(ch).padStart(2,"0");
+      return {
+        title: `Chapter ${ch} (Placeholder)`,
+        artist: "—",
+        audio: {
+          instrumental: `./media/audio/ch${ch2}_instrumental.mp3`,
+          full: `./media/audio/ch${ch2}_full.mp3`
+        },
+        panelsFolder: `./manga/my-series/chapter-${ch}/`
+      };
+    }
+
+    const cfg = TRACK_DB[CHAPTER] || chapterFallback(CHAPTER);
+
+    // ============================================================
+    // ELEMENTS
+    // ============================================================
     const audio = document.getElementById("bg-audio");
 
     const panelArea = document.getElementById("panelArea");
@@ -197,6 +242,8 @@
     const ringWrap = document.getElementById("ringWrap");
     const ring = document.getElementById("ring");
     const centerBtn = document.getElementById("centerBtn");
+
+    const trackNameEl = document.getElementById("trackName");
 
     function tryHideBrowserUI() {
       setTimeout(() => window.scrollTo(0, 1), 50);
@@ -211,6 +258,9 @@
       hudTimer = setTimeout(() => hud.classList.remove("visible"), 2000);
     }
 
+    // ============================================================
+    // Icons
+    // ============================================================
     const ICON_PLAY = `
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <path d="M8 6.8v10.4c0 .9 1 1.4 1.7.9l9-5.2c.7-.4.7-1.4 0-1.8l-9-5.2C9 5.4 8 5.9 8 6.8Z" fill="#fff"/>
@@ -226,6 +276,28 @@
       centerBtn.innerHTML = audio.paused ? ICON_PLAY : ICON_PAUSE;
     }
 
+    // ============================================================
+    // AUDIO SOURCE + LABEL
+    // ============================================================
+    function setAudioSource() {
+      const base = (cfg.audio && cfg.audio[AUDIO_KIND]) ? cfg.audio[AUDIO_KIND] : cfg.audio.instrumental;
+      const src = `${base}?v=${AUDIO_VERSION}`;
+
+      audio.innerHTML = "";
+      const s = document.createElement("source");
+      s.src = src;
+      s.type = "audio/mpeg";
+      audio.appendChild(s);
+
+      // ✅ Track name shown inside toolbar (left)
+      const title = cfg.title || "Untitled";
+      const artist = cfg.artist || "—";
+      trackNameEl.textContent = `${title} — ${artist}`;
+    }
+
+    // ============================================================
+    // AUDIO playback
+    // ============================================================
     let hasEverPlayed = false;
     let attempting = false;
 
@@ -285,6 +357,9 @@
     audio.addEventListener("pause", setCenterIcon);
     audio.addEventListener("ended", setCenterIcon);
 
+    // ============================================================
+    // VOLUME RING
+    // ============================================================
     function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
     function lerp(a,b,t){ return a + (b-a)*t; }
     function rgb(r,g,b){ return `rgb(${Math.round(r)},${Math.round(g)},${Math.round(b)})`; }
@@ -318,11 +393,10 @@
 
       const outer = rect.width/2;
       const inner = outer * 0.60;
-
       const thickness = outer - inner;
+
       const expandedInner = Math.max(0, inner - thickness);
       const expandedOuter = outer + thickness;
-
       return (r >= expandedInner && r <= expandedOuter);
     }
 
@@ -353,6 +427,7 @@
 
     function startRing(e){
       const p = e.touches ? e.touches[0] : e;
+
       const centerRect = centerBtn.getBoundingClientRect();
       if (p.clientX >= centerRect.left && p.clientX <= centerRect.right &&
           p.clientY >= centerRect.top  && p.clientY <= centerRect.bottom) return;
@@ -361,6 +436,7 @@
         dragging = false;
         return;
       }
+
       dragging = true;
       lastDeg = touchAngleDeg(p.clientX, p.clientY);
 
@@ -382,12 +458,10 @@
 
       if (delta > 180) delta -= 360;
       if (delta < -180) delta += 360;
-
       delta = clamp(delta, -25, 25);
 
       currentAngle = clamp(currentAngle + delta, ANGLE_MIN, ANGLE_MAX);
       setVolume(angleToVolume(currentAngle));
-
       lastDeg = now;
     }
 
@@ -400,6 +474,13 @@
     ringWrap.addEventListener("touchstart", (e)=>startRing(e), {passive:true});
     window.addEventListener("touchmove", (e)=>moveRing(e), {passive:true});
     window.addEventListener("touchend", endRing, {passive:true});
+
+    // ============================================================
+    // PANELS
+    // ============================================================
+    const panelsFolder = cfg.panelsFolder || `./manga/my-series/chapter-${CHAPTER}/`;
+    const PAD3 = (n) => String(n).padStart(3, "0");
+    const panelFile = (index1based) => `${panelsFolder}${PAD3(index1based)}.jpg`;
 
     let panelIndex = 1;
 
@@ -425,11 +506,11 @@
     const hashN = Number((location.hash||"").replace("#",""));
     if (hashN && hashN >= 1 && hashN <= TOTAL_PANELS) panelIndex = hashN;
 
-    function nextPanelRTL(){
+    function nextPanel(){
       if (panelIndex < TOTAL_PANELS) panelIndex++;
       renderPanel();
     }
-    function prevPanelRTL(){
+    function prevPanel(){
       if (panelIndex > 1) panelIndex--;
       renderPanel();
     }
@@ -443,7 +524,7 @@
 
       if (audio.paused) {
         if (!hasEverPlayed) playWithFadeIn(2500);
-        else (async()=>{await audio.play();hasEverPlayed=true;setCenterIcon();})();
+        else playNormal();
       }
 
       if (e.touches.length >= 2){
@@ -470,8 +551,8 @@
       const dt = Date.now() - startT;
 
       if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.2 && dt < 700) {
-        if (dx < 0) nextPanelRTL();
-        else prevPanelRTL();
+        if (dx < 0) nextPanel();
+        else prevPanel();
       }
     }, {passive:true});
 
@@ -484,7 +565,9 @@
       }
     });
 
+    // INIT
     window.addEventListener("load", ()=>{
+      setAudioSource();
       renderPanel();
       setCenterIcon();
       tryHideBrowserUI();
