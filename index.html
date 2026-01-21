@@ -1,111 +1,78 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>SANCTUM — Pilot</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SANCTUM — Pilot</title>
 
-  <style>
-    html,body{
-      margin:0; padding:0; height:100%;
-      background:#000; color:#fff;
-      font-family:system-ui,sans-serif;
-      touch-action:auto;
-    }
+<style>
+html,body{
+  margin:0; padding:0; height:100%;
+  background:#000; color:#fff;
+  font-family:system-ui,sans-serif;
+}
 
-    .ver{
-      position:fixed;
-      top:8px; right:10px;
-      font-size:11px;
-      opacity:.5;
-      font-family:ui-monospace,monospace;
-      pointer-events:none;
-    }
+.ver{
+  position:fixed; top:8px; right:10px;
+  font-size:11px; opacity:.5;
+  font-family:ui-monospace,monospace;
+}
 
-    .wrap{
-      min-height:100%;
-      display:flex;
-      flex-direction:column;
-      align-items:center;
-      justify-content:center;
-      gap:14px;
-      padding:12px;
-      box-sizing:border-box;
-    }
+.wrap{
+  min-height:100%;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:14px;
+  padding:12px;
+}
 
-    .panel{
-      width:100%;
-      max-width:900px;
-    }
+.panel img{
+  width:100%;
+  max-width:900px;
+  display:block;
+}
 
-    .panel img{
-      width:100%;
-      display:block;
-      background:#000;
-    }
+.toolbar{
+  width:100%;
+  max-width:900px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:10px 12px;
+  background:rgba(20,20,20,.7);
+  border-radius:16px;
+}
 
-    .toolbar{
-      width:100%;
-      max-width:900px;
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      gap:12px;
-      padding:10px 12px;
-      background:rgba(10,10,10,.6);
-      border:1px solid rgba(255,255,255,.12);
-      border-radius:16px;
-    }
+.track{
+  font-size:13px;
+  white-space:pre-line;
+  opacity:.9;
+}
 
-    .track{
-      font-size:13px;
-      line-height:1.25;
-      white-space:pre-line;
-      opacity:.9;
-    }
-
-    .ringWrap{
-      width:72px; height:72px;
-      position:relative;
-      display:grid;
-      place-items:center;
-      touch-action:none;
-    }
-
-    .ring{
-      position:absolute; inset:0;
-      border-radius:50%;
-      background:conic-gradient(#fff 0deg, rgba(255,255,255,.15) 0deg);
-      -webkit-mask:radial-gradient(circle,transparent 60%,#000 61%);
-              mask:radial-gradient(circle,transparent 60%,#000 61%);
-      pointer-events:none;
-    }
-
-    .centerBtn{
-      width:46px; height:46px;
-      border-radius:50%;
-      border:1px solid rgba(255,255,255,.2);
-      background:#111;
-      display:grid;
-      place-items:center;
-      cursor:pointer;
-    }
-
-    .centerBtn svg{width:20px;height:20px;fill:#fff}
-  </style>
+button{
+  width:56px; height:56px;
+  border-radius:50%;
+  border:1px solid rgba(255,255,255,.25);
+  background:#111;
+  color:#fff;
+  font-size:20px;
+}
+</style>
 </head>
 
 <body>
-<div class="ver">v0.11</div>
+<div class="ver">v0.12</div>
 
-<audio id="audio" preload="auto" playsinline crossorigin="anonymous"
-  src="https://raw.githubusercontent.com/davidravenson/SANCTUM.MANGA/master/media/audio/chapter-00/instrumental.mp3">
+<audio id="audio" preload="auto" playsinline>
+  <source src="https://raw.githubusercontent.com/davidravenson/SANCTUM.MANGA/master/media/audio/chapter-00/instrumental.mp3" type="audio/mpeg">
 </audio>
 
-<div class="wrap">
+<div class="wrap" id="unlockArea">
 
-  <div class="panel" id="panel">
-    <img id="img" src="manga/chapter-00/panel01.jpg" alt="">
+  <div class="panel">
+    <img src="manga/chapter-00/panel01.jpg">
   </div>
 
   <div class="toolbar">
@@ -113,56 +80,44 @@
       Arcangel (Placeholder)
       — (Artist later)
     </div>
-
-    <div class="ringWrap" id="ringWrap">
-      <div class="ring" id="ring"></div>
-      <div class="centerBtn" id="btn"></div>
-    </div>
+    <button id="playBtn">▶</button>
   </div>
 
 </div>
 
 <script>
 const audio = document.getElementById("audio");
-const btn = document.getElementById("btn");
-const ring = document.getElementById("ring");
+const btn   = document.getElementById("playBtn");
+const unlockArea = document.getElementById("unlockArea");
 
-const ICON_PLAY = `<svg viewBox="0 0 24 24"><path d="M8 6.8v10.4c0 .9 1 1.4 1.7.9l9-5.2c.7-.4.7-1.4 0-1.8l-9-5.2C9 5.4 8 5.9 8 6.8Z"/></svg>`;
-const ICON_PAUSE = `<svg viewBox="0 0 24 24"><path d="M8 6h3v12H8zM13 6h3v12h-3z"/></svg>`;
+let unlocked = false;
 
-btn.innerHTML = ICON_PLAY;
+// 🔑 ONE REAL USER GESTURE
+unlockArea.addEventListener("click", async () => {
+  if (unlocked) return;
+  try{
+    audio.volume = 0.5;
+    await audio.play();
+    audio.pause();
+    unlocked = true;
+    console.log("Audio unlocked");
+  }catch(e){
+    console.log("Unlock failed", e);
+  }
+},{ once:true });
 
-btn.onclick = async () => {
-  if (audio.paused) {
-    try {
-      await audio.play();
-      btn.innerHTML = ICON_PAUSE;
-    } catch(e){}
+btn.addEventListener("click", async (e)=>{
+  e.stopPropagation(); // IMPORTANT
+  if (!unlocked) return;
+
+  if (audio.paused){
+    await audio.play();
+    btn.textContent = "⏸";
   } else {
     audio.pause();
-    btn.innerHTML = ICON_PLAY;
+    btn.textContent = "▶";
   }
-};
-
-function setVolume(v){
-  v=Math.max(0,Math.min(1,v));
-  audio.volume=v;
-  ring.style.background=
-    `conic-gradient(#fff ${360*v}deg, rgba(255,255,255,.15) ${360*v}deg)`;
-}
-setVolume(.5);
-
-let dragging=false,lastY=0;
-ring.parentElement.addEventListener("touchstart",e=>{
-  dragging=true; lastY=e.touches[0].clientY;
-},{passive:true});
-window.addEventListener("touchmove",e=>{
-  if(!dragging)return;
-  const dy=lastY-e.touches[0].clientY;
-  setVolume(audio.volume+dy/300);
-  lastY=e.touches[0].clientY;
-},{passive:true});
-window.addEventListener("touchend",()=>dragging=false);
+});
 </script>
 </body>
 </html>
