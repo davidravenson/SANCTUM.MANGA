@@ -19,6 +19,7 @@
       background:#000;
     }
 
+    /* Paper background */
     body::before{
       content:"";
       position:fixed;
@@ -109,19 +110,26 @@
       backdrop-filter: blur(6px);
     }
 
-    /* ✅ Track name inside toolbar, left side */
+    /* Track name with line wrap (max 2 lines) */
     .trackName{
-      min-width:0;
       flex:1 1 auto;
+      min-width:0;
       user-select:none;
       -webkit-user-select:none;
+
       font-size:13px;
+      line-height:1.25;
       letter-spacing:0.02em;
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-      opacity:0.92;
-      padding-left:4px;
+      opacity:0.95;
+
+      white-space: normal;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
     }
 
     /* Combined Volume + Play/Pause Ring */
@@ -132,7 +140,7 @@
       position:relative;
       user-select:none;
       -webkit-user-select:none;
-      touch-action:none;
+      touch-action:none; /* ring drag shouldn't scroll */
       display:grid;
       place-items:center;
     }
@@ -141,7 +149,11 @@
       position:absolute;
       inset:0;
       border-radius:50%;
+
+      /* dynamic via JS */
       background: conic-gradient(#fff 0deg, rgba(255,255,255,0.14) 0deg);
+
+      /* thin contour ring */
       -webkit-mask: radial-gradient(circle, transparent 60%, #000 61%);
               mask: radial-gradient(circle, transparent 60%, #000 61%);
       filter: drop-shadow(0 0 7px rgba(255,255,255,0.18));
@@ -149,6 +161,7 @@
       pointer-events:none;
     }
 
+    /* center button inside ring */
     .centerBtn{
       width:46px;
       height:46px;
@@ -183,7 +196,6 @@
     </div>
 
     <div class="toolbar">
-      <!-- ✅ Track name left of the ring -->
       <div class="trackName" id="trackName">Loading…</div>
 
       <div class="ringWrap" id="ringWrap" aria-label="Volume ring with Play/Pause">
@@ -196,22 +208,22 @@
 
   <script>
     // ============================================================
-    // PLACEHOLDER SYSTEM
+    // PLACEHOLDER SYSTEM (edit only these knobs)
     // ============================================================
-    const CHAPTER = 1;
+    const CHAPTER = 0;              // ✅ Pilot = Chapter 00
     const TOTAL_PANELS = 20;
-    const AUDIO_KIND = "instrumental";
-    const AUDIO_VERSION = 1;
+    const AUDIO_KIND = "instrumental"; // "instrumental" | "full"
+    const AUDIO_VERSION = 1;        // bump if cache shows old mp3
 
+    // Track display + stable audio slots
     const TRACK_DB = {
-      1: {
+      0: {
         title: "Arcangel (Placeholder)",
         artist: "— (Artist later)",
         audio: {
-          instrumental: "./media/audio/ch01_instrumental.mp3",
-          full: "./media/audio/ch01_full.mp3"
-        },
-        panelsFolder: "./manga/my-series/chapter-1/"
+          instrumental: "./media/audio/chapter-00/instrumental.mp3",
+          full: "./media/audio/chapter-00/full.mp3"
+        }
       }
     };
 
@@ -221,10 +233,9 @@
         title: `Chapter ${ch} (Placeholder)`,
         artist: "—",
         audio: {
-          instrumental: `./media/audio/ch${ch2}_instrumental.mp3`,
-          full: `./media/audio/ch${ch2}_full.mp3`
-        },
-        panelsFolder: `./manga/my-series/chapter-${ch}/`
+          instrumental: `./media/audio/chapter-${ch2}/instrumental.mp3`,
+          full: `./media/audio/chapter-${ch2}/full.mp3`
+        }
       };
     }
 
@@ -245,12 +256,18 @@
 
     const trackNameEl = document.getElementById("trackName");
 
+    // ============================================================
+    // Scroll-hide browser UI (best effort)
+    // ============================================================
     function tryHideBrowserUI() {
       setTimeout(() => window.scrollTo(0, 1), 50);
       setTimeout(() => window.scrollTo(0, 1), 250);
       setTimeout(() => window.scrollTo(0, 1), 650);
     }
 
+    // ============================================================
+    // HUD: show ONLY when panel touched (2s)
+    // ============================================================
     let hudTimer = null;
     function showHudFor2s() {
       hud.classList.add("visible");
@@ -259,7 +276,7 @@
     }
 
     // ============================================================
-    // Icons
+    // Icons (consistent style)
     // ============================================================
     const ICON_PLAY = `
       <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -277,9 +294,9 @@
     }
 
     // ============================================================
-    // AUDIO SOURCE + LABEL
+    // AUDIO SOURCE + LABEL (stable slots)
     // ============================================================
-    function setAudioSource() {
+    function setAudioSourceAndLabel() {
       const base = (cfg.audio && cfg.audio[AUDIO_KIND]) ? cfg.audio[AUDIO_KIND] : cfg.audio.instrumental;
       const src = `${base}?v=${AUDIO_VERSION}`;
 
@@ -289,14 +306,14 @@
       s.type = "audio/mpeg";
       audio.appendChild(s);
 
-      // ✅ Track name shown inside toolbar (left)
       const title = cfg.title || "Untitled";
       const artist = cfg.artist || "—";
-      trackNameEl.textContent = `${title} — ${artist}`;
+      trackNameEl.textContent = `${title}\n${artist}`;
+      trackNameEl.style.whiteSpace = "pre-line"; // render newline
     }
 
     // ============================================================
-    // AUDIO playback
+    // AUDIO
     // ============================================================
     let hasEverPlayed = false;
     let attempting = false;
@@ -358,7 +375,8 @@
     audio.addEventListener("ended", setCenterIcon);
 
     // ============================================================
-    // VOLUME RING
+    // Ring color fades to RED as volume approaches 100%
+    // Full ring at 100% (360°)
     // ============================================================
     function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
     function lerp(a,b,t){ return a + (b-a)*t; }
@@ -383,6 +401,9 @@
 
     setVolume(0.4);
 
+    // ============================================================
+    // Volume ring interaction (wide band + smooth, no jumps)
+    // ============================================================
     function pointerInWideBand(clientX, clientY){
       const rect = ringWrap.getBoundingClientRect();
       const cx = rect.left + rect.width/2;
@@ -393,10 +414,11 @@
 
       const outer = rect.width/2;
       const inner = outer * 0.60;
-      const thickness = outer - inner;
 
+      const thickness = outer - inner;
       const expandedInner = Math.max(0, inner - thickness);
       const expandedOuter = outer + thickness;
+
       return (r >= expandedInner && r <= expandedOuter);
     }
 
@@ -436,7 +458,6 @@
         dragging = false;
         return;
       }
-
       dragging = true;
       lastDeg = touchAngleDeg(p.clientX, p.clientY);
 
@@ -458,10 +479,12 @@
 
       if (delta > 180) delta -= 360;
       if (delta < -180) delta += 360;
+
       delta = clamp(delta, -25, 25);
 
       currentAngle = clamp(currentAngle + delta, ANGLE_MIN, ANGLE_MAX);
       setVolume(angleToVolume(currentAngle));
+
       lastDeg = now;
     }
 
@@ -476,11 +499,11 @@
     window.addEventListener("touchend", endRing, {passive:true});
 
     // ============================================================
-    // PANELS
+    // PANELS (NEW PATH): manga/chapter-00/panel01.jpg
     // ============================================================
-    const panelsFolder = cfg.panelsFolder || `./manga/my-series/chapter-${CHAPTER}/`;
-    const PAD3 = (n) => String(n).padStart(3, "0");
-    const panelFile = (index1based) => `${panelsFolder}${PAD3(index1based)}.jpg`;
+    const chapterFolder = `./manga/chapter-${String(CHAPTER).padStart(2,"0")}/`;
+    const PAD2 = (n) => String(n).padStart(2, "0");
+    const panelFile = (index1based) => `${chapterFolder}panel${PAD2(index1based)}.jpg`;
 
     let panelIndex = 1;
 
@@ -515,6 +538,7 @@
       renderPanel();
     }
 
+    // Swipe: right->left = next (pinch doesn't swipe)
     let isPinching=false, isSwiping=false;
     let startX=0, startY=0, startT=0;
 
@@ -565,13 +589,15 @@
       }
     });
 
+    // ============================================================
     // INIT
+    // ============================================================
     window.addEventListener("load", ()=>{
-      setAudioSource();
+      setAudioSourceAndLabel();
       renderPanel();
       setCenterIcon();
       tryHideBrowserUI();
-      playWithFadeIn(2500);
+      playWithFadeIn(2500); // autoplay attempt
     });
   </script>
 
