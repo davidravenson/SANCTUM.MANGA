@@ -149,11 +149,10 @@
   // =======================
   // CONFIG
   // =======================
-  const CHAPTER = 0;                 // Pilot
+  const CHAPTER = 0;
   const TOTAL_PANELS = 20;
-  const AUDIO_VERSION = 2;           // bump when replacing mp3
+  const AUDIO_VERSION = 3;
 
-  // Prefer SAME-ORIGIN (GitHub Pages). Fallback to RAW if needed.
   const AUDIO_SRC_LOCAL = "./media/audio/chapter-00/instrumental.mp3";
   const AUDIO_SRC_RAW   = "https://raw.githubusercontent.com/davidravenson/SANCTUM.MANGA/master/media/audio/chapter-00/instrumental.mp3";
 
@@ -172,7 +171,7 @@
   const trackNameEl = document.getElementById("trackName");
 
   // =======================
-  // HUD helper
+  // HUD
   // =======================
   let hudTimer=null;
   function showHud(msg, ms=2000){
@@ -199,7 +198,7 @@
   }
 
   // =======================
-  // AUDIO loading (local -> raw fallback)
+  // AUDIO load (local -> raw fallback)
   // =======================
   function setAudioSrc(url){
     audio.innerHTML = "";
@@ -221,43 +220,121 @@
     setAudioSrc(AUDIO_SRC_LOCAL);
   }
 
-  async function tryPlay(){
+  // =======================
+  // AUTOPLAY UNLOCK
+  // =======================
+  let audioUnlocked = false;
+  let hasEverPlayed = false;
+  let attempting = false;
+
+  async function playWithFadeIn(durationMs = 2500){
+    if (attempting) return false;
+    attempting = true;
+
+    const target = Math.max(0, Math.min(1, audio.volume || 0.4));
+    audio.volume = 0;
+
     try{
       await audio.play();
+      hasEverPlayed = true;
+      audioUnlocked = true;
       updateIcon();
+
+      const steps = 45;
+      let step = 0;
+      const it = setInterval(()=>{
+        step++;
+        audio.volume = Math.min(target, (step/steps)*target);
+        if (step >= steps) clearInterval(it);
+      }, durationMs/steps);
+
       return true;
     }catch(e){
+      // If local blocked/failed, try RAW once
       if (!usingRawFallback){
         usingRawFallback = true;
         setAudioSrc(AUDIO_SRC_RAW);
         try{
           await audio.play();
+          hasEverPlayed = true;
+          audioUnlocked = true;
           updateIcon();
-          showHud("Audio: switched to RAW source ✅", 1200);
+          showHud("Audio unlocked ✅ (RAW)", 1200);
+
+          const steps = 45;
+          let step = 0;
+          const it = setInterval(()=>{
+            step++;
+            audio.volume = Math.min(target, (step/steps)*target);
+            if (step >= steps) clearInterval(it);
+          }, durationMs/steps);
+
           return true;
         }catch(e2){
           updateIcon();
-          showHud("Audio error:\n" + (e2?.message || "play() blocked / source not reachable"), 3200);
+          // This is the classic message: user didn't interact
+          showHud("Tap/Swipe once to start audio.", 2200);
           return false;
         }
       }else{
         updateIcon();
-        showHud("Audio error:\n" + (e?.message || "play() blocked / source not reachable"), 3200);
+        showHud("Tap/Swipe once to start audio.", 2200);
         return false;
       }
+    }finally{
+      attempting = false;
     }
   }
 
+  async function playNormal(){
+    if (attempting) return false;
+    attempting = true;
+    try{
+      await audio.play();
+      hasEverPlayed = true;
+      audioUnlocked = true;
+      updateIcon();
+      return true;
+    }catch(e){
+      // try RAW once
+      if (!usingRawFallback){
+        usingRawFallback = true;
+        setAudioSrc(AUDIO_SRC_RAW);
+        try{
+          await audio.play();
+          hasEverPlayed = true;
+          audioUnlocked = true;
+          updateIcon();
+          showHud("Audio unlocked ✅ (RAW)", 1200);
+          return true;
+        }catch(e2){
+          updateIcon();
+          showHud("Tap/Swipe once to start audio.", 2200);
+          return false;
+        }
+      }
+      updateIcon();
+      showHud("Tap/Swipe once to start audio.", 2200);
+      return false;
+    }finally{
+      attempting = false;
+    }
+  }
+
+  // Play/Pause button always works after gesture unlock
   centerBtn.addEventListener("click", async ()=>{
-    if (audio.paused) await tryPlay();
-    else { audio.pause(); updateIcon(); }
+    if (audio.paused) {
+      if (!hasEverPlayed) await playWithFadeIn(2500);
+      else await playNormal();
+    } else {
+      audio.pause();
+      updateIcon();
+    }
   });
 
-  audio.addEventListener("play", updateIcon);
+  audio.addEventListener("play", ()=>{ audioUnlocked = true; updateIcon(); });
   audio.addEventListener("pause", updateIcon);
-  audio.addEventListener("error", ()=>{
-    showHud("Audio loading failed (404/path/mime).", 2800);
-  });
+  audio.addEventListener("error", ()=> showHud("Audio load failed (path/mime).", 2400));
 
   // =======================
   // VOLUME ring (visual correct fill)
@@ -271,7 +348,7 @@
   setVolume(0.4);
 
   // =======================
-  // PANELS (NEW PATH)
+  // PANELS
   // manga/chapter-00/panel01.jpg
   // =======================
   let panelIndex = 1;
@@ -289,30 +366,39 @@
 
   // =======================
   // SWIPE (RIGHT = CONTINUE)
-  // Desired:
-  // swipe LEFT->RIGHT (dx positive) => NEXT
-  // swipe RIGHT->LEFT (dx negative) => PREV
-  // pinch ignores swipe
+  // LEFT->RIGHT (dx positive) => NEXT
+  // RIGHT->LEFT (dx negative) => PREV
+  // Pinch ignores swipe.
+  // + FIRST gesture unlocks audio automatically.
   // =======================
   let isPinching=false;
   let sx=0, sy=0, t0=0;
 
-  panelArea.addEventListener("touchstart", e=>{
+  async function unlockAudioOnFirstGesture(){
+    if (audioUnlocked) return;
+    // One gesture: try start audio with fade
+    await playWithFadeIn(2500);
+  }
+
+  panelArea.addEventListener("touchstart", async (e)=>{
     if (e.touches.length >= 2){
       isPinching = true;
       return;
     }
     isPinching = false;
+
     const t = e.touches[0];
     sx=t.clientX; sy=t.clientY; t0=Date.now();
+
     showHud(`Panel ${panelIndex} / ${TOTAL_PANELS}`, 2000);
+    unlockAudioOnFirstGesture();
   }, {passive:true});
 
-  panelArea.addEventListener("touchmove", e=>{
+  panelArea.addEventListener("touchmove", (e)=>{
     if (e.touches.length >= 2) isPinching = true;
   }, {passive:true});
 
-  panelArea.addEventListener("touchend", e=>{
+  panelArea.addEventListener("touchend", (e)=>{
     if (isPinching) return;
 
     const t = e.changedTouches[0];
@@ -321,17 +407,16 @@
     const dt=Date.now()-t0;
 
     if(Math.abs(dx)>40 && Math.abs(dx)>Math.abs(dy)*1.2 && dt<700){
-      // ✅ LEFT->RIGHT => NEXT (continue)
-      if(dx > 0 && panelIndex < TOTAL_PANELS) panelIndex++;
-      // ✅ RIGHT->LEFT => PREV
-      if(dx < 0 && panelIndex > 1) panelIndex--;
+      if(dx > 0 && panelIndex < TOTAL_PANELS) panelIndex++; // RIGHT = continue
+      if(dx < 0 && panelIndex > 1) panelIndex--;            // LEFT = back
       renderPanel();
     }
   }, {passive:true});
 
-  // Tap on panel: show HUD
+  // Tap also unlocks audio (for users who don't swipe)
   panelArea.addEventListener("click", ()=>{
     showHud(`Panel ${panelIndex} / ${TOTAL_PANELS}`, 2000);
+    unlockAudioOnFirstGesture();
   });
 
   // =======================
@@ -340,7 +425,9 @@
   window.addEventListener("load", ()=>{
     setupAudio();
     renderPanel();
-    tryPlay(); // autoplay attempt (may fail, button will work)
+
+    // Autoplay attempt (expected to fail on mobile, that's fine)
+    playWithFadeIn(2500);
   });
 </script>
 
