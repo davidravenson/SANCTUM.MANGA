@@ -83,7 +83,7 @@
       flex:1;
       font-size:13px;
       line-height:1.25;
-      white-space:pre-line; /* newline shows */
+      white-space:pre-line;
       opacity:0.95;
       overflow:hidden;
       display:-webkit-box;
@@ -168,7 +168,6 @@
   const panelArea = document.getElementById("panelArea");
   const hud = document.getElementById("hud");
   const ring = document.getElementById("ring");
-  const ringWrap = document.getElementById("ringWrap");
   const centerBtn = document.getElementById("centerBtn");
   const trackNameEl = document.getElementById("trackName");
 
@@ -218,7 +217,6 @@
     audio.volume = 0.4;
     updateIcon();
 
-    // start with local (GitHub Pages)
     usingRawFallback = false;
     setAudioSrc(AUDIO_SRC_LOCAL);
   }
@@ -229,7 +227,6 @@
       updateIcon();
       return true;
     }catch(e){
-      // If local failed, try RAW once
       if (!usingRawFallback){
         usingRawFallback = true;
         setAudioSrc(AUDIO_SRC_RAW);
@@ -252,12 +249,8 @@
   }
 
   centerBtn.addEventListener("click", async ()=>{
-    if (audio.paused) {
-      await tryPlay();
-    } else {
-      audio.pause();
-      updateIcon();
-    }
+    if (audio.paused) await tryPlay();
+    else { audio.pause(); updateIcon(); }
   });
 
   audio.addEventListener("play", updateIcon);
@@ -267,8 +260,7 @@
   });
 
   // =======================
-  // VOLUME ring (simple set by tap angle optional later)
-  // For now: keep it visual & correct fill.
+  // VOLUME ring (visual correct fill)
   // =======================
   function setVolume(v){
     v = Math.max(0, Math.min(1, v));
@@ -296,10 +288,11 @@
   };
 
   // =======================
-  // SWIPE (FIXED DIRECTION + pinch ignores swipe)
+  // SWIPE (RIGHT = CONTINUE)
   // Desired:
-  // swipe RIGHT->LEFT (dx negative) => NEXT
-  // swipe LEFT->RIGHT (dx positive) => PREV
+  // swipe LEFT->RIGHT (dx positive) => NEXT
+  // swipe RIGHT->LEFT (dx negative) => PREV
+  // pinch ignores swipe
   // =======================
   let isPinching=false;
   let sx=0, sy=0, t0=0;
@@ -328,15 +321,15 @@
     const dt=Date.now()-t0;
 
     if(Math.abs(dx)>40 && Math.abs(dx)>Math.abs(dy)*1.2 && dt<700){
-      // ✅ RIGHT->LEFT => NEXT
-      if(dx < 0 && panelIndex < TOTAL_PANELS) panelIndex++;
-      // ✅ LEFT->RIGHT => PREV
-      if(dx > 0 && panelIndex > 1) panelIndex--;
+      // ✅ LEFT->RIGHT => NEXT (continue)
+      if(dx > 0 && panelIndex < TOTAL_PANELS) panelIndex++;
+      // ✅ RIGHT->LEFT => PREV
+      if(dx < 0 && panelIndex > 1) panelIndex--;
       renderPanel();
     }
   }, {passive:true});
 
-  // Tap on panel: show HUD + (optional) attempt play if paused
+  // Tap on panel: show HUD
   panelArea.addEventListener("click", ()=>{
     showHud(`Panel ${panelIndex} / ${TOTAL_PANELS}`, 2000);
   });
@@ -347,9 +340,7 @@
   window.addEventListener("load", ()=>{
     setupAudio();
     renderPanel();
-
-    // Autoplay attempt (may fail on mobile; button tap will work)
-    tryPlay();
+    tryPlay(); // autoplay attempt (may fail, button will work)
   });
 </script>
 
