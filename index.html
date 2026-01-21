@@ -7,8 +7,8 @@
 
 <style>
   :root{
-    /* Paper texture from your repo (raw file, not github blob) */
-    --paper-bg: url("https://raw.githubusercontent.com/davidravenson/SANCTUM.MANGA/master/media/ui/manga_paper_bg.png");
+    /* ✅ LOCAL (same-origin) path — MOST RELIABLE on GitHub Pages */
+    --paper-bg: url("./media/ui/manga_paper_bg.png");
   }
 
   html,body{
@@ -19,7 +19,7 @@
     background:#000;
   }
 
-  /* Paper texture layer */
+  /* Paper texture layer (stronger & guaranteed visible) */
   body::before{
     content:"";
     position:fixed;
@@ -30,10 +30,11 @@
     background-position: center;
     background-repeat:no-repeat;
     opacity: 1;
+    filter: contrast(1.05) brightness(1.05);
     transform: translateZ(0);
   }
 
-  /* Dark veil (readability) */
+  /* MUCH LIGHTER veil so paper can be seen */
   body::after{
     content:"";
     position:fixed;
@@ -41,8 +42,8 @@
     z-index:-2;
     pointer-events:none;
     background:
-      radial-gradient(circle at 35% 20%, rgba(0,0,0,0.35), rgba(0,0,0,0.70) 65%, rgba(0,0,0,0.82) 100%),
-      linear-gradient(to left, rgba(0,0,0,0.10), rgba(0,0,0,0.45));
+      radial-gradient(circle at 35% 20%, rgba(0,0,0,0.08), rgba(0,0,0,0.35) 70%, rgba(0,0,0,0.48) 100%),
+      linear-gradient(to left, rgba(0,0,0,0.00), rgba(0,0,0,0.22));
   }
 
   .ver{
@@ -53,6 +54,21 @@
     font-family:ui-monospace,monospace;
     pointer-events:none;
     z-index:10;
+  }
+
+  .debug{
+    position:fixed;
+    left:10px; bottom:10px;
+    font-size:11px;
+    opacity:.7;
+    font-family:ui-monospace,monospace;
+    background:rgba(0,0,0,.45);
+    border:1px solid rgba(255,255,255,.12);
+    padding:6px 8px;
+    border-radius:10px;
+    z-index:10;
+    pointer-events:none;
+    white-space:pre-line;
   }
 
   .wrap{
@@ -66,7 +82,6 @@
     box-sizing:border-box;
   }
 
-  /* ===== PANEL: paper edge + print vignette ===== */
   .panel{
     width:100%;
     max-width:900px;
@@ -74,43 +89,12 @@
     border-radius:14px;
     overflow:hidden;
 
-    /* “page” look */
-    border:1px solid rgba(255,255,255,.10);
+    border:1px solid rgba(255,255,255,.12);
     background: rgba(0,0,0,.08);
 
-    /* deeper shadow like a page laying on paper */
     box-shadow:
       0 18px 60px rgba(0,0,0,.55),
       0 2px 0 rgba(255,255,255,.05) inset;
-  }
-
-  .panel::before{
-    /* subtle page edge highlight */
-    content:"";
-    position:absolute;
-    inset:0;
-    pointer-events:none;
-    z-index:3;
-    background:
-      linear-gradient(to bottom, rgba(255,255,255,0.10), rgba(255,255,255,0.02) 35%, rgba(0,0,0,0.12)),
-      radial-gradient(120% 90% at 50% 0%, rgba(255,255,255,0.08), rgba(255,255,255,0) 60%);
-    mix-blend-mode: screen;
-    opacity:.55;
-  }
-
-  .panel::after{
-    /* inner vignette, like ink/print + lens */
-    content:"";
-    position:absolute;
-    inset:0;
-    pointer-events:none;
-    z-index:4;
-    background:
-      radial-gradient(120% 110% at 50% 45%,
-        rgba(0,0,0,0) 55%,
-        rgba(0,0,0,0.22) 78%,
-        rgba(0,0,0,0.40) 100%);
-    opacity:.95;
   }
 
   .panel img{
@@ -121,27 +105,11 @@
     z-index:1;
   }
 
-  /* a tiny “paper tooth” grain on top of the panel (very subtle) */
-  .panelGrain{
-    position:absolute;
-    inset:0;
-    z-index:2;
-    pointer-events:none;
-    opacity:.08;
-    background:
-      repeating-linear-gradient(0deg,
-        rgba(255,255,255,0.18) 0px,
-        rgba(255,255,255,0.18) 1px,
-        rgba(0,0,0,0) 2px,
-        rgba(0,0,0,0) 6px);
-    mix-blend-mode: overlay;
-  }
-
   .hud{
     position:absolute;
     left:12px; bottom:12px;
     font-size:12px;
-    background:rgba(0,0,0,.60);
+    background:rgba(0,0,0,.55);
     padding:7px 10px;
     border-radius:10px;
     opacity:0;
@@ -152,10 +120,8 @@
     white-space:pre-line;
     max-width:calc(100% - 24px);
   }
-
   .hud.on{ opacity:.92; }
 
-  /* ===== TOOLBAR: glass card sitting on paper ===== */
   .toolbar{
     width:100%;
     max-width:900px;
@@ -164,7 +130,8 @@
     gap:12px;
     padding:12px;
 
-    background:rgba(0,0,0,.26);
+    /* transparent glass so background paper shows through */
+    background:rgba(0,0,0,.18);
     border:1px solid rgba(255,255,255,.12);
     border-radius:18px;
     box-sizing:border-box;
@@ -173,7 +140,7 @@
     -webkit-backdrop-filter: blur(10px);
 
     box-shadow:
-      0 16px 50px rgba(0,0,0,.38),
+      0 16px 50px rgba(0,0,0,.30),
       0 1px 0 rgba(255,255,255,.06) inset;
   }
 
@@ -181,7 +148,7 @@
     overflow:hidden;
     border-radius:14px;
     border:1px solid rgba(255,255,255,.10);
-    background:rgba(0,0,0,.20);
+    background:rgba(0,0,0,.12);
   }
 
   .playerWrap iframe{
@@ -214,31 +181,25 @@
     padding:7px 12px;
     border-radius:999px;
     white-space:nowrap;
-    background:rgba(0,0,0,.18);
+    background:rgba(0,0,0,.12);
   }
-
-  .scLink:active{ opacity:1; }
 </style>
 </head>
 
 <body>
 
-<div class="ver">v0.21</div>
+<div class="ver">v0.22</div>
+<div class="debug" id="dbg">Paper: checking…</div>
 
 <div class="wrap">
 
-  <!-- PANEL -->
   <div class="panel" id="panel">
     <img id="img" src="manga/chapter-00/panel01.jpg" alt="Panel 01">
-    <div class="panelGrain" aria-hidden="true"></div>
     <div class="hud on" id="hud">Ready.
 Swipe right to continue.</div>
   </div>
 
-  <!-- TOOLBAR -->
   <div class="toolbar">
-
-    <!-- SoundCloud Player first -->
     <div class="playerWrap" aria-label="SoundCloud player">
       <iframe
         scrolling="no"
@@ -247,7 +208,6 @@ Swipe right to continue.</div>
       </iframe>
     </div>
 
-    <!-- Track info second -->
     <div class="trackRow">
       <div class="track">
         Sentinel 2 (SoundCloud)<br>
@@ -261,13 +221,19 @@ Swipe right to continue.</div>
         Open on SoundCloud
       </a>
     </div>
-
   </div>
 
 </div>
 
 <script>
-  // v0.21 — Panel swipe logic (right swipe = next)
+  // v0.22 — debug if paper loads
+  const dbg = document.getElementById("dbg");
+  const test = new Image();
+  test.onload = () => dbg.textContent = "Paper: OK ✅\n(media/ui/manga_paper_bg.png)";
+  test.onerror = () => dbg.textContent = "Paper: NOT FOUND ❌\nCheck path:\n/media/ui/manga_paper_bg.png";
+  test.src = "./media/ui/manga_paper_bg.png?v=" + Date.now();
+
+  // Panel swipe logic (right swipe = next)
   const panel = document.getElementById("panel");
   const img = document.getElementById("img");
   const hud = document.getElementById("hud");
