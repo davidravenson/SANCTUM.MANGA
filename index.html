@@ -3,117 +3,519 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>SANCTUM — Chapter 00</title>
+<title>SANCTUM — Reader</title>
 
 <style>
-  html, body {
-    margin: 0;
-    padding: 0;
-    background: #000;
+  :root{
+    --paper-bg: url("media/ui/manga_paper_bg.png");
+  }
+
+  html, body{
+    margin:0;
+    padding:0;
+    height:100%;
+    background:#000;
     font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    overflow:hidden;
+    touch-action: manipulation; /* allows swipe/tap, pinch zoom still depends on browser */
   }
 
-  .page {
-    min-height: 100vh;
-    background: url("media/ui/manga_paper_bg.png") center / cover no-repeat;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 24px 12px 120px;
-    box-sizing: border-box;
+  body{
+    background: var(--paper-bg) center / cover no-repeat fixed;
   }
 
-  .panel {
-    max-width: 900px;
-    width: 100%;
-    background: #fff;
+  .app{
+    height:100vh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    box-sizing:border-box;
+    padding: 6px 6px 10px; /* minimal frame */
+    gap: 8px;
+    position:relative;
+  }
+
+  /* ===== VIEWPORT (Cover or Panel) ===== */
+  .viewWrap{
+    flex: 1 1 auto;
+    width:100%;
+    max-width: 1100px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background: rgba(255,255,255,0.55); /* thin paper aura */
     border-radius: 14px;
-    padding: 10px;
-    box-shadow: 0 12px 40px rgba(0,0,0,.35);
+    padding: 4px; /* minimal white frame */
+    box-shadow: 0 10px 30px rgba(0,0,0,.35);
+    position:relative;
+    overflow:hidden;
   }
 
-  .panel img {
-    width: 100%;
-    display: block;
-    border-radius: 8px;
+  .viewImg{
+    width:100%;
+    height:auto;
+    max-height: calc(100vh - 150px);
+    object-fit: contain;
+    display:block;
+    background:#fff;
+    border-radius: 10px;
+    user-select:none;
+    -webkit-user-select:none;
+    -webkit-touch-callout:none;
   }
 
-  /* ===== AUDIO BLOCK ===== */
-
-  .audio-block {
-    max-width: 900px;
-    width: 100%;
-    margin-top: 24px;
-    background: rgba(255,255,255,0.92);
-    border-radius: 16px;
-    padding: 14px 14px 10px;
-    box-sizing: border-box;
+  /* subtle left glow cue */
+  .edgeGlow{
+    position:absolute;
+    left:4px;
+    top:4px;
+    bottom:4px;
+    width:12%;
+    pointer-events:none;
+    border-radius: 10px;
+    background: linear-gradient(
+      to right,
+      rgba(255,255,255,0.18),
+      rgba(255,255,255,0.06),
+      rgba(255,255,255,0.00)
+    );
+    mix-blend-mode: screen;
+    opacity:.85;
   }
 
-  .track-info {
-    margin-bottom: 8px;
-    color: #000;
+  /* ===== HINT / INFO HUD ===== */
+  .hud{
+    position:absolute;
+    left:12px;
+    bottom:12px;
+    background: rgba(0,0,0,.55);
+    color:#fff;
+    font-size:0.85rem;
+    padding: 7px 10px;
+    border-radius: 10px;
+    pointer-events:none;
+    opacity:0;
+    transform: translateY(4px);
+    transition: opacity .22s ease, transform .22s ease;
+    max-width: 80%;
+    line-height: 1.25;
+    z-index: 5;
+  }
+  .hud.show{
+    opacity:1;
+    transform: translateY(0);
   }
 
-  .track-title {
-    font-size: 1.05rem;
-    font-weight: 600;
-    line-height: 1.2;
+  /* ===== AUDIO BAR ===== */
+  .audioBar{
+    width:100%;
+    max-width: 1100px;
+    padding: 8px 10px;
+    border-radius: 14px;
+    background: rgba(255,255,255,0.78);
+    backdrop-filter: blur(6px);
+    box-shadow: 0 8px 24px rgba(0,0,0,.25);
+    box-sizing:border-box;
   }
 
-  .track-artist {
-    font-size: 0.9rem;
-    opacity: 0.7;
+  .trackRow{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap: 10px;
+    margin-bottom:6px;
   }
 
-  iframe {
-    width: 100%;
-    height: 120px;
-    border: none;
-    border-radius: 12px;
+  .trackText{
+    color:#000;
+    min-width: 0;
   }
 
-  /* ===== VERSION (SCROLL ONLY) ===== */
+  .trackTitle{
+    font-weight:800;
+    font-size:0.95rem;
+    letter-spacing:.2px;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
 
-  .maintenance {
-    margin-top: 60px;
-    font-size: 0.75rem;
-    opacity: 0.35;
-    color: #fff;
+  .trackArtist{
+    font-size:0.8rem;
+    opacity:.7;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+
+  .openLink{
+    flex: 0 0 auto;
+    font-size:0.8rem;
+    color:#000;
+    text-decoration:none;
+    border:1px solid rgba(0,0,0,.15);
+    padding: 5px 12px;
+    border-radius: 999px;
+    opacity:.75;
+    background: rgba(255,255,255,.6);
+  }
+
+  iframe{
+    width:100%;
+    height:86px;
+    border:0;
+    border-radius: 10px;
+  }
+
+  /* ===== MAINTENANCE CORNER (sticky bottom-right) ===== */
+  .maintCorner{
+    position: fixed;
+    right: 10px;
+    bottom: 10px;
+    z-index: 9999;
+    font-size: 11px;
+    letter-spacing: .2px;
+    color: rgba(255,255,255,0.65);
+    background: rgba(0,0,0,0.30);
+    border: 1px solid rgba(255,255,255,0.10);
+    border-radius: 10px;
+    padding: 6px 8px;
+    user-select:none;
+    -webkit-user-select:none;
+    pointer-events:none;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
   }
 </style>
 </head>
 
 <body>
 
-<div class="page">
+<!-- Maintenance sticky corner -->
+<div class="maintCorner" id="maintCorner">v0.26</div>
 
-  <!-- PANEL -->
-  <div class="panel">
-    <img src="manga/chapter-00/panel01.jpg" alt="SANCTUM Chapter 00 Panel 01">
+<div class="app" id="app">
+
+  <div class="viewWrap" id="viewWrap">
+    <img class="viewImg" id="viewImg" src="" alt="SANCTUM">
+    <div class="edgeGlow" aria-hidden="true"></div>
+    <div class="hud" id="hud">Ready.</div>
   </div>
 
-  <!-- AUDIO -->
-  <div class="audio-block">
-
-    <!-- 👇 THIS IS THE IMPORTANT PART -->
-    <div class="track-info">
-      <div class="track-title">Sentinel 2</div>
-      <div class="track-artist">Ravenson</div>
+  <div class="audioBar">
+    <div class="trackRow">
+      <div class="trackText">
+        <div class="trackTitle" id="trackTitle">SENTINEL</div>
+        <div class="trackArtist" id="trackArtist">DAVID RAVENSON</div>
+      </div>
+      <a class="openLink" id="trackLink" href="https://soundcloud.com/user-543596862/sentinel-2" target="_blank" rel="noopener">
+        Open
+      </a>
     </div>
 
     <iframe
+      id="scPlayer"
       src="https://w.soundcloud.com/player/?url=https%3A//soundcloud.com/user-543596862/sentinel-2&auto_play=false&hide_related=true&show_comments=false&show_user=false&show_reposts=false&visual=false">
     </iframe>
-
-  </div>
-
-  <!-- MAINTENANCE -->
-  <div class="maintenance">
-    SANCTUM · Chapter 00 · v0.23
   </div>
 
 </div>
+
+<script>
+/* =========================================================
+   SANCTUM Reader v0.26
+   - Page stack: chapters + panels
+   - Cover screen first
+   - Swipe right = next, swipe left = prev
+   - Hash deep-links
+   ========================================================= */
+
+/* --------- PAGE STACK (edit here only) --------- */
+const STACK = [
+  {
+    id: "chapter-00",
+    title: "Pilot / Chapter 00",
+    cover: "manga/chapter-00/cover.jpg",     // <<< create/upload this
+    panels: [
+      "manga/chapter-00/panel01.jpg",
+      // add more when ready:
+      // "manga/chapter-00/panel02.jpg",
+      // "manga/chapter-00/panel03.jpg",
+    ]
+  },
+
+  // placeholders for future (create folders later, panels optional)
+  {
+    id: "chapter-01",
+    title: "Chapter 01",
+    cover: "manga/chapter-01/cover.jpg",
+    panels: [
+      "manga/chapter-01/panel01.jpg"
+    ]
+  },
+  {
+    id: "chapter-02",
+    title: "Chapter 02",
+    cover: "manga/chapter-02/cover.jpg",
+    panels: [
+      "manga/chapter-02/panel01.jpg"
+    ]
+  },
+  {
+    id: "chapter-03",
+    title: "Chapter 03",
+    cover: "manga/chapter-03/cover.jpg",
+    panels: [
+      "manga/chapter-03/panel01.jpg"
+    ]
+  },
+  {
+    id: "chapter-04",
+    title: "Chapter 04",
+    cover: "manga/chapter-04/cover.jpg",
+    panels: [
+      "manga/chapter-04/panel01.jpg"
+    ]
+  }
+];
+
+/* --------- TRACK META (display only) --------- */
+const TRACK = {
+  title: "SENTINEL",
+  artist: "DAVID RAVENSON",
+  url: "https://soundcloud.com/user-543596862/sentinel-2"
+};
+
+/* --------- Elements --------- */
+const viewWrap = document.getElementById("viewWrap");
+const viewImg  = document.getElementById("viewImg");
+const hud      = document.getElementById("hud");
+const maint    = document.getElementById("maintCorner");
+
+const trackTitle  = document.getElementById("trackTitle");
+const trackArtist = document.getElementById("trackArtist");
+const trackLink   = document.getElementById("trackLink");
+const scPlayer    = document.getElementById("scPlayer");
+
+/* Apply track meta */
+trackTitle.textContent  = TRACK.title;
+trackArtist.textContent = TRACK.artist;
+trackLink.href          = TRACK.url;
+scPlayer.src            = "https://w.soundcloud.com/player/?url=" + encodeURIComponent(TRACK.url)
+                        + "&auto_play=false&hide_related=true&show_comments=false&show_user=false&show_reposts=false&visual=false";
+
+/* --------- State --------- */
+let chapIndex = 0;
+let pageIndex = -1; // -1 means cover, 0..n means panel index
+
+function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
+
+function currentChapter(){
+  return STACK[chapIndex];
+}
+
+function updateMaintenance(){
+  const chap = currentChapter();
+  const where = (pageIndex === -1)
+    ? `${chap.id} · cover`
+    : `${chap.id} · panel ${pageIndex+1}/${chap.panels.length}`;
+  maint.textContent = `v0.26 · ${where}`;
+}
+
+function showHud(text, ms=1000){
+  hud.textContent = text;
+  hud.classList.add("show");
+  setTimeout(()=>hud.classList.remove("show"), ms);
+}
+
+function setHash(){
+  const chap = currentChapter();
+  const p = (pageIndex === -1) ? "cover" : String(pageIndex+1);
+  // #chapter-00/cover  or  #chapter-00/3
+  location.hash = `${chap.id}/${p}`;
+}
+
+function parseHash(){
+  const raw = (location.hash || "").replace("#","").trim();
+  if(!raw) return false;
+
+  const parts = raw.split("/");
+  if(parts.length !== 2) return false;
+
+  const chapId = parts[0];
+  const p = parts[1];
+
+  const idx = STACK.findIndex(c => c.id === chapId);
+  if(idx === -1) return false;
+
+  chapIndex = idx;
+
+  if(p === "cover"){
+    pageIndex = -1;
+    return true;
+  }
+
+  const n = Number(p);
+  if(!Number.isFinite(n)) return false;
+
+  pageIndex = clamp(n-1, 0, Math.max(0, currentChapter().panels.length-1));
+  return true;
+}
+
+/* --------- Render --------- */
+function render(){
+  const chap = currentChapter();
+
+  if(pageIndex === -1){
+    viewImg.src = chap.cover;
+    viewImg.alt = `${chap.title} — Cover`;
+    showHud("Tap / Swipe right to begin.", 1000);
+  } else {
+    const src = chap.panels[pageIndex];
+    viewImg.src = src;
+    viewImg.alt = `${chap.title} — Panel ${pageIndex+1}`;
+    showHud(`Panel ${pageIndex+1} / ${chap.panels.length}`, 900);
+    // preload neighbors
+    preload(chap, pageIndex+1);
+    preload(chap, pageIndex-1);
+  }
+
+  setHash();
+  updateMaintenance();
+}
+
+function preload(chap, idx){
+  if(idx < 0 || idx >= chap.panels.length) return;
+  const img = new Image();
+  img.src = chap.panels[idx];
+}
+
+viewImg.addEventListener("error", ()=>{
+  const chap = currentChapter();
+  if(pageIndex === -1){
+    showHud(`Cover missing: ${chap.cover}`, 1400);
+  } else {
+    showHud(`Missing: ${chap.panels[pageIndex]}`, 1400);
+  }
+});
+
+/* --------- Navigation --------- */
+function next(){
+  const chap = currentChapter();
+
+  if(pageIndex === -1){
+    // cover -> first panel (if exists)
+    if(chap.panels.length > 0){
+      pageIndex = 0;
+      render();
+    } else {
+      showHud("No panels yet.", 1200);
+    }
+    return;
+  }
+
+  if(pageIndex < chap.panels.length - 1){
+    pageIndex++;
+    render();
+    return;
+  }
+
+  // end of chapter -> next chapter cover
+  if(chapIndex < STACK.length - 1){
+    chapIndex++;
+    pageIndex = -1;
+    render();
+    return;
+  }
+
+  showHud("End of stack.", 1100);
+}
+
+function prev(){
+  const chap = currentChapter();
+
+  if(pageIndex === -1){
+    // cover -> previous chapter last panel
+    if(chapIndex > 0){
+      chapIndex--;
+      const prevChap = currentChapter();
+      pageIndex = Math.max(-1, prevChap.panels.length - 1);
+      render();
+    } else {
+      showHud("Start.", 900);
+    }
+    return;
+  }
+
+  if(pageIndex > 0){
+    pageIndex--;
+    render();
+    return;
+  }
+
+  // first panel -> cover
+  pageIndex = -1;
+  render();
+}
+
+/* --------- Swipe handling --------- */
+let startX=null, startY=null, startT=0, isPinching=false;
+
+function onTouchStart(e){
+  if(e.touches.length >= 2){
+    isPinching = true;
+    return;
+  }
+  isPinching = false;
+  const t = e.touches[0];
+  startX = t.clientX;
+  startY = t.clientY;
+  startT = Date.now();
+}
+
+function onTouchEnd(e){
+  if(isPinching) return;
+  if(startX === null) return;
+
+  const t = e.changedTouches[0];
+  const dx = t.clientX - startX;
+  const dy = t.clientY - startY;
+  const dt = Date.now() - startT;
+
+  // swipe threshold
+  if(Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(dy)*1.2 && dt < 800){
+    if(dx > 0){
+      // Swipe RIGHT to continue
+      next();
+    } else {
+      prev();
+    }
+  }
+
+  startX=null; startY=null;
+}
+
+viewWrap.addEventListener("touchstart", onTouchStart, {passive:true});
+viewWrap.addEventListener("touchend", onTouchEnd, {passive:true});
+viewWrap.addEventListener("touchmove", (e)=>{
+  if(e.touches.length >= 2) isPinching = true;
+}, {passive:true});
+
+/* click/tap to show small info + cover->start convenience */
+viewWrap.addEventListener("click", ()=>{
+  if(pageIndex === -1) next();
+  else showHud(`Swipe right to continue.`, 900);
+});
+
+/* --------- Init --------- */
+(function init(){
+  // deep link support
+  if(!parseHash()){
+    chapIndex = 0;
+    pageIndex = -1; // start on cover
+  }
+  render();
+})();
+</script>
 
 </body>
 </html>
