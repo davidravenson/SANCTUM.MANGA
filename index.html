@@ -11,13 +11,12 @@ html,body{
   background:#000; color:#fff;
   font-family:system-ui,sans-serif;
 }
-
 .ver{
   position:fixed; top:8px; right:10px;
-  font-size:11px; opacity:.5;
+  font-size:11px; opacity:.55;
   font-family:ui-monospace,monospace;
+  pointer-events:none;
 }
-
 .wrap{
   min-height:100%;
   display:flex;
@@ -26,98 +25,163 @@ html,body{
   justify-content:center;
   gap:14px;
   padding:12px;
+  box-sizing:border-box;
 }
-
-.panel img{
+.panel{
   width:100%;
   max-width:900px;
-  display:block;
+  position:relative;
 }
-
+.panel img{
+  width:100%;
+  display:block;
+  background:#000;
+}
+.hud{
+  position:absolute;
+  left:12px; bottom:12px;
+  font-size:12px;
+  background:rgba(0,0,0,.6);
+  padding:7px 10px;
+  border-radius:10px;
+  opacity:.92;
+  white-space:pre-line;
+  max-width:calc(100% - 24px);
+  pointer-events:none;
+}
 .toolbar{
   width:100%;
   max-width:900px;
   display:flex;
   justify-content:space-between;
   align-items:center;
+  gap:12px;
   padding:10px 12px;
-  background:rgba(20,20,20,.7);
+  background:rgba(20,20,20,.72);
+  border:1px solid rgba(255,255,255,.12);
   border-radius:16px;
+  box-sizing:border-box;
 }
-
 .track{
   font-size:13px;
+  line-height:1.25;
   white-space:pre-line;
-  opacity:.9;
+  opacity:.92;
+  flex:1;
 }
-
-button{
+.btn{
   width:56px; height:56px;
   border-radius:50%;
   border:1px solid rgba(255,255,255,.25);
   background:#111;
   color:#fff;
-  font-size:20px;
+  display:grid;
+  place-items:center;
+  padding:0;
 }
+.btn svg{width:22px;height:22px;fill:#fff;display:block}
 </style>
 </head>
 
 <body>
-<div class="ver">v0.12</div>
+<div class="ver">v0.13</div>
 
-<audio id="audio" preload="auto" playsinline>
+<audio id="audio" preload="auto" playsinline crossorigin="anonymous">
   <source src="https://raw.githubusercontent.com/davidravenson/SANCTUM.MANGA/master/media/audio/chapter-00/instrumental.mp3" type="audio/mpeg">
 </audio>
 
-<div class="wrap" id="unlockArea">
-
-  <div class="panel">
-    <img src="manga/chapter-00/panel01.jpg">
+<div class="wrap">
+  <div class="panel" id="panel">
+    <img src="manga/chapter-00/panel01.jpg" alt="Panel 01">
+    <div class="hud" id="hud">Ready.\nTap Play to start.</div>
   </div>
 
   <div class="toolbar">
-    <div class="track">
-      Arcangel (Placeholder)
-      — (Artist later)
-    </div>
-    <button id="playBtn">▶</button>
+    <div class="track">Arcangel (Placeholder)\n— (Artist later)</div>
+    <button class="btn" id="playBtn" aria-label="Play/Pause"></button>
   </div>
-
 </div>
 
 <script>
 const audio = document.getElementById("audio");
 const btn   = document.getElementById("playBtn");
-const unlockArea = document.getElementById("unlockArea");
+const hud   = document.getElementById("hud");
+
+const ICON_PLAY  = `<svg viewBox="0 0 24 24"><path d="M8 6.8v10.4c0 .9 1 1.4 1.7.9l9-5.2c.7-.4.7-1.4 0-1.8l-9-5.2C9 5.4 8 5.9 8 6.8Z"/></svg>`;
+const ICON_PAUSE = `<svg viewBox="0 0 24 24"><path d="M8 6h3v12H8zM13 6h3v12h-3z"/></svg>`;
+btn.innerHTML = ICON_PLAY;
 
 let unlocked = false;
+let unlocking = false;
 
-// 🔑 ONE REAL USER GESTURE
-unlockArea.addEventListener("click", async () => {
-  if (unlocked) return;
+function setHud(text){ hud.textContent = text; }
+
+async function unlockAudio(){
+  if (unlocked || unlocking) return unlocked;
+  unlocking = true;
+  setHud("Unlocking audio…\n(1st gesture)");
+
   try{
-    audio.volume = 0.5;
+    audio.volume = 0.6;
+
+    // The classic mobile-unlock trick:
+    // play a moment, then pause immediately, so future plays are allowed.
     await audio.play();
     audio.pause();
-    unlocked = true;
-    console.log("Audio unlocked");
-  }catch(e){
-    console.log("Unlock failed", e);
-  }
-},{ once:true });
+    audio.currentTime = 0;
 
-btn.addEventListener("click", async (e)=>{
-  e.stopPropagation(); // IMPORTANT
-  if (!unlocked) return;
+    unlocked = true;
+    setHud("Unlocked ✓\nTap Play again (or it will auto-start).");
+    return true;
+  }catch(e){
+    setHud("Unlock failed.\nTry tapping the panel once, then Play.");
+    return false;
+  }finally{
+    unlocking = false;
+  }
+}
+
+async function togglePlay(){
+  // ensure unlocked first
+  if (!unlocked){
+    const ok = await unlockAudio();
+    if (!ok) return;
+  }
 
   if (audio.paused){
-    await audio.play();
-    btn.textContent = "⏸";
-  } else {
+    try{
+      await audio.play();
+      btn.innerHTML = ICON_PAUSE;
+      setHud("Playing…");
+    }catch(e){
+      setHud("Play blocked.\nBrowser policy / source issue.");
+    }
+  }else{
     audio.pause();
-    btn.textContent = "▶";
+    btn.innerHTML = ICON_PLAY;
+    setHud("Paused.");
   }
+}
+
+// Make first Play press do unlock + play
+btn.addEventListener("click", async (e)=>{
+  e.preventDefault();
+  await togglePlay();
+});
+
+// Helpful: tapping the panel also unlocks (optional)
+document.getElementById("panel").addEventListener("click", async ()=>{
+  if (!unlocked) await unlockAudio();
+});
+
+// Keep icon synced
+audio.addEventListener("play", ()=> btn.innerHTML = ICON_PAUSE);
+audio.addEventListener("pause", ()=> btn.innerHTML = ICON_PLAY);
+audio.addEventListener("error", ()=>{
+  const code = audio.error ? audio.error.code : "?";
+  setHud(`Audio error ${code}\nSource may be blocked/unsupported.`);
 });
 </script>
+
 </body>
 </html>
