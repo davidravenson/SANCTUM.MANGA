@@ -11,13 +11,15 @@
   }
 
   html,body{
-    margin:0; padding:0; height:100%;
+    margin:0; padding:0;
+    min-height:100%;
     color:#fff;
     font-family:system-ui,sans-serif;
     touch-action:auto;
     background:#000;
   }
 
+  /* Paper texture */
   body::before{
     content:"";
     position:fixed;
@@ -32,6 +34,7 @@
     transform: translateZ(0);
   }
 
+  /* Soft veil (kept light so paper shows) */
   body::after{
     content:"";
     position:fixed;
@@ -43,40 +46,8 @@
       linear-gradient(to left, rgba(0,0,0,0.00), rgba(0,0,0,0.22));
   }
 
-  .ver{
-    position:fixed;
-    top:8px; right:10px;
-    font-size:11px;
-    opacity:.55;
-    font-family:ui-monospace,monospace;
-    pointer-events:none;
-    z-index:10;
-  }
-
-  /* Debug box moved UP and auto-hide capable */
-  .debug{
-    position:fixed;
-    left:10px;
-    bottom:118px; /* ✅ push above SoundCloud toolbar zone */
-    font-size:11px;
-    opacity:.7;
-    font-family:ui-monospace,monospace;
-    background:rgba(0,0,0,.45);
-    border:1px solid rgba(255,255,255,.12);
-    padding:6px 8px;
-    border-radius:10px;
-    z-index:10;
-    pointer-events:none;
-    white-space:pre-line;
-    transition: opacity 200ms ease, transform 200ms ease;
-  }
-  .debug.off{
-    opacity:0;
-    transform: translateY(6px);
-  }
-
   .wrap{
-    min-height:100%;
+    min-height:100vh;
     display:flex;
     flex-direction:column;
     align-items:center;
@@ -182,13 +153,47 @@
     white-space:nowrap;
     background:rgba(0,0,0,.12);
   }
+
+  /* === Maintenance deck (only visible when you scroll down) === */
+  .maintenance{
+    width:100%;
+    max-width:900px;
+    margin:18px auto 30px;
+    padding:14px 12px;
+    box-sizing:border-box;
+    border-radius:16px;
+    border:1px solid rgba(255,255,255,.10);
+    background:rgba(0,0,0,.22);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+
+  .maintenance h3{
+    margin:0 0 8px;
+    font-size:12px;
+    opacity:.8;
+    letter-spacing:.06em;
+    font-family:ui-monospace,monospace;
+    font-weight:600;
+  }
+
+  .maintenance pre{
+    margin:0;
+    font-size:11px;
+    opacity:.78;
+    font-family:ui-monospace,monospace;
+    white-space:pre-wrap;
+    word-break:break-word;
+    line-height:1.35;
+  }
+
+  .maintenance .muted{
+    opacity:.6;
+  }
 </style>
 </head>
 
 <body>
-
-<div class="ver">v0.23</div>
-<div class="debug" id="dbg">Paper: checking…</div>
 
 <div class="wrap">
 
@@ -222,30 +227,36 @@ Swipe right to continue.</div>
     </div>
   </div>
 
+  <!-- Maintenance deck lives BELOW everything -->
+  <div class="maintenance" id="maintenance">
+    <h3>MAINTENANCE — v0.24</h3>
+    <pre id="maintLog" class="muted">Booting…</pre>
+  </div>
+
 </div>
 
 <script>
-  // v0.23
+  // v0.24
 
-  // ===== Debug: auto-hide after success (and also after a few seconds anyway)
-  const dbg = document.getElementById("dbg");
-  const test = new Image();
-
-  function hideDebugSoon(ms){
-    setTimeout(()=> dbg.classList.add("off"), ms);
+  // ===== Maintenance logger (prints ONLY in the bottom deck)
+  const maintLog = document.getElementById("maintLog");
+  function logLine(s){
+    maintLog.classList.remove("muted");
+    maintLog.textContent += "\n" + s;
   }
+  function setLog(s){
+    maintLog.textContent = s;
+    maintLog.classList.remove("muted");
+  }
+  setLog("MAINTENANCE LOG\n— v0.24\n");
 
-  test.onload = () => {
-    dbg.textContent = "Paper: OK ✅\n(media/ui/manga_paper_bg.png)";
-    hideDebugSoon(1200);  // ✅ fade out after ~1.2s
-  };
-  test.onerror = () => {
-    dbg.textContent = "Paper: NOT FOUND ❌\nCheck path:\n/media/ui/manga_paper_bg.png";
-    hideDebugSoon(6000);  // still hide later so it doesn't live forever
-  };
+  // ===== Paper check -> write result into maintenance deck
+  const test = new Image();
+  test.onload = () => logLine("Paper: OK ✅  ./media/ui/manga_paper_bg.png");
+  test.onerror = () => logLine("Paper: NOT FOUND ❌  ./media/ui/manga_paper_bg.png");
   test.src = "./media/ui/manga_paper_bg.png?v=" + Date.now();
 
-  // ===== HUD: always fade after 1s
+  // ===== HUD (auto hide after 1s)
   const panel = document.getElementById("panel");
   const img = document.getElementById("img");
   const hud = document.getElementById("hud");
@@ -254,13 +265,13 @@ Swipe right to continue.</div>
     hud.textContent = text;
     hud.classList.add("on");
     clearTimeout(showHud.timer);
-    showHud.timer = setTimeout(()=> hud.classList.remove("on"), 1000); // ✅ 1 sec
+    showHud.timer = setTimeout(()=> hud.classList.remove("on"), 1000);
   }
 
-  // initial HUD auto-hide in 1s
+  // initial HUD auto-hide
   showHud("Ready.\nSwipe right to continue.");
 
-  // ===== Panel swipe logic (right swipe = next)
+  // ===== Panel swipe (right swipe = next)
   let panelIndex = 1;
   const TOTAL_PANELS = 20;
 
@@ -269,9 +280,15 @@ Swipe right to continue.</div>
   }
 
   function render(){
-    img.src = panelFile(panelIndex);
+    const src = panelFile(panelIndex);
+    img.src = src;
     showHud("Panel " + panelIndex + " / " + TOTAL_PANELS);
+    logLine("Panel loaded: " + src);
   }
+
+  img.addEventListener("error", () => {
+    logLine("Panel ERROR ❌ " + img.src);
+  });
 
   let sx=0, sy=0, t0=0, pinching=false;
 
@@ -288,6 +305,7 @@ Swipe right to continue.</div>
 
   panel.addEventListener("touchend", e=>{
     if(pinching) return;
+
     const t=e.changedTouches[0];
     const dx=t.clientX-sx;
     const dy=t.clientY-sy;
@@ -300,7 +318,6 @@ Swipe right to continue.</div>
     }
   }, {passive:true});
 
-  // tap shows info briefly
   panel.addEventListener("click", ()=> showHud("Panel "+panelIndex+" / "+TOTAL_PANELS));
 </script>
 
