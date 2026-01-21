@@ -3,32 +3,23 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>SANCTUM — Pilot (v0.10)</title>
+  <title>SANCTUM — Pilot</title>
 
   <style>
-    :root{ --paper-bg: url("./media/ui/manga_paper_bg.png"); }
-
-    html, body{
+    html,body{
       margin:0; padding:0; height:100%;
       background:#000; color:#fff;
       font-family:system-ui,sans-serif;
       touch-action:auto;
     }
 
-    body::before{
-      content:"";
-      position:fixed; inset:0; z-index:-1;
-      background-image: var(--paper-bg);
-      background-size:cover;
-      background-position:center;
-      background-repeat:no-repeat;
-    }
-
     .ver{
-      position:fixed; top:8px; right:10px;
-      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-      font-size:11px; opacity:0.55;
-      user-select:none; pointer-events:none;
+      position:fixed;
+      top:8px; right:10px;
+      font-size:11px;
+      opacity:.5;
+      font-family:ui-monospace,monospace;
+      pointer-events:none;
     }
 
     .wrap{
@@ -45,9 +36,6 @@
     .panel{
       width:100%;
       max-width:900px;
-      position:relative;
-      overflow:hidden;
-      background:rgba(0,0,0,0.18);
     }
 
     .panel img{
@@ -56,45 +44,24 @@
       background:#000;
     }
 
-    .hud{
-      position:absolute;
-      left:12px; bottom:12px;
-      font-size:12px;
-      opacity:0;
-      background:rgba(0,0,0,0.55);
-      padding:7px 10px;
-      border-radius:10px;
-      transition:opacity 180ms ease;
-      pointer-events:none;
-      max-width: calc(100% - 24px);
-      white-space:pre-line;
-    }
-    .hud.visible{ opacity:0.92; }
-
     .toolbar{
       width:100%;
       max-width:900px;
       display:flex;
-      align-items:center;
       justify-content:space-between;
+      align-items:center;
       gap:12px;
       padding:10px 12px;
+      background:rgba(10,10,10,.6);
+      border:1px solid rgba(255,255,255,.12);
       border-radius:16px;
-      background:rgba(10,10,10,0.55);
-      border:1px solid rgba(255,255,255,0.12);
-      backdrop-filter: blur(6px);
     }
 
-    .trackName{
-      flex:1;
+    .track{
       font-size:13px;
       line-height:1.25;
       white-space:pre-line;
-      opacity:0.95;
-      overflow:hidden;
-      display:-webkit-box;
-      -webkit-line-clamp:2;
-      -webkit-box-orient:vertical;
+      opacity:.9;
     }
 
     .ringWrap{
@@ -102,392 +69,100 @@
       position:relative;
       display:grid;
       place-items:center;
-      user-select:none;
-      -webkit-user-select:none;
       touch-action:none;
     }
 
     .ring{
       position:absolute; inset:0;
       border-radius:50%;
-      background:conic-gradient(#fff 0deg, rgba(255,255,255,0.14) 0deg);
-      -webkit-mask: radial-gradient(circle, transparent 60%, #000 61%);
-              mask: radial-gradient(circle, transparent 60%, #000 61%);
+      background:conic-gradient(#fff 0deg, rgba(255,255,255,.15) 0deg);
+      -webkit-mask:radial-gradient(circle,transparent 60%,#000 61%);
+              mask:radial-gradient(circle,transparent 60%,#000 61%);
       pointer-events:none;
     }
 
     .centerBtn{
       width:46px; height:46px;
       border-radius:50%;
-      border:1px solid rgba(255,255,255,0.16);
-      background:rgba(20,20,20,0.95);
+      border:1px solid rgba(255,255,255,.2);
+      background:#111;
       display:grid;
       place-items:center;
       cursor:pointer;
-      padding:0;
     }
 
-    .centerBtn svg{ width:20px; height:20px; fill:#fff; display:block; }
+    .centerBtn svg{width:20px;height:20px;fill:#fff}
   </style>
 </head>
 
 <body>
-  <div class="ver">v0.10</div>
+<div class="ver">v0.11</div>
 
-  <audio id="bg-audio" preload="auto" playsinline crossorigin="anonymous"></audio>
+<audio id="audio" preload="auto" playsinline crossorigin="anonymous"
+  src="https://raw.githubusercontent.com/davidravenson/SANCTUM.MANGA/master/media/audio/chapter-00/instrumental.mp3">
+</audio>
 
-  <div class="wrap">
-    <div class="panel" id="panelArea">
-      <img id="panelImg" src="" alt="SANCTUM Panel">
-      <div class="hud" id="hud">Loading…</div>
+<div class="wrap">
+
+  <div class="panel" id="panel">
+    <img id="img" src="manga/chapter-00/panel01.jpg" alt="">
+  </div>
+
+  <div class="toolbar">
+    <div class="track">
+      Arcangel (Placeholder)
+      — (Artist later)
     </div>
 
-    <div class="toolbar">
-      <div class="trackName" id="trackName"></div>
-
-      <div class="ringWrap" id="ringWrap" aria-label="Volume ring with Play/Pause">
-        <div class="ring" id="ring" aria-hidden="true"></div>
-        <button class="centerBtn" id="centerBtn" aria-label="Play/Pause"></button>
-      </div>
+    <div class="ringWrap" id="ringWrap">
+      <div class="ring" id="ring"></div>
+      <div class="centerBtn" id="btn"></div>
     </div>
   </div>
 
-  <script>
-    // =======================
-    // CONFIG (v0.10)
-    // =======================
-    const CHAPTER = 0;
-    const TOTAL_PANELS = 20;
-
-    // bump when you replace media to beat cache
-    const ASSET_VERSION = 10;
-
-    const TRACK_TITLE  = "Arcangel (Placeholder)";
-    const TRACK_ARTIST = "— (Artist later)";
-
-    const PAGES_BASE = "https://davidravenson.github.io/SANCTUM.MANGA/";
-    const RAW_BASE   = "https://raw.githubusercontent.com/davidravenson/SANCTUM.MANGA/master/";
-
-    const AUDIO_PAGES = `${PAGES_BASE}media/audio/chapter-00/instrumental.mp3?v=${ASSET_VERSION}`;
-    const AUDIO_RAW   = `${RAW_BASE}media/audio/chapter-00/instrumental.mp3?v=${ASSET_VERSION}`;
-
-    const chapterFolder = `${PAGES_BASE}manga/chapter-${String(CHAPTER).padStart(2,"0")}/`;
-    const panelFile = (i) => `${chapterFolder}panel${String(i).padStart(2,"0")}.jpg?v=${ASSET_VERSION}`;
-
-    // =======================
-    // ELEMENTS
-    // =======================
-    const audio = document.getElementById("bg-audio");
-    const panelImg = document.getElementById("panelImg");
-    const panelArea = document.getElementById("panelArea");
-    const hud = document.getElementById("hud");
-
-    const ringWrap = document.getElementById("ringWrap");
-    const ring = document.getElementById("ring");
-    const centerBtn = document.getElementById("centerBtn");
-    const trackNameEl = document.getElementById("trackName");
-
-    audio.muted = false;
-    audio.setAttribute("playsinline", "");
-
-    // =======================
-    // HUD
-    // =======================
-    let hudTimer=null;
-    function showHud(msg, ms=2000){
-      if (msg !== undefined) hud.textContent = msg;
-      hud.classList.add("visible");
-      if (hudTimer) clearTimeout(hudTimer);
-      hudTimer = setTimeout(()=>hud.classList.remove("visible"), ms);
-    }
-
-    // =======================
-    // ICONS
-    // =======================
-    const ICON_PLAY = `
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M8 6.8v10.4c0 .9 1 1.4 1.7.9l9-5.2c.7-.4.7-1.4 0-1.8l-9-5.2C9 5.4 8 5.9 8 6.8Z"/>
-      </svg>`;
-    const ICON_PAUSE = `
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M8 6h3v12H8zM13 6h3v12h-3z"/>
-      </svg>`;
-
-    function updateIcon(){
-      centerBtn.innerHTML = audio.paused ? ICON_PLAY : ICON_PAUSE;
-    }
-
-    // =======================
-    // AUDIO: verify URL really returns audio (not HTML)
-    // Use a tiny Range GET so we can read headers.
-    // =======================
-    function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
-
-    async function probeAudio(url){
-      try{
-        const res = await fetch(url, { headers: { "Range": "bytes=0-0" } });
-        const ct = (res.headers.get("content-type") || "").toLowerCase();
-        return {
-          ok: res.ok,
-          status: res.status,
-          contentType: ct,
-          isAudio: ct.includes("audio") || ct.includes("mpeg")
-        };
-      }catch(e){
-        return { ok:false, status:0, contentType:"", isAudio:false };
-      }
-    }
-
-    let chosenAudioUrl = AUDIO_PAGES;
-
-    async function chooseWorkingAudio(){
-      // 1) try Pages
-      let p = await probeAudio(AUDIO_PAGES);
-      if (p.ok && p.isAudio) {
-        chosenAudioUrl = AUDIO_PAGES;
-        showHud(`Audio source: PAGES ✅\n${p.status} ${p.contentType}`, 1400);
-        return;
-      }
-
-      // 2) fallback RAW
-      let r = await probeAudio(AUDIO_RAW);
-      if (r.ok && r.isAudio) {
-        chosenAudioUrl = AUDIO_RAW;
-        showHud(`Audio source: RAW ✅\nPages was: ${p.status} ${p.contentType}\nRAW: ${r.status} ${r.contentType}`, 2200);
-        return;
-      }
-
-      // 3) none works
-      chosenAudioUrl = AUDIO_RAW;
-      showHud(
-        `Audio probe failed ❌\nPAGES: ${p.status} ${p.contentType}\nRAW: ${r.status} ${r.contentType}`,
-        4000
-      );
-    }
-
-    function setupAudio(){
-      trackNameEl.textContent = `${TRACK_TITLE}\n${TRACK_ARTIST}`;
-      setVolume(0.45);
-      updateIcon();
-    }
-
-    let audioUnlocked = false;
-    let attempting = false;
-
-    async function playWithFadeIn(durationMs=2500){
-      if (attempting) return false;
-      attempting = true;
-
-      const target = clamp(audio.volume || 0.45, 0, 1);
-      audio.volume = 0;
-
-      try{
-        await audio.play();
-        audioUnlocked = true;
-        updateIcon();
-
-        const steps = 45;
-        let step = 0;
-        const it = setInterval(()=>{
-          step++;
-          audio.volume = Math.min(target, (step/steps)*target);
-          if (step >= steps) clearInterval(it);
-        }, durationMs/steps);
-
-        return true;
-      }catch(e){
-        audio.volume = target;
-        updateIcon();
-        showHud("Audio blocked (policy). Tap once.", 1800);
-        return false;
-      }finally{
-        attempting = false;
-      }
-    }
-
-    centerBtn.addEventListener("click", async ()=>{
-      if (audio.paused) await playWithFadeIn(2500);
-      else { audio.pause(); updateIcon(); }
-    });
-
-    audio.addEventListener("play", ()=>{ audioUnlocked=true; updateIcon(); showHud("Audio playing ✅", 800); });
-    audio.addEventListener("error", ()=>{
-      const err = audio.error ? audio.error.code : 0;
-      showHud(`Audio error ${err}\nURL:\n${chosenAudioUrl}`, 3600);
-    });
-
-    // =======================
-    // VOLUME RING (interactive, smooth)
-    // =======================
-    function setVolume(v){
-      v = clamp(v, 0, 1);
-      audio.volume = v;
-      const deg = Math.round(360 * v);
-      ring.style.background = `conic-gradient(#fff ${deg}deg, rgba(255,255,255,0.14) ${deg}deg)`;
-    }
-
-    function pointerInWideBand(clientX, clientY){
-      const rect = ringWrap.getBoundingClientRect();
-      const cx = rect.left + rect.width/2;
-      const cy = rect.top + rect.height/2;
-      const dx = clientX - cx;
-      const dy = clientY - cy;
-      const r = Math.sqrt(dx*dx + dy*dy);
-
-      const outer = rect.width/2;
-      const inner = outer * 0.60;
-      const thickness = outer - inner;
-
-      const expandedInner = Math.max(0, inner - thickness);
-      const expandedOuter = outer + thickness;
-
-      return (r >= expandedInner && r <= expandedOuter);
-    }
-
-    function touchAngleDeg(clientX, clientY){
-      const rect = ringWrap.getBoundingClientRect();
-      const cx = rect.left + rect.width/2;
-      const cy = rect.top + rect.height/2;
-      const dx = clientX - cx;
-      const dy = clientY - cy;
-
-      let deg = Math.atan2(dy, dx) * (180/Math.PI);
-      deg = deg + 90;
-      if (deg > 180) deg -= 360;
-      return deg;
-    }
-
-    const ANGLE_MIN = -135;
-    const ANGLE_MAX = 135;
-
-    let dragging=false;
-    let lastDeg=0;
-    let currentAngle = ANGLE_MIN + (ANGLE_MAX-ANGLE_MIN) * 0.45;
-
-    function angleToVolume(angle){
-      const a = clamp(angle, ANGLE_MIN, ANGLE_MAX);
-      return (a - ANGLE_MIN) / (ANGLE_MAX - ANGLE_MIN);
-    }
-
-    function startRing(e){
-      const p = e.touches ? e.touches[0] : e;
-
-      const cb = centerBtn.getBoundingClientRect();
-      if (p.clientX >= cb.left && p.clientX <= cb.right &&
-          p.clientY >= cb.top  && p.clientY <= cb.bottom) return;
-
-      if (!pointerInWideBand(p.clientX, p.clientY)) { dragging=false; return; }
-
-      dragging=true;
-      lastDeg = touchAngleDeg(p.clientX, p.clientY);
-      currentAngle = ANGLE_MIN + (ANGLE_MAX-ANGLE_MIN) * audio.volume;
-      currentAngle = clamp(currentAngle, ANGLE_MIN, ANGLE_MAX);
-    }
-
-    function moveRing(e){
-      if (!dragging) return;
-      const p = e.touches ? e.touches[0] : e;
-
-      if (!pointerInWideBand(p.clientX, p.clientY)) { dragging=false; return; }
-
-      const now = touchAngleDeg(p.clientX, p.clientY);
-      let delta = now - lastDeg;
-
-      if (delta > 180) delta -= 360;
-      if (delta < -180) delta += 360;
-
-      delta = clamp(delta, -25, 25);
-
-      currentAngle = clamp(currentAngle + delta, ANGLE_MIN, ANGLE_MAX);
-      setVolume(angleToVolume(currentAngle));
-
-      lastDeg = now;
-    }
-
-    function endRing(){ dragging=false; }
-
-    ringWrap.addEventListener("touchstart", startRing, {passive:true});
-    window.addEventListener("touchmove", moveRing, {passive:true});
-    window.addEventListener("touchend", endRing, {passive:true});
-
-    ringWrap.addEventListener("mousedown", startRing);
-    window.addEventListener("mousemove", moveRing);
-    window.addEventListener("mouseup", endRing);
-
-    // =======================
-    // PANELS + SWIPE (RIGHT = CONTINUE)
-    // =======================
-    let panelIndex = 1;
-
-    function renderPanel(){
-      panelImg.src = panelFile(panelIndex);
-      showHud(`Panel ${panelIndex} / ${TOTAL_PANELS}`, 1200);
-    }
-
-    panelImg.onerror = ()=>{
-      showHud(`Panel not found:\n${panelFile(panelIndex)}`, 3500);
-    };
-
-    let isPinching=false;
-    let sx=0, sy=0, t0=0;
-
-    async function unlockOnGesture(){
-      if (audioUnlocked) return;
-      await playWithFadeIn(2500);
-    }
-
-    panelArea.addEventListener("touchstart", (e)=>{
-      if (e.touches.length >= 2){ isPinching=true; return; }
-      isPinching=false;
-
-      const t = e.touches[0];
-      sx=t.clientX; sy=t.clientY; t0=Date.now();
-
-      showHud(`Panel ${panelIndex} / ${TOTAL_PANELS}`, 2000);
-      unlockOnGesture();
-    }, {passive:true});
-
-    panelArea.addEventListener("touchmove", (e)=>{
-      if (e.touches.length >= 2) isPinching=true;
-    }, {passive:true});
-
-    panelArea.addEventListener("touchend", (e)=>{
-      if (isPinching) return;
-
-      const t = e.changedTouches[0];
-      const dx=t.clientX-sx;
-      const dy=t.clientY-sy;
-      const dt=Date.now()-t0;
-
-      if(Math.abs(dx)>40 && Math.abs(dx)>Math.abs(dy)*1.2 && dt<700){
-        if(dx > 0 && panelIndex < TOTAL_PANELS) panelIndex++;
-        if(dx < 0 && panelIndex > 1) panelIndex--;
-        renderPanel();
-      }
-    }, {passive:true});
-
-    panelArea.addEventListener("click", ()=>{
-      showHud(`Panel ${panelIndex} / ${TOTAL_PANELS}`, 2000);
-      unlockOnGesture();
-    });
-
-    // =======================
-    // INIT
-    // =======================
-    window.addEventListener("load", async ()=>{
-      setupAudio();
-      renderPanel();
-
-      // choose URL that actually returns audio bytes
-      await chooseWorkingAudio();
-
-      // only after choosing: assign src
-      audio.src = chosenAudioUrl;
-      audio.load();
-
-      showHud("Tap/Swipe once to start audio.", 1600);
-      updateIcon();
-    });
-  </script>
+</div>
+
+<script>
+const audio = document.getElementById("audio");
+const btn = document.getElementById("btn");
+const ring = document.getElementById("ring");
+
+const ICON_PLAY = `<svg viewBox="0 0 24 24"><path d="M8 6.8v10.4c0 .9 1 1.4 1.7.9l9-5.2c.7-.4.7-1.4 0-1.8l-9-5.2C9 5.4 8 5.9 8 6.8Z"/></svg>`;
+const ICON_PAUSE = `<svg viewBox="0 0 24 24"><path d="M8 6h3v12H8zM13 6h3v12h-3z"/></svg>`;
+
+btn.innerHTML = ICON_PLAY;
+
+btn.onclick = async () => {
+  if (audio.paused) {
+    try {
+      await audio.play();
+      btn.innerHTML = ICON_PAUSE;
+    } catch(e){}
+  } else {
+    audio.pause();
+    btn.innerHTML = ICON_PLAY;
+  }
+};
+
+function setVolume(v){
+  v=Math.max(0,Math.min(1,v));
+  audio.volume=v;
+  ring.style.background=
+    `conic-gradient(#fff ${360*v}deg, rgba(255,255,255,.15) ${360*v}deg)`;
+}
+setVolume(.5);
+
+let dragging=false,lastY=0;
+ring.parentElement.addEventListener("touchstart",e=>{
+  dragging=true; lastY=e.touches[0].clientY;
+},{passive:true});
+window.addEventListener("touchmove",e=>{
+  if(!dragging)return;
+  const dy=lastY-e.touches[0].clientY;
+  setVolume(audio.volume+dy/300);
+  lastY=e.touches[0].clientY;
+},{passive:true});
+window.addEventListener("touchend",()=>dragging=false);
+</script>
 </body>
 </html>
