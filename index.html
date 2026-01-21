@@ -7,8 +7,7 @@
 
 <style>
   :root{
-    /* MUST exist in your repo: /media/ui/manga_paper_bg.png */
-    --paper-url: "./media/ui/manga_paper_bg.png";
+    --paper-bg: url("./media/ui/manga_paper_bg.png");
   }
 
   html,body{
@@ -16,13 +15,11 @@
     min-height:100%;
     color:#fff;
     font-family:system-ui,sans-serif;
-    touch-action:auto;
-    background:#000; /* fallback */
+    background:#000;
   }
 
-  /* PAPER BACKGROUND (no extra veil layer) */
   body{
-    background-image: url("./media/ui/manga_paper_bg.png");
+    background-image: var(--paper-bg);
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
@@ -35,313 +32,214 @@
     flex-direction:column;
     align-items:center;
     justify-content:center;
-    gap:14px;
-    padding:12px;
+    padding:16px;
     box-sizing:border-box;
-    background: transparent; /* IMPORTANT */
+  }
+
+  .stage{
+    width:100%;
+    max-width:900px;
+    min-height:60vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    padding:24px;
+    box-sizing:border-box;
+
+    border-radius:18px;
+    background:rgba(0,0,0,.25);
+    border:1px solid rgba(255,255,255,.12);
+    backdrop-filter: blur(8px);
+  }
+
+  .title{
+    font-size:clamp(28px,6vw,56px);
+    letter-spacing:.08em;
+    margin-bottom:14px;
+  }
+
+  .subtitle{
+    font-size:14px;
+    opacity:.85;
+    letter-spacing:.12em;
+    text-transform:uppercase;
+  }
+
+  .small{
+    margin-top:18px;
+    font-size:13px;
+    opacity:.7;
+    max-width:520px;
+    line-height:1.5;
+  }
+
+  .glitch{
+    font-family:ui-monospace,monospace;
+    letter-spacing:.18em;
+    opacity:.85;
   }
 
   .panel{
     width:100%;
     max-width:900px;
-    position:relative;
     border-radius:14px;
     overflow:hidden;
     border:1px solid rgba(255,255,255,.12);
-    background: rgba(0,0,0,.04); /* very light so paper can show around */
-    box-shadow:
-      0 18px 60px rgba(0,0,0,.55),
-      0 2px 0 rgba(255,255,255,.05) inset;
+    background:rgba(0,0,0,.08);
   }
 
   .panel img{
     width:100%;
     display:block;
-    background:transparent;
   }
 
-  /* HUD (auto hide after 1s) */
-  .hud{
-    position:absolute;
-    left:12px; bottom:12px;
+  .hint{
+    margin-top:14px;
     font-size:12px;
-    background:rgba(0,0,0,.55);
-    padding:7px 10px;
-    border-radius:10px;
-    opacity:0;
-    pointer-events:none;
-    transition:opacity 160ms ease;
-    border:1px solid rgba(255,255,255,.12);
-    z-index:5;
-    white-space:pre-line;
-    max-width:calc(100% - 24px);
-  }
-  .hud.on{ opacity:.92; }
-
-  .toolbar{
-    width:100%;
-    max-width:900px;
-    display:flex;
-    flex-direction:column;
-    gap:12px;
-    padding:12px;
-    background:rgba(0,0,0,.10); /* lighter so paper still visible */
-    border:1px solid rgba(255,255,255,.12);
-    border-radius:18px;
-    box-sizing:border-box;
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-  }
-
-  .playerWrap{
-    overflow:hidden;
-    border-radius:14px;
-    border:1px solid rgba(255,255,255,.10);
-    background:rgba(0,0,0,.10);
-  }
-  .playerWrap iframe{
-    width:100%;
-    height:92px;
-    border:0;
-    display:block;
-    background:transparent;
-  }
-
-  .trackRow{
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    gap:12px;
-  }
-  .track{
-    font-size:13px;
-    line-height:1.25;
-    opacity:.95;
-  }
-  .scLink{
-    font-size:12px;
-    opacity:.90;
-    text-decoration:none;
-    color:#fff;
-    border:1px solid rgba(255,255,255,.16);
-    padding:7px 12px;
-    border-radius:999px;
-    white-space:nowrap;
-    background:rgba(0,0,0,.10);
-  }
-
-  /* Maintenance drawer */
-  .maintenance{
-    width:100%;
-    max-width:900px;
-    margin:18px auto 30px;
-    border-radius:16px;
-    border:1px solid rgba(255,255,255,.10);
-    background:rgba(0,0,0,.14);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    overflow:hidden;
-  }
-  .maintToggle{
-    width:100%;
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    gap:10px;
-    padding:12px 12px;
-    background:transparent;
-    border:0;
-    color:#fff;
-    cursor:pointer;
-    text-align:left;
-  }
-  .maintTitle{
-    font-size:12px;
-    opacity:.80;
-    letter-spacing:.06em;
-    font-family:ui-monospace,monospace;
-    font-weight:600;
-  }
-  .maintChevron{
-    font-family:ui-monospace,monospace;
-    font-size:12px;
-    opacity:.65;
-    transition: transform 180ms ease;
-  }
-  .maintBody{
-    max-height:0;
-    overflow:hidden;
-    transition:max-height 220ms ease;
-    border-top:1px solid rgba(255,255,255,.08);
-  }
-  .maintInner{
-    padding:10px 12px 14px;
-  }
-  .maintInner pre{
-    margin:0;
-    font-size:11px;
-    opacity:.78;
-    font-family:ui-monospace,monospace;
-    white-space:pre-wrap;
-    word-break:break-word;
-    line-height:1.35;
-  }
-  .maintenance.open .maintBody{ max-height:420px; }
-  .maintenance.open .maintChevron{ transform: rotate(180deg); }
-
-  /* Paper preview box */
-  .paperPreview{
-    margin-top:10px;
-    width:100%;
-    height:46px;
-    border-radius:10px;
-    border:1px solid rgba(255,255,255,.12);
-    background-image: url("./media/ui/manga_paper_bg.png");
-    background-size: cover;
-    background-position: center;
-    background-repeat:no-repeat;
-    opacity: 1;
+    opacity:.6;
   }
 </style>
 </head>
 
 <body>
 
-<div class="wrap">
+<div class="wrap" id="wrap">
 
-  <div class="panel" id="panel">
-    <img id="img" src="manga/chapter-00/panel01.jpg" alt="Panel 01">
-    <div class="hud on" id="hud">Ready.
-Swipe right to continue.</div>
-  </div>
-
-  <div class="toolbar">
-    <div class="playerWrap" aria-label="SoundCloud player">
-      <iframe
-        scrolling="no"
-        allow="autoplay"
-        src="https://w.soundcloud.com/player/?url=https%3A//soundcloud.com/user-543596862/sentinel-2&color=%23000000&auto_play=false&hide_related=true&show_comments=false&show_user=true&show_reposts=false&show_teaser=false&visual=false">
-      </iframe>
-    </div>
-
-    <div class="trackRow">
-      <div class="track">
-        Sentinel 2 (SoundCloud)<br>
-        — Artist
-      </div>
-
-      <a class="scLink"
-         href="https://soundcloud.com/user-543596862/sentinel-2"
-         target="_blank"
-         rel="noopener noreferrer">
-        Open on SoundCloud
-      </a>
-    </div>
-  </div>
-
-  <div class="maintenance" id="maintenance">
-    <button class="maintToggle" id="maintToggle" type="button" aria-expanded="false">
-      <span class="maintTitle">MAINTENANCE — v0.26</span>
-      <span class="maintChevron">▾</span>
-    </button>
-
-    <div class="maintBody">
-      <div class="maintInner">
-        <pre id="maintLog">Booting…</pre>
-        <div class="paperPreview" title="If you see texture here, the PNG is loading."></div>
-      </div>
-    </div>
-  </div>
+  <!-- CONTENT IS INJECTED BY JS -->
 
 </div>
 
 <script>
-  // v0.26
+/* ===========================
+   SANCTUM v0.27 — INTRO SEQUENCE
+   =========================== */
 
-  // Maintenance drawer
-  const maintenance = document.getElementById("maintenance");
-  const maintToggle = document.getElementById("maintToggle");
-  const maintLog = document.getElementById("maintLog");
+const wrap = document.getElementById("wrap");
 
-  function setExpanded(isOpen){
-    maintToggle.setAttribute("aria-expanded", String(isOpen));
-    maintenance.classList.toggle("open", isOpen);
+/* ----- Intro Pages (1–4) ----- */
+const introPages = [
+
+  {
+    type: "intro",
+    html: `
+      <div class="stage">
+        <div>
+          <div class="title">SANCTUM</div>
+          <div class="subtitle">Chapter 00 · Pilot</div>
+          <div class="small">
+            A sealed threshold.<br>
+            Some stories ask to be entered slowly.
+          </div>
+        </div>
+      </div>
+      <div class="hint">Swipe right or tap</div>
+    `
+  },
+
+  {
+    type: "intro",
+    html: `
+      <div class="stage">
+        <div>
+          <div class="subtitle">FIELD NOTE</div>
+          <div class="small">
+            Archive Entry: CH-00<br>
+            Status: Unlocked<br>
+            Medium: Sequential Image · Sound
+          </div>
+        </div>
+      </div>
+      <div class="hint">Continue</div>
+    `
+  },
+
+  {
+    type: "intro",
+    html: `
+      <div class="stage">
+        <div>
+          <div class="glitch">TETHER // SIGNAL STABLE</div>
+          <div class="small">
+            Connection established.<br>
+            Memory stream aligned.
+          </div>
+        </div>
+      </div>
+      <div class="hint">Proceed</div>
+    `
+  },
+
+  {
+    type: "intro",
+    html: `
+      <div class="stage">
+        <div>
+          <div class="small">
+            Some doors do not open by force.<br>
+            They respond to attention.
+          </div>
+        </div>
+      </div>
+      <div class="hint">Begin</div>
+    `
   }
-  maintToggle.addEventListener("click", ()=>{
-    const open = maintToggle.getAttribute("aria-expanded") === "true";
-    setExpanded(!open);
-  });
+];
 
-  // Logger
-  function setLog(s){ maintLog.textContent = s; }
-  function logLine(s){ maintLog.textContent += "\n" + s; }
-  setLog("MAINTENANCE LOG\n— v0.26\n");
+/* ----- Panel Config ----- */
+const TOTAL_PANELS = 20;
+let panelIndex = 1;
 
-  // Paper load check
-  const test = new Image();
-  test.onload = () => logLine("Paper: OK ✅  ./media/ui/manga_paper_bg.png");
-  test.onerror = () => logLine("Paper: NOT FOUND ❌  ./media/ui/manga_paper_bg.png");
-  test.src = "./media/ui/manga_paper_bg.png?v=" + Date.now();
+/* ----- State ----- */
+let pageIndex = 0;
+const totalPages = introPages.length + TOTAL_PANELS;
 
-  // HUD
-  const panel = document.getElementById("panel");
-  const img = document.getElementById("img");
-  const hud = document.getElementById("hud");
+/* ----- Render ----- */
+function render(){
+  wrap.innerHTML = "";
 
-  function showHud(text){
-    hud.textContent = text;
-    hud.classList.add("on");
-    clearTimeout(showHud.timer);
-    showHud.timer = setTimeout(()=> hud.classList.remove("on"), 1000);
+  if(pageIndex < introPages.length){
+    wrap.insertAdjacentHTML("beforeend", introPages[pageIndex].html);
+  } else {
+    const realIndex = pageIndex - introPages.length + 1;
+    const img = document.createElement("img");
+    img.src = "manga/chapter-00/panel" + String(realIndex).padStart(2,"0") + ".jpg";
+
+    const panel = document.createElement("div");
+    panel.className = "panel";
+    panel.appendChild(img);
+
+    wrap.appendChild(panel);
+    wrap.insertAdjacentHTML("beforeend",
+      `<div class="hint">Panel ${realIndex} / ${TOTAL_PANELS}</div>`
+    );
   }
-  showHud("Ready.\nSwipe right to continue.");
+}
 
-  // Swipe: right = next
-  let panelIndex = 1;
-  const TOTAL_PANELS = 20;
-
-  function panelFile(i){
-    return "manga/chapter-00/panel" + String(i).padStart(2,"0") + ".jpg";
+/* ----- Navigation ----- */
+function next(){
+  if(pageIndex < totalPages - 1){
+    pageIndex++;
+    render();
   }
+}
 
-  function render(){
-    const src = panelFile(panelIndex);
-    img.src = src;
-    showHud("Panel " + panelIndex + " / " + TOTAL_PANELS);
-    logLine("Panel loaded: " + src);
-  }
+let startX = 0;
 
-  img.addEventListener("error", () => logLine("Panel ERROR ❌ " + img.src));
+document.addEventListener("touchstart", e=>{
+  startX = e.touches[0].clientX;
+},{passive:true});
 
-  let sx=0, sy=0, t0=0, pinching=false;
+document.addEventListener("touchend", e=>{
+  const dx = e.changedTouches[0].clientX - startX;
+  if(dx > 40) next();
+},{passive:true});
 
-  panel.addEventListener("touchstart", e=>{
-    if(e.touches.length>1){ pinching=true; return; }
-    pinching=false;
-    const t=e.touches[0];
-    sx=t.clientX; sy=t.clientY; t0=Date.now();
-  }, {passive:true});
+document.addEventListener("click", next);
 
-  panel.addEventListener("touchmove", e=>{
-    if(e.touches.length>1) pinching=true;
-  }, {passive:true});
+/* ----- Init ----- */
+render();
 
-  panel.addEventListener("touchend", e=>{
-    if(pinching) return;
-
-    const t=e.changedTouches[0];
-    const dx=t.clientX-sx;
-    const dy=t.clientY-sy;
-    const dt=Date.now()-t0;
-
-    if(Math.abs(dx)>40 && Math.abs(dx)>Math.abs(dy)*1.2 && dt<700){
-      if(dx>0 && panelIndex<TOTAL_PANELS) panelIndex++;
-      if(dx<0 && panelIndex>1) panelIndex--;
-      render();
-    }
-  }, {passive:true});
-
-  panel.addEventListener("click", ()=> showHud("Panel "+panelIndex+" / "+TOTAL_PANELS));
 </script>
 
 </body>
