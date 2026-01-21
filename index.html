@@ -154,30 +154,61 @@
     background:rgba(0,0,0,.12);
   }
 
-  /* === Maintenance deck (only visible when you scroll down) === */
+  /* === Hidden Maintenance (accordion) === */
   .maintenance{
     width:100%;
     max-width:900px;
     margin:18px auto 30px;
-    padding:14px 12px;
     box-sizing:border-box;
     border-radius:16px;
     border:1px solid rgba(255,255,255,.10);
     background:rgba(0,0,0,.22);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
+    overflow:hidden;
   }
 
-  .maintenance h3{
-    margin:0 0 8px;
+  .maintToggle{
+    width:100%;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    padding:12px 12px;
+    background:transparent;
+    border:0;
+    color:#fff;
+    cursor:pointer;
+    text-align:left;
+  }
+
+  .maintTitle{
     font-size:12px;
-    opacity:.8;
+    opacity:.80;
     letter-spacing:.06em;
     font-family:ui-monospace,monospace;
     font-weight:600;
   }
 
-  .maintenance pre{
+  .maintChevron{
+    font-family:ui-monospace,monospace;
+    font-size:12px;
+    opacity:.65;
+    transition: transform 180ms ease;
+  }
+
+  .maintBody{
+    max-height:0;
+    overflow:hidden;
+    transition:max-height 220ms ease;
+    border-top:1px solid rgba(255,255,255,.08);
+  }
+
+  .maintInner{
+    padding:10px 12px 14px;
+  }
+
+  .maintInner pre{
     margin:0;
     font-size:11px;
     opacity:.78;
@@ -187,8 +218,12 @@
     line-height:1.35;
   }
 
-  .maintenance .muted{
-    opacity:.6;
+  .maintenance.open .maintBody{
+    max-height:320px; /* enough for log */
+  }
+
+  .maintenance.open .maintChevron{
+    transform: rotate(180deg);
   }
 </style>
 </head>
@@ -227,30 +262,47 @@ Swipe right to continue.</div>
     </div>
   </div>
 
-  <!-- Maintenance deck lives BELOW everything -->
+  <!-- Maintenance drawer -->
   <div class="maintenance" id="maintenance">
-    <h3>MAINTENANCE — v0.24</h3>
-    <pre id="maintLog" class="muted">Booting…</pre>
+    <button class="maintToggle" id="maintToggle" type="button" aria-expanded="false">
+      <span class="maintTitle">MAINTENANCE — v0.25</span>
+      <span class="maintChevron">▾</span>
+    </button>
+
+    <div class="maintBody" id="maintBody">
+      <div class="maintInner">
+        <pre id="maintLog">Booting…</pre>
+      </div>
+    </div>
   </div>
 
 </div>
 
 <script>
-  // v0.24
+  // v0.25
 
-  // ===== Maintenance logger (prints ONLY in the bottom deck)
+  // ===== Maintenance drawer toggle
+  const maintenance = document.getElementById("maintenance");
+  const maintToggle = document.getElementById("maintToggle");
   const maintLog = document.getElementById("maintLog");
-  function logLine(s){
-    maintLog.classList.remove("muted");
-    maintLog.textContent += "\n" + s;
-  }
-  function setLog(s){
-    maintLog.textContent = s;
-    maintLog.classList.remove("muted");
-  }
-  setLog("MAINTENANCE LOG\n— v0.24\n");
 
-  // ===== Paper check -> write result into maintenance deck
+  function setExpanded(isOpen){
+    maintToggle.setAttribute("aria-expanded", String(isOpen));
+    maintenance.classList.toggle("open", isOpen);
+  }
+
+  maintToggle.addEventListener("click", ()=>{
+    const open = maintToggle.getAttribute("aria-expanded") === "true";
+    setExpanded(!open);
+  });
+
+  // ===== Maintenance logger (prints ONLY in drawer)
+  function setLog(s){ maintLog.textContent = s; }
+  function logLine(s){ maintLog.textContent += "\n" + s; }
+
+  setLog("MAINTENANCE LOG\n— v0.25\n");
+
+  // ===== Paper check -> write result into maintenance drawer
   const test = new Image();
   test.onload = () => logLine("Paper: OK ✅  ./media/ui/manga_paper_bg.png");
   test.onerror = () => logLine("Paper: NOT FOUND ❌  ./media/ui/manga_paper_bg.png");
@@ -268,7 +320,6 @@ Swipe right to continue.</div>
     showHud.timer = setTimeout(()=> hud.classList.remove("on"), 1000);
   }
 
-  // initial HUD auto-hide
   showHud("Ready.\nSwipe right to continue.");
 
   // ===== Panel swipe (right swipe = next)
