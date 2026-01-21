@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>SANCTUM — Pilot (v0.9)</title>
+  <title>SANCTUM — Pilot (v0.10)</title>
 
   <style>
     :root{ --paper-bg: url("./media/ui/manga_paper_bg.png"); }
@@ -132,9 +132,9 @@
 </head>
 
 <body>
-  <div class="ver">v0.9</div>
+  <div class="ver">v0.10</div>
 
-  <audio id="bg-audio" preload="auto" playsinline></audio>
+  <audio id="bg-audio" preload="auto" playsinline crossorigin="anonymous"></audio>
 
   <div class="wrap">
     <div class="panel" id="panelArea">
@@ -154,20 +154,22 @@
 
   <script>
     // =======================
-    // CONFIG (v0.9)
+    // CONFIG (v0.10)
     // =======================
     const CHAPTER = 0;
     const TOTAL_PANELS = 20;
-    const ASSET_VERSION = 9; // bump when replacing files to beat cache
+
+    // bump when you replace media to beat cache
+    const ASSET_VERSION = 10;
 
     const TRACK_TITLE  = "Arcangel (Placeholder)";
     const TRACK_ARTIST = "— (Artist later)";
 
-    // ✅ Absolute GitHub Pages base (works no matter where this HTML file sits)
     const PAGES_BASE = "https://davidravenson.github.io/SANCTUM.MANGA/";
+    const RAW_BASE   = "https://raw.githubusercontent.com/davidravenson/SANCTUM.MANGA/master/";
 
-    // ✅ Absolute URLs: eliminates relative-path 404 => eliminates Error 4 from HTML/404 pages
-    const AUDIO_URL = `${PAGES_BASE}media/audio/chapter-00/instrumental.mp3?v=${ASSET_VERSION}`;
+    const AUDIO_PAGES = `${PAGES_BASE}media/audio/chapter-00/instrumental.mp3?v=${ASSET_VERSION}`;
+    const AUDIO_RAW   = `${RAW_BASE}media/audio/chapter-00/instrumental.mp3?v=${ASSET_VERSION}`;
 
     const chapterFolder = `${PAGES_BASE}manga/chapter-${String(CHAPTER).padStart(2,"0")}/`;
     const panelFile = (i) => `${chapterFolder}panel${String(i).padStart(2,"0")}.jpg?v=${ASSET_VERSION}`;
@@ -216,20 +218,61 @@
     }
 
     // =======================
-    // AUDIO
+    // AUDIO: verify URL really returns audio (not HTML)
+    // Use a tiny Range GET so we can read headers.
     // =======================
-    let audioUnlocked = false;
-    let attempting = false;
+    function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
+
+    async function probeAudio(url){
+      try{
+        const res = await fetch(url, { headers: { "Range": "bytes=0-0" } });
+        const ct = (res.headers.get("content-type") || "").toLowerCase();
+        return {
+          ok: res.ok,
+          status: res.status,
+          contentType: ct,
+          isAudio: ct.includes("audio") || ct.includes("mpeg")
+        };
+      }catch(e){
+        return { ok:false, status:0, contentType:"", isAudio:false };
+      }
+    }
+
+    let chosenAudioUrl = AUDIO_PAGES;
+
+    async function chooseWorkingAudio(){
+      // 1) try Pages
+      let p = await probeAudio(AUDIO_PAGES);
+      if (p.ok && p.isAudio) {
+        chosenAudioUrl = AUDIO_PAGES;
+        showHud(`Audio source: PAGES ✅\n${p.status} ${p.contentType}`, 1400);
+        return;
+      }
+
+      // 2) fallback RAW
+      let r = await probeAudio(AUDIO_RAW);
+      if (r.ok && r.isAudio) {
+        chosenAudioUrl = AUDIO_RAW;
+        showHud(`Audio source: RAW ✅\nPages was: ${p.status} ${p.contentType}\nRAW: ${r.status} ${r.contentType}`, 2200);
+        return;
+      }
+
+      // 3) none works
+      chosenAudioUrl = AUDIO_RAW;
+      showHud(
+        `Audio probe failed ❌\nPAGES: ${p.status} ${p.contentType}\nRAW: ${r.status} ${r.contentType}`,
+        4000
+      );
+    }
 
     function setupAudio(){
       trackNameEl.textContent = `${TRACK_TITLE}\n${TRACK_ARTIST}`;
-      audio.src = AUDIO_URL;
-      audio.load();
       setVolume(0.45);
       updateIcon();
     }
 
-    function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
+    let audioUnlocked = false;
+    let attempting = false;
 
     async function playWithFadeIn(durationMs=2500){
       if (attempting) return false;
@@ -255,7 +298,7 @@
       }catch(e){
         audio.volume = target;
         updateIcon();
-        showHud("Audio blocked. Tap once.\n(autoplay policy)", 2200);
+        showHud("Audio blocked (policy). Tap once.", 1800);
         return false;
       }finally{
         attempting = false;
@@ -270,11 +313,11 @@
     audio.addEventListener("play", ()=>{ audioUnlocked=true; updateIcon(); showHud("Audio playing ✅", 800); });
     audio.addEventListener("error", ()=>{
       const err = audio.error ? audio.error.code : 0;
-      showHud(`Audio error ${err}\nCheck URL:\n${AUDIO_URL}`, 3600);
+      showHud(`Audio error ${err}\nURL:\n${chosenAudioUrl}`, 3600);
     });
 
     // =======================
-    // VOLUME RING (smooth drag)
+    // VOLUME RING (interactive, smooth)
     // =======================
     function setVolume(v){
       v = clamp(v, 0, 1);
@@ -417,8 +460,8 @@
       const dt=Date.now()-t0;
 
       if(Math.abs(dx)>40 && Math.abs(dx)>Math.abs(dy)*1.2 && dt<700){
-        if(dx > 0 && panelIndex < TOTAL_PANELS) panelIndex++; // RIGHT = next
-        if(dx < 0 && panelIndex > 1) panelIndex--;            // LEFT = prev
+        if(dx > 0 && panelIndex < TOTAL_PANELS) panelIndex++;
+        if(dx < 0 && panelIndex > 1) panelIndex--;
         renderPanel();
       }
     }, {passive:true});
@@ -431,10 +474,19 @@
     // =======================
     // INIT
     // =======================
-    window.addEventListener("load", ()=>{
+    window.addEventListener("load", async ()=>{
       setupAudio();
       renderPanel();
+
+      // choose URL that actually returns audio bytes
+      await chooseWorkingAudio();
+
+      // only after choosing: assign src
+      audio.src = chosenAudioUrl;
+      audio.load();
+
       showHud("Tap/Swipe once to start audio.", 1600);
+      updateIcon();
     });
   </script>
 </body>
