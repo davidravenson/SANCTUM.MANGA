@@ -7,21 +7,41 @@
 
   <style>
     :root{
-      --paper: #f4f1e8; /* mangapaper-white */
+      /* ✅ 1) Put your generated paper image here (add it to your repo!) */
+      /* Put the file at: /media/ui/manga_paper_bg.png  (recommended) */
+      --paper-bg: url("./media/ui/manga_paper_bg.png");
     }
 
     html, body{
       margin:0; padding:0;
+      height:100%;
       color:#fff;
       font-family:system-ui,sans-serif;
-      height:100%;
-      touch-action:auto;
+      touch-action:auto; /* pinch zoom allowed */
+      background:#000;
+    }
 
-      /* 1) Background: black fade tilt into paper-white on LEFT side */
-      background:
-        radial-gradient(900px 1200px at 10% 50%, rgba(244,241,232,0.20), rgba(0,0,0,0.0) 55%),
-        linear-gradient(110deg, rgba(244,241,232,0.18) 0%, rgba(0,0,0,0.0) 28%),
-        linear-gradient(#000, #000);
+    /* Background layer */
+    body::before{
+      content:"";
+      position:fixed;
+      inset:0;
+      z-index:-2;
+      background-image: var(--paper-bg);
+      background-size: cover;
+      background-position: center;
+      background-repeat:no-repeat;
+      opacity: 1;
+    }
+
+    /* Optional soft dark veil for readability (keep subtle) */
+    body::after{
+      content:"";
+      position:fixed;
+      inset:0;
+      z-index:-1;
+      background: linear-gradient(to bottom, rgba(0,0,0,0.35), rgba(0,0,0,0.12));
+      pointer-events:none;
     }
 
     .wrap{
@@ -36,25 +56,6 @@
       position:relative;
     }
 
-    /* 2) version label top-right */
-    .version{
-      position:fixed;
-      top:10px;
-      right:12px;
-      z-index:50;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-      font-size:11px;
-      letter-spacing:0.02em;
-      opacity:0.7;
-      background: rgba(0,0,0,0.28);
-      border: 1px solid rgba(255,255,255,0.14);
-      border-radius:10px;
-      padding:6px 8px;
-      user-select:none;
-      -webkit-user-select:none;
-      backdrop-filter: blur(6px);
-    }
-
     .panel{
       width:100%;
       max-width:900px;
@@ -64,6 +65,7 @@
       touch-action:auto;
       overflow:hidden;
       border-radius:2px;
+      background: rgba(0,0,0,0.25);
     }
 
     .panel img{
@@ -81,9 +83,9 @@
       pointer-events:none;
       background:linear-gradient(
         to right,
-        rgba(255,255,255,0.18),
-        rgba(255,255,255,0.08),
-        rgba(255,255,255,0.03),
+        rgba(255,255,255,0.16),
+        rgba(255,255,255,0.06),
+        rgba(255,255,255,0.02),
         rgba(255,255,255,0.00)
       );
       opacity:0.9;
@@ -110,7 +112,7 @@
       max-width:900px;
       display:flex;
       align-items:center;
-      justify-content:space-between;
+      justify-content:flex-end;
       gap:14px;
       padding:10px 12px;
       box-sizing:border-box;
@@ -120,69 +122,58 @@
       backdrop-filter: blur(6px);
     }
 
-    .btn{
-      width:64px;
-      height:56px;
-      cursor:pointer;
-      background:#111;
-      color:#fff;
-      border:1px solid #333;
-      border-radius:14px;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      flex:0 0 auto;
-      padding:0;
-    }
-    .btn svg{
-      width:22px;
-      height:22px;
-      display:block;
-    }
-
-    /* Volume ring */
+    /* ===== Combined Volume + Play/Pause Ring ===== */
     .ringWrap{
-      width:64px;
-      height:64px;
+      width:72px;
+      height:72px;
       flex:0 0 auto;
-      display:flex;
-      align-items:center;
-      justify-content:center;
       position:relative;
       user-select:none;
       -webkit-user-select:none;
-      touch-action:none;
+      touch-action:none; /* ring drag shouldn't scroll */
+      display:grid;
+      place-items:center;
     }
 
     .ring{
-      width:64px;
-      height:64px;
-      border-radius:50%;
       position:absolute;
       inset:0;
-      background: conic-gradient(#fff 0deg, rgba(255,255,255,0.16) 0deg);
-      -webkit-mask: radial-gradient(circle, transparent 61%, #000 62%);
-              mask: radial-gradient(circle, transparent 61%, #000 62%);
+      border-radius:50%;
+
+      /* dynamic via JS */
+      background: conic-gradient(#fff 0deg, rgba(255,255,255,0.14) 0deg);
+
+      /* thin contour ring */
+      -webkit-mask: radial-gradient(circle, transparent 60%, #000 61%);
+              mask: radial-gradient(circle, transparent 60%, #000 61%);
+      filter: drop-shadow(0 0 7px rgba(255,255,255,0.18));
       opacity:0.98;
-      filter: drop-shadow(0 0 6px rgba(255,255,255,0.18));
+      pointer-events:none;
     }
 
-    .cap{
-      width:42px;
-      height:42px;
+    /* center button inside ring */
+    .centerBtn{
+      width:46px;
+      height:46px;
       border-radius:50%;
-      background: radial-gradient(circle at 30% 30%, #1e1e1e, #0b0b0b 70%);
-      border:1px solid rgba(255,255,255,0.12);
-      box-shadow: 0 6px 18px rgba(0,0,0,0.55);
-      opacity:0.9;
-      pointer-events:none;
+      background: radial-gradient(circle at 30% 30%, rgba(40,40,40,0.95), rgba(10,10,10,0.95) 70%);
+      border:1px solid rgba(255,255,255,0.16);
+      display:grid;
+      place-items:center;
+      cursor:pointer;
+      padding:0;
+      color:#fff;
+    }
+
+    .centerBtn svg{
+      width:20px;
+      height:20px;
+      display:block;
     }
   </style>
 </head>
 
 <body>
-
-  <div class="version">v. 1.0</div>
 
   <audio id="bg-audio" preload="auto">
     <source src="./media/audio/sanctum_ch1_arcangel_instrumental.mp3" type="audio/mpeg">
@@ -196,12 +187,12 @@
       <div class="hud" id="hud">Loading…</div>
     </div>
 
-    <div class="toolbar" id="toolbar">
-      <button class="btn" id="toggleBtn" aria-label="Play/Pause"></button>
-
-      <div class="ringWrap" id="ringWrap" aria-label="Volume ring">
+    <div class="toolbar">
+      <div class="ringWrap" id="ringWrap" aria-label="Volume ring with Play/Pause">
         <div class="ring" id="ring" aria-hidden="true"></div>
-        <div class="cap" aria-hidden="true"></div>
+
+        <!-- 2) Play/Pause inside ring -->
+        <button class="centerBtn" id="centerBtn" aria-label="Play/Pause"></button>
       </div>
     </div>
 
@@ -221,7 +212,6 @@
     // ELEMENTS
     // =========================
     const audio = document.getElementById("bg-audio");
-    const toggleBtn = document.getElementById("toggleBtn");
 
     const panelArea = document.getElementById("panelArea");
     const panelImg = document.getElementById("panelImg");
@@ -229,6 +219,7 @@
 
     const ringWrap = document.getElementById("ringWrap");
     const ring = document.getElementById("ring");
+    const centerBtn = document.getElementById("centerBtn");
 
     // =========================
     // Scroll-hide browser UI (best effort)
@@ -250,7 +241,7 @@
     }
 
     // =========================
-    // SVG pictograms (same style)
+    // Icons (consistent style)
     // =========================
     const ICON_PLAY = `
       <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -263,8 +254,8 @@
         <path d="M13.5 6.5c0-.6.4-1 1-1H16c.6 0 1 .4 1 1v11c0 .6-.4 1-1 1h-1.5c-.6 0-1-.4-1-1v-11Z" fill="#fff"/>
       </svg>
     `;
-    function setToggleIcon() {
-      toggleBtn.innerHTML = audio.paused ? ICON_PLAY : ICON_PAUSE;
+    function setCenterIcon() {
+      centerBtn.innerHTML = audio.paused ? ICON_PLAY : ICON_PAUSE;
     }
 
     // =========================
@@ -283,7 +274,7 @@
       try {
         await audio.play();
         hasEverPlayed = true;
-        setToggleIcon();
+        setCenterIcon();
 
         const steps = 50;
         let step = 0;
@@ -295,7 +286,7 @@
 
       } catch (e) {
         audio.volume = target;
-        setToggleIcon();
+        setCenterIcon();
       } finally {
         attempting = false;
       }
@@ -307,150 +298,175 @@
       try {
         await audio.play();
         hasEverPlayed = true;
-        setToggleIcon();
+        setCenterIcon();
       } catch (e) {
-        setToggleIcon();
+        setCenterIcon();
       } finally {
         attempting = false;
       }
     }
 
-    toggleBtn.addEventListener("click", () => {
+    centerBtn.addEventListener("click", () => {
       if (audio.paused) {
         if (!hasEverPlayed) playWithFadeIn(2500);
         else playNormal();
       } else {
         audio.pause();
-        setToggleIcon();
+        setCenterIcon();
       }
     });
 
-    audio.addEventListener("play", setToggleIcon);
-    audio.addEventListener("pause", setToggleIcon);
-    audio.addEventListener("ended", setToggleIcon);
+    audio.addEventListener("play", setCenterIcon);
+    audio.addEventListener("pause", setCenterIcon);
+    audio.addEventListener("ended", setCenterIcon);
 
     // =========================
-    // VOLUME RING (no jumps, wider touch band)
+    // 3) Ring color fades to RED as volume approaches 100%
+    // 4) Fix ring fill: at 100% volume -> FULL 360° ring
     // =========================
-    const ANGLE_MIN = -135;
-    const ANGLE_MAX = 135;
-    const SWEEP_DEG = 270;
+    function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
 
-    function clamp(v, a, b){ return Math.max(a, Math.min(b, v)); }
+    function lerp(a,b,t){ return a + (b-a)*t; }
+    function rgb(r,g,b){ return `rgb(${Math.round(r)},${Math.round(g)},${Math.round(b)})`; }
 
-    function setVolume(vol) {
+    // White -> Red blend (volume = 0 => white, volume = 1 => red)
+    function volumeColor(v){
+      const t = clamp(v,0,1);
+      const r = 255;
+      const g = lerp(255, 70, t);  // pull green down
+      const b = lerp(255, 70, t);  // pull blue down
+      return rgb(r,g,b);
+    }
+
+    function setVolume(vol){
       const v = clamp(vol, 0, 1);
       audio.volume = v;
 
-      const deg = Math.round(SWEEP_DEG * v);
-      ring.style.background =
-        `conic-gradient(#fff ${deg}deg, rgba(255,255,255,0.16) ${deg}deg)`;
+      // ✅ full ring at 100% (360° not 270°)
+      const deg = Math.round(360 * v);
+
+      const active = volumeColor(v);
+      ring.style.background = `conic-gradient(${active} ${deg}deg, rgba(255,255,255,0.14) ${deg}deg)`;
     }
 
+    // default volume
     setVolume(0.4);
 
-    // 3) widen touch access band: double thickness (accept farther inside + outside)
-    function pointerInRing(clientX, clientY) {
+    // =========================
+    // Volume ring interaction
+    // - Wider interaction band
+    // - No jumps: relative delta + unwrap
+    // =========================
+    function pointerInWideBand(clientX, clientY){
       const rect = ringWrap.getBoundingClientRect();
-      const cx = rect.left + rect.width / 2;
-      const cy = rect.top + rect.height / 2;
+      const cx = rect.left + rect.width/2;
+      const cy = rect.top + rect.height/2;
       const dx = clientX - cx;
       const dy = clientY - cy;
       const r = Math.sqrt(dx*dx + dy*dy);
 
-      const outer = rect.width / 2;     // ~32
-      const inner = outer * 0.62;       // ~19.8
+      const outer = rect.width/2;     // ~36
+      const inner = outer * 0.60;     // matches CSS mask roughly
 
-      // Original active band roughly [inner..outer]
-      // "Double thickness" -> expand inward and outward by same amount:
-      const thickness = outer - inner;  // ~12.2
-      const expandedInner = Math.max(0, inner - thickness); // expands inward
-      const expandedOuter = outer + thickness;              // expands outward
+      // widen band (double thickness): expand inward & outward by thickness
+      const thickness = outer - inner;
+      const expandedInner = Math.max(0, inner - thickness);
+      const expandedOuter = outer + thickness;
 
       return (r >= expandedInner && r <= expandedOuter);
     }
 
-    function touchAngleDeg(clientX, clientY) {
+    function touchAngleDeg(clientX, clientY){
       const rect = ringWrap.getBoundingClientRect();
-      const cx = rect.left + rect.width / 2;
-      const cy = rect.top + rect.height / 2;
-
+      const cx = rect.left + rect.width/2;
+      const cy = rect.top + rect.height/2;
       const dx = clientX - cx;
       const dy = clientY - cy;
 
-      let deg = Math.atan2(dy, dx) * (180 / Math.PI);
-      deg = deg + 90;
+      let deg = Math.atan2(dy, dx) * (180/Math.PI);
+      deg = deg + 90;        // 0 at top
       if (deg > 180) deg -= 360;
-      return deg;
+      return deg;            // -180..180
     }
 
-    let ringDragging = false;
-    let lastTouchDeg = 0;
-    let currentAngle = ANGLE_MIN + (ANGLE_MAX - ANGLE_MIN) * audio.volume;
-    currentAngle = clamp(currentAngle, ANGLE_MIN, ANGLE_MAX);
+    // track smooth rotation relative
+    const ANGLE_MIN = -135;
+    const ANGLE_MAX = 135;
 
-    function angleToVolume(angle) {
+    let dragging = false;
+    let lastDeg = 0;
+    let currentAngle = ANGLE_MIN + (ANGLE_MAX - ANGLE_MIN) * audio.volume;
+
+    function angleToVolume(angle){
       const a = clamp(angle, ANGLE_MIN, ANGLE_MAX);
       return (a - ANGLE_MIN) / (ANGLE_MAX - ANGLE_MIN);
     }
 
-    function startRing(e) {
+    function startRing(e){
       const p = e.touches ? e.touches[0] : e;
-      if (!pointerInRing(p.clientX, p.clientY)) {
-        ringDragging = false;
+      // ignore if finger is on the CENTER BUTTON
+      const centerRect = centerBtn.getBoundingClientRect();
+      if (p.clientX >= centerRect.left && p.clientX <= centerRect.right &&
+          p.clientY >= centerRect.top  && p.clientY <= centerRect.bottom) return;
+
+      if (!pointerInWideBand(p.clientX, p.clientY)) {
+        dragging = false;
         return;
       }
-      ringDragging = true;
-      lastTouchDeg = touchAngleDeg(p.clientX, p.clientY);
+      dragging = true;
+      lastDeg = touchAngleDeg(p.clientX, p.clientY);
+
       currentAngle = ANGLE_MIN + (ANGLE_MAX - ANGLE_MIN) * audio.volume;
       currentAngle = clamp(currentAngle, ANGLE_MIN, ANGLE_MAX);
     }
 
-    function moveRing(e) {
-      if (!ringDragging) return;
+    function moveRing(e){
+      if (!dragging) return;
       const p = e.touches ? e.touches[0] : e;
 
-      if (!pointerInRing(p.clientX, p.clientY)) {
-        ringDragging = false;
+      if (!pointerInWideBand(p.clientX, p.clientY)){
+        dragging = false;
         return;
       }
 
-      const nowDeg = touchAngleDeg(p.clientX, p.clientY);
-      let delta = nowDeg - lastTouchDeg;
+      const now = touchAngleDeg(p.clientX, p.clientY);
+      let delta = now - lastDeg;
 
+      // unwrap seam
       if (delta > 180) delta -= 360;
       if (delta < -180) delta += 360;
 
+      // cap glitches
       delta = clamp(delta, -25, 25);
 
       currentAngle = clamp(currentAngle + delta, ANGLE_MIN, ANGLE_MAX);
       setVolume(angleToVolume(currentAngle));
 
-      lastTouchDeg = nowDeg;
+      lastDeg = now;
     }
 
-    function endRing(){ ringDragging = false; }
+    function endRing(){ dragging = false; }
 
     ringWrap.addEventListener("mousedown", startRing);
     window.addEventListener("mousemove", moveRing);
     window.addEventListener("mouseup", endRing);
 
-    ringWrap.addEventListener("touchstart", (e) => startRing(e), { passive: true });
-    window.addEventListener("touchmove", (e) => moveRing(e), { passive: true });
-    window.addEventListener("touchend", endRing, { passive: true });
+    ringWrap.addEventListener("touchstart", (e)=>startRing(e), {passive:true});
+    window.addEventListener("touchmove", (e)=>moveRing(e), {passive:true});
+    window.addEventListener("touchend", endRing, {passive:true});
 
     // =========================
-    // PANELS: pinch != swipe; fix swipe direction
+    // PANELS: pinch != swipe; RTL continuity
     // =========================
     let panelIndex = 1;
 
-    function preload(index) {
+    function preload(index){
       if (index < 1 || index > TOTAL_PANELS) return;
       const img = new Image();
       img.src = panelFile(index);
     }
 
-    function renderPanel() {
+    function renderPanel(){
       panelImg.src = panelFile(panelIndex);
       hud.textContent = `Panel ${panelIndex} / ${TOTAL_PANELS}`;
       history.replaceState(null, "", `#${panelIndex}`);
@@ -463,24 +479,22 @@
       showHudFor2s();
     });
 
-    const hashN = Number((location.hash || "").replace("#", ""));
+    const hashN = Number((location.hash||"").replace("#",""));
     if (hashN && hashN >= 1 && hashN <= TOTAL_PANELS) panelIndex = hashN;
 
-    function nextPanelRTL() {
+    function nextPanelRTL(){
       if (panelIndex < TOTAL_PANELS) panelIndex++;
       renderPanel();
     }
-
-    function prevPanelRTL() {
+    function prevPanelRTL(){
       if (panelIndex > 1) panelIndex--;
       renderPanel();
     }
 
-    let isPinching = false;
-    let isSwiping = false;
-    let startX = 0, startY = 0, startT = 0;
+    let isPinching=false, isSwiping=false;
+    let startX=0, startY=0, startT=0;
 
-    panelArea.addEventListener("touchstart", (e) => {
+    panelArea.addEventListener("touchstart", (e)=>{
       showHudFor2s();
       tryHideBrowserUI();
 
@@ -489,29 +503,22 @@
         else playNormal();
       }
 
-      if (e.touches.length >= 2) {
-        isPinching = true;
-        isSwiping = false;
-        return;
+      if (e.touches.length >= 2){
+        isPinching=true; isSwiping=false; return;
       }
-
-      isPinching = false;
-      isSwiping = true;
+      isPinching=false; isSwiping=true;
 
       const t = e.touches[0];
-      startX = t.clientX;
-      startY = t.clientY;
-      startT = Date.now();
-    }, { passive: true });
+      startX=t.clientX; startY=t.clientY; startT=Date.now();
+    }, {passive:true});
 
-    panelArea.addEventListener("touchmove", (e) => {
-      if (e.touches.length >= 2) {
-        isPinching = true;
-        isSwiping = false;
+    panelArea.addEventListener("touchmove", (e)=>{
+      if (e.touches.length >= 2){
+        isPinching=true; isSwiping=false;
       }
-    }, { passive: true });
+    }, {passive:true});
 
-    panelArea.addEventListener("touchend", (e) => {
+    panelArea.addEventListener("touchend", (e)=>{
       if (!isSwiping || isPinching) return;
 
       const t = e.changedTouches[0];
@@ -520,16 +527,13 @@
       const dt = Date.now() - startT;
 
       if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.2 && dt < 700) {
-        // 4) FIX: dx > 0 is a swipe to the RIGHT (left->right gesture)
-        // For RTL continuity we want:
-        // - swipe LEFT->RIGHT (dx positive) => NEXT
-        // - swipe RIGHT->LEFT (dx negative) => PREV
-        if (dx > 0) nextPanelRTL();
+        // RTL continuity: swipe RIGHT->LEFT (dx negative) => NEXT
+        if (dx < 0) nextPanelRTL();
         else prevPanelRTL();
       }
-    }, { passive: true });
+    }, {passive:true});
 
-    panelArea.addEventListener("click", () => {
+    panelArea.addEventListener("click", ()=>{
       showHudFor2s();
       tryHideBrowserUI();
       if (audio.paused) {
@@ -538,19 +542,14 @@
       }
     });
 
-    window.addEventListener("keydown", (e) => {
-      if (e.key === "ArrowRight") nextPanelRTL();
-      if (e.key === "ArrowLeft") prevPanelRTL();
-    });
-
     // =========================
     // INIT
     // =========================
-    window.addEventListener("load", () => {
+    window.addEventListener("load", ()=>{
       renderPanel();
-      setToggleIcon();
+      setCenterIcon();
       tryHideBrowserUI();
-      playWithFadeIn(2500);
+      playWithFadeIn(2500); // autoplay attempt
     });
   </script>
 
