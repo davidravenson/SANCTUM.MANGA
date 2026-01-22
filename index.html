@@ -7,7 +7,7 @@
 
   <style>
     :root{
-      --v: "v0.29.1";
+      --v: "v0.30.0";
       --safe-top: env(safe-area-inset-top, 0px);
       --safe-bottom: env(safe-area-inset-bottom, 0px);
 
@@ -28,16 +28,16 @@
       overflow-x:hidden;
     }
 
-    /* Background: no repeat, no seams */
     body{
       background-image: var(--bg);
       background-size: cover;
       background-position: center top;
       background-repeat: no-repeat;
       background-attachment: fixed;
+      overscroll-behavior: none;
+      touch-action: pan-y;
     }
 
-    /* PAGE WRAP */
     .page{
       min-height:100vh;
       display:flex;
@@ -45,7 +45,6 @@
       align-items:center;
     }
 
-    /* STAGE (panel area) */
     .stage{
       position:relative;
       width:100%;
@@ -65,7 +64,6 @@
       align-items:center;
     }
 
-    /* Panel image: fill width; no white frame; no rounding */
     .panelImg{
       width: min(100vw, 860px);
       height: auto;
@@ -75,11 +73,10 @@
       background: #000;
     }
 
-    /* Player dock overlaps the lower black bar of the panel */
     .playerDock{
       position:absolute;
       left: 50%;
-      bottom: -26px; /* overlap */
+      bottom: -26px;
       transform: translateX(-50%);
       z-index: 20;
       display:flex;
@@ -88,7 +85,6 @@
       pointer-events: auto;
     }
 
-    /* Collapsible player */
     .player{
       position:relative;
       width: 78px;
@@ -103,12 +99,8 @@
       transition: width .28s ease, height .28s ease, border-radius .28s ease;
     }
 
-    /* Collapsed = only button, NO text */
-    .player .meta,
-    .player .embedWrap,
-    .player .openBtn{
-      display:none;
-    }
+    /* Collapsed = only button */
+    .player .embedWrap{ display:none; }
 
     .playerBtn{
       width:100%;
@@ -130,7 +122,6 @@
       filter: drop-shadow(0 2px 6px rgba(0,0,0,.35));
     }
 
-    /* Expanded player */
     .player.expanded{
       width: min(92vw, 640px);
       height: 240px;
@@ -138,11 +129,7 @@
       background: rgba(255,255,255,.12);
     }
 
-    .player.expanded .meta,
-    .player.expanded .embedWrap,
-    .player.expanded .openBtn{
-      display:block;
-    }
+    .player.expanded .embedWrap{ display:block; }
 
     .player.expanded .playerBtn{
       position:absolute;
@@ -161,55 +148,12 @@
       border-left-width: 16px;
     }
 
-    .meta{
-      position:absolute;
-      left: 78px;
-      top: 14px;
-      right: 140px;
-      line-height: 1.05;
-      color:#111;
-      background: rgba(255,255,255,.75);
-      border-radius: 14px;
-      padding: 10px 12px;
-      box-shadow: 0 10px 18px rgba(0,0,0,.18);
-    }
-    .meta .t{
-      font-weight: 900;
-      letter-spacing: .03em;
-      font-size: 18px;
-      color:#0d0d0d;
-    }
-    .meta .a{
-      margin-top: 2px;
-      font-weight: 700;
-      opacity: .92;
-      font-size: 13px;
-      color:#0d0d0d;
-    }
-
-    .openBtn{
-      position:absolute;
-      top: 16px;
-      right: 12px;
-      padding: 10px 12px;
-      border-radius: 999px;
-      border: 1px solid rgba(255,255,255,.22);
-      background: rgba(0,0,0,.18);
-      color:#fff;
-      font-weight: 700;
-      font-size: 13px;
-      cursor:pointer;
-      text-decoration:none;
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-    }
-
     .embedWrap{
       position:absolute;
       left: 10px;
       right: 10px;
       bottom: 10px;
-      top: 82px;
+      top: 10px;     /* WICHTIG: jetzt ohne Meta/OpenBtn nutzen wir volle Fläche */
       border-radius: 18px;
       overflow:hidden;
       border: 1px solid rgba(255,255,255,.18);
@@ -223,7 +167,6 @@
       display:block;
     }
 
-    /* Loading overlay: "hung banner" cover, no rounded corners, no top gap */
     .loading{
       position:fixed;
       inset:0;
@@ -237,7 +180,6 @@
       transition: opacity .35s ease;
     }
 
-    /* Blurry hint of the page behind, visible on the sides */
     .loading::before{
       content:"";
       position:absolute;
@@ -249,9 +191,9 @@
 
     .coverBanner{
       position:relative;
-      width: min(92vw, 520px); /* not full width: feels "hung" */
-      margin-top: 0;          /* NO top gap */
-      border-radius: 0;       /* NO rounded corners */
+      width: min(92vw, 520px);
+      margin-top: 0;
+      border-radius: 0;
       overflow:hidden;
       box-shadow: 0 30px 70px rgba(0,0,0,.55);
       transform: translateZ(0);
@@ -264,13 +206,11 @@
       border-radius: 0;
     }
 
-    /* Small space below stage: keep scroll short */
     .bottomSpacer{
-      height: 420px; /* enough to reveal maintenance intentionally, but not an endless scroll */
+      height: 420px;
       width: 100%;
     }
 
-    /* Maintenance (hidden until deep scroll) */
     .maint{
       position:fixed;
       left: 50%;
@@ -308,24 +248,13 @@
       justify-content: space-between;
     }
 
-    .pill{
-      opacity:.9;
-      white-space: nowrap;
-    }
+    .pill{ opacity:.9; white-space: nowrap; }
     .ok{ color: #7CFF9A; font-weight: 800; }
-    .warn{ color: #FFD77C; font-weight: 800; }
     .err{ color: #FF7C7C; font-weight: 800; }
-
-    /* Prevent accidental pull-to-refresh weirdness on some browsers */
-    body{
-      overscroll-behavior: none;
-      touch-action: pan-y;
-    }
   </style>
 </head>
 
 <body>
-  <!-- LOADING OVERLAY (Cover banner only, no text container) -->
   <div id="loading" class="loading" aria-hidden="false">
     <div class="coverBanner" role="img" aria-label="SANCTUM cover">
       <img id="coverImg" src="./manga/chapter-00/cover.jpg" alt="SANCTUM Cover" />
@@ -344,28 +273,13 @@
           decoding="async"
         />
 
-        <!-- Collapsible player dock -->
         <div class="playerDock">
           <div id="player" class="player" aria-label="Player">
             <div id="playerBtn" class="playerBtn" title="Open player">
               <div class="playIcon" aria-hidden="true"></div>
             </div>
 
-            <div class="meta" aria-hidden="true">
-              <div class="t">SENTINEL</div>
-              <div class="a">DAVID RAVENSON</div>
-            </div>
-
-            <a
-              class="openBtn"
-              href="https://soundcloud.com/user-543596862/sentinel-2"
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-hidden="true"
-            >Open on SoundCloud</a>
-
             <div class="embedWrap" aria-hidden="true">
-              <!-- SoundCloud embed (expanded only) -->
               <iframe
                 id="scFrame"
                 allow="autoplay"
@@ -377,27 +291,28 @@
             </div>
           </div>
         </div>
+
       </div>
     </div>
 
-    <!-- Short scroll area so maintenance can be revealed intentionally -->
     <div class="bottomSpacer"></div>
   </div>
 
-  <!-- Maintenance: hidden until deep scroll; error shown permanently -->
   <div id="maint" class="maint" aria-hidden="true">
     <div class="maintBox">
-      <div class="pill">v0.29.1</div>
+      <div class="pill">v0.30.0</div>
       <div class="pill">chapter-00 / panel01</div>
-      <div class="pill">audio: chapter-00audio</div>
       <div class="pill">Paper: <span class="ok">OK ✓</span></div>
       <div class="pill">error: <span id="errText" class="err">(none)</span></div>
     </div>
   </div>
 
+  <!-- SoundCloud Widget API (offiziell) -->
+  <script src="https://w.soundcloud.com/player/api.js"></script>
+
   <script>
     (function(){
-      const VERSION = "v0.29.1";
+      const VERSION = "v0.30.0";
 
       const loading = document.getElementById("loading");
       const coverImg = document.getElementById("coverImg");
@@ -408,27 +323,44 @@
       const maint = document.getElementById("maint");
       const errText = document.getElementById("errText");
 
-      // Always keep error panel present (per your request), but content updated:
+      const scFrame = document.getElementById("scFrame");
+      let widget = null;
+
       function setError(msg){
         errText.textContent = msg ? msg : "(none)";
       }
 
-      // Expand/collapse player (collapsed = ONLY button)
+      // init SoundCloud widget when iframe is ready
+      function initWidget(){
+        try{
+          widget = SC.Widget(scFrame);
+        }catch(e){
+          widget = null;
+        }
+      }
+
+      // Expand + Play (single button)
       playerBtn.addEventListener("click", () => {
+        const willExpand = !player.classList.contains("expanded");
         player.classList.toggle("expanded");
-        // Update title tooltip for sanity
+
         playerBtn.title = player.classList.contains("expanded") ? "Close player" : "Open player";
+
+        // If opening: start playing immediately (counts as user gesture → mobile-friendly)
+        if(willExpand){
+          if(!widget) initWidget();
+          if(widget){
+            // Start right away; if it fails silently, user can press inside embed.
+            widget.play();
+          }
+        }
       }, { passive:true });
 
-      // Loading: show cover banner briefly, then fade out AFTER panel is ready.
-      // No text container. Only the cover image (hung banner).
+      // Loading overlay logic
       let panelReady = false;
-      let coverReady = false;
 
       function tryHideLoading(){
         if(!panelReady) return;
-
-        // Keep it visible for a short "cinematic beat"
         setTimeout(() => {
           loading.style.opacity = "0";
           loading.setAttribute("aria-hidden", "true");
@@ -436,8 +368,8 @@
         }, 550);
       }
 
-      coverImg.addEventListener("load", () => { coverReady = true; }, { passive:true });
-      coverImg.addEventListener("error", () => { coverReady = false; }, { passive:true });
+      coverImg.addEventListener("load", () => {}, { passive:true });
+      coverImg.addEventListener("error", () => {}, { passive:true });
 
       panelImg.addEventListener("load", () => {
         panelReady = true;
@@ -451,8 +383,8 @@
         tryHideLoading();
       }, { passive:true });
 
-      // Maintenance appears only when user scrolls intentionally (deep threshold).
-      const SHOW_Y = 560; // deeper than before
+      // Maintenance reveal on deep scroll
+      const SHOW_Y = 560;
       function onScroll(){
         const y = window.scrollY || document.documentElement.scrollTop || 0;
         if(y > SHOW_Y){
@@ -466,12 +398,14 @@
       window.addEventListener("scroll", onScroll, { passive:true });
       onScroll();
 
-      // Safety: stop background repeating by enforcing cover sizing in runtime (some browsers behave oddly)
+      // Safety background
       document.body.style.backgroundRepeat = "no-repeat";
       document.body.style.backgroundSize = "cover";
       document.body.style.backgroundPosition = "center top";
 
-      // Debug (kept minimal; not displayed on screen)
+      // Prepare widget as early as possible
+      initWidget();
+
       console.log("SANCTUM", VERSION);
     })();
   </script>
