@@ -1,108 +1,480 @@
 <!doctype html>
-<html lang="de">
+<html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>SANCTUM — Chapter 1</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>SANCTUM — Reader</title>
 
-<style>
-html, body {
-  margin: 0;
-  height: 100%;
-  background: #000;
-  color: #fff;
-  font-family: system-ui, sans-serif;
-  overflow: hidden;
-}
+  <style>
+    :root{
+      --v: "v0.29.1";
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
 
-/* === PANEL === */
-.stage {
-  height: 100%;
-  display: grid;
-  place-items: center;
-}
+      --bg: url("./media/ui/manga_paper_bg.png");
+      --ink: #0b0b0b;
+      --glass: rgba(255,255,255,.14);
+      --glass2: rgba(255,255,255,.10);
+      --shadow: 0 16px 40px rgba(0,0,0,.35);
+    }
 
-.panel {
-  width: min(92vw, 900px);
-  height: min(92vh, 1400px);
-  object-fit: contain;
-  display: block;
-}
+    html, body{
+      height:100%;
+      margin:0;
+      background: #000;
+      color:#fff;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      overflow-x:hidden;
+    }
 
-/* === SOUNDCloud L U K E === */
-.sc-shell {
-  position: fixed;
-  left: 50%;
-  transform: translateX(-50%);
-  bottom: 24px;
-  z-index: 100;
+    /* Background: no repeat, no seams */
+    body{
+      background-image: var(--bg);
+      background-size: cover;
+      background-position: center top;
+      background-repeat: no-repeat;
+      background-attachment: fixed;
+    }
 
-  width: min(92vw, 900px);
-  border-radius: 16px;
-  overflow: hidden;
+    /* PAGE WRAP */
+    .page{
+      min-height:100vh;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+    }
 
-  background: rgba(0,0,0,0.6);
-  backdrop-filter: blur(6px);
-  box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+    /* STAGE (panel area) */
+    .stage{
+      position:relative;
+      width:100%;
+      max-width: 860px;
+      padding-top: calc(8px + var(--safe-top));
+      padding-bottom: 16px;
+      display:flex;
+      justify-content:center;
+      align-items:center;
+    }
 
-  height: 86px;                /* eingeklappt = nur Playbutton-Zone */
-  transition: height 0.55s ease;
-}
+    .panelShell{
+      position:relative;
+      width:100%;
+      display:flex;
+      justify-content:center;
+      align-items:center;
+    }
 
-.sc-shell.open {
-  height: 220px;               /* aufgeklappt = ganzer Player */
-}
+    /* Panel image: fill width; no white frame; no rounding */
+    .panelImg{
+      width: min(100vw, 860px);
+      height: auto;
+      display:block;
+      border-radius: 0;
+      box-shadow: none;
+      background: #000;
+    }
 
-/* iframe bewusst größer → wir croppen */
-.sc-frame {
-  width: 1200px;
-  height: 220px;
-  border: 0;
-  display: block;
+    /* Player dock overlaps the lower black bar of the panel */
+    .playerDock{
+      position:absolute;
+      left: 50%;
+      bottom: -26px; /* overlap */
+      transform: translateX(-50%);
+      z-index: 20;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      pointer-events: auto;
+    }
 
-  /* Pixel-Shift für Android/Chrome:
-     sorgt dafür, dass der SC-Playbutton mittig sichtbar ist */
-  transform: translateX(-320px);
-}
-</style>
+    /* Collapsible player */
+    .player{
+      position:relative;
+      width: 78px;
+      height: 78px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.10);
+      border: 1px solid rgba(255,255,255,.18);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      overflow:hidden;
+      transition: width .28s ease, height .28s ease, border-radius .28s ease;
+    }
+
+    /* Collapsed = only button, NO text */
+    .player .meta,
+    .player .embedWrap,
+    .player .openBtn{
+      display:none;
+    }
+
+    .playerBtn{
+      width:100%;
+      height:100%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      cursor:pointer;
+      user-select:none;
+    }
+
+    .playIcon{
+      width: 0;
+      height: 0;
+      border-top: 12px solid transparent;
+      border-bottom: 12px solid transparent;
+      border-left: 18px solid rgba(255,255,255,.92);
+      transform: translateX(2px);
+      filter: drop-shadow(0 2px 6px rgba(0,0,0,.35));
+    }
+
+    /* Expanded player */
+    .player.expanded{
+      width: min(92vw, 640px);
+      height: 240px;
+      border-radius: 22px;
+      background: rgba(255,255,255,.12);
+    }
+
+    .player.expanded .meta,
+    .player.expanded .embedWrap,
+    .player.expanded .openBtn{
+      display:block;
+    }
+
+    .player.expanded .playerBtn{
+      position:absolute;
+      left: 10px;
+      top: 10px;
+      width: 54px;
+      height: 54px;
+      border-radius: 999px;
+      background: rgba(0,0,0,.26);
+      border: 1px solid rgba(255,255,255,.18);
+    }
+
+    .player.expanded .playIcon{
+      border-top-width: 10px;
+      border-bottom-width: 10px;
+      border-left-width: 16px;
+    }
+
+    .meta{
+      position:absolute;
+      left: 78px;
+      top: 14px;
+      right: 140px;
+      line-height: 1.05;
+      color:#111;
+      background: rgba(255,255,255,.75);
+      border-radius: 14px;
+      padding: 10px 12px;
+      box-shadow: 0 10px 18px rgba(0,0,0,.18);
+    }
+    .meta .t{
+      font-weight: 900;
+      letter-spacing: .03em;
+      font-size: 18px;
+      color:#0d0d0d;
+    }
+    .meta .a{
+      margin-top: 2px;
+      font-weight: 700;
+      opacity: .92;
+      font-size: 13px;
+      color:#0d0d0d;
+    }
+
+    .openBtn{
+      position:absolute;
+      top: 16px;
+      right: 12px;
+      padding: 10px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.22);
+      background: rgba(0,0,0,.18);
+      color:#fff;
+      font-weight: 700;
+      font-size: 13px;
+      cursor:pointer;
+      text-decoration:none;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+
+    .embedWrap{
+      position:absolute;
+      left: 10px;
+      right: 10px;
+      bottom: 10px;
+      top: 82px;
+      border-radius: 18px;
+      overflow:hidden;
+      border: 1px solid rgba(255,255,255,.18);
+      background: rgba(255,255,255,.10);
+    }
+
+    .embedWrap iframe{
+      width:100%;
+      height:100%;
+      border:0;
+      display:block;
+    }
+
+    /* Loading overlay: "hung banner" cover, no rounded corners, no top gap */
+    .loading{
+      position:fixed;
+      inset:0;
+      z-index: 9999;
+      display:flex;
+      align-items:flex-start;
+      justify-content:center;
+      padding-top: var(--safe-top);
+      background: rgba(0,0,0,.08);
+      opacity:1;
+      transition: opacity .35s ease;
+    }
+
+    /* Blurry hint of the page behind, visible on the sides */
+    .loading::before{
+      content:"";
+      position:absolute;
+      inset:0;
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      background: rgba(0,0,0,.10);
+    }
+
+    .coverBanner{
+      position:relative;
+      width: min(92vw, 520px); /* not full width: feels "hung" */
+      margin-top: 0;          /* NO top gap */
+      border-radius: 0;       /* NO rounded corners */
+      overflow:hidden;
+      box-shadow: 0 30px 70px rgba(0,0,0,.55);
+      transform: translateZ(0);
+    }
+
+    .coverBanner img{
+      width:100%;
+      height:auto;
+      display:block;
+      border-radius: 0;
+    }
+
+    /* Small space below stage: keep scroll short */
+    .bottomSpacer{
+      height: 420px; /* enough to reveal maintenance intentionally, but not an endless scroll */
+      width: 100%;
+    }
+
+    /* Maintenance (hidden until deep scroll) */
+    .maint{
+      position:fixed;
+      left: 50%;
+      bottom: calc(10px + var(--safe-bottom));
+      transform: translateX(-50%);
+      width: min(92vw, 720px);
+      z-index: 50;
+
+      opacity: 0;
+      pointer-events:none;
+      transition: opacity .25s ease, transform .25s ease;
+    }
+
+    .maint.show{
+      opacity:1;
+      pointer-events:auto;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .maintBox{
+      background: rgba(0,0,0,.40);
+      border: 1px solid rgba(255,255,255,.16);
+      border-radius: 18px;
+      padding: 12px 14px;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      box-shadow: 0 16px 40px rgba(0,0,0,.35);
+      font-size: 14px;
+      line-height: 1.25;
+      color: rgba(255,255,255,.90);
+      display:flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items:center;
+      justify-content: space-between;
+    }
+
+    .pill{
+      opacity:.9;
+      white-space: nowrap;
+    }
+    .ok{ color: #7CFF9A; font-weight: 800; }
+    .warn{ color: #FFD77C; font-weight: 800; }
+    .err{ color: #FF7C7C; font-weight: 800; }
+
+    /* Prevent accidental pull-to-refresh weirdness on some browsers */
+    body{
+      overscroll-behavior: none;
+      touch-action: pan-y;
+    }
+  </style>
 </head>
 
 <body>
+  <!-- LOADING OVERLAY (Cover banner only, no text container) -->
+  <div id="loading" class="loading" aria-hidden="false">
+    <div class="coverBanner" role="img" aria-label="SANCTUM cover">
+      <img id="coverImg" src="./manga/chapter-00/cover.jpg" alt="SANCTUM Cover" />
+    </div>
+  </div>
 
-<div class="stage">
-  <!-- DEIN PANEL -->
-  <img
-    class="panel"
-    src="./manga/my-series/chapter-1/001.jpg"
-    alt="SANCTUM Panel 001">
-</div>
+  <div class="page">
+    <div class="stage" id="stage">
+      <div class="panelShell">
+        <img
+          id="panelImg"
+          class="panelImg"
+          src="./manga/chapter-00/panel01.jpg"
+          alt="Panel 01"
+          loading="eager"
+          decoding="async"
+        />
 
-<!-- SOUNDCloud Player (cropped) -->
-<div id="scShell" class="sc-shell">
-  <iframe
-    class="sc-frame"
-    allow="autoplay"
-    scrolling="no"
-    src="https://w.soundcloud.com/player/?url=https%3A//soundcloud.com/user-543596862/sentinel-2&auto_play=false&hide_related=true&show_comments=false&show_user=true&show_reposts=false&visual=false">
-  </iframe>
-</div>
+        <!-- Collapsible player dock -->
+        <div class="playerDock">
+          <div id="player" class="player" aria-label="Player">
+            <div id="playerBtn" class="playerBtn" title="Open player">
+              <div class="playIcon" aria-hidden="true"></div>
+            </div>
 
-<script>
-// v0.7 — SoundCloud-Playbutton = Luke
+            <div class="meta" aria-hidden="true">
+              <div class="t">SENTINEL</div>
+              <div class="a">DAVID RAVENSON</div>
+            </div>
 
-const scShell = document.getElementById("scShell");
+            <a
+              class="openBtn"
+              href="https://soundcloud.com/user-543596862/sentinel-2"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-hidden="true"
+            >Open on SoundCloud</a>
 
-/*
-  Wichtig:
-  - Wir verhindern NICHT den Klick
-  - Der Tap geht durch zum echten SoundCloud-Playbutton
-  - Gleichzeitig klappt der Container auf
-*/
-scShell.addEventListener("pointerdown", () => {
-  scShell.classList.add("open");
-}, { passive: true });
+            <div class="embedWrap" aria-hidden="true">
+              <!-- SoundCloud embed (expanded only) -->
+              <iframe
+                id="scFrame"
+                allow="autoplay"
+                scrolling="no"
+                frameborder="no"
+                src="https://w.soundcloud.com/player/?url=https%3A//soundcloud.com/user-543596862/sentinel-2&color=%23000000&auto_play=false&hide_related=true&show_comments=false&show_user=true&show_reposts=false&show_teaser=false&visual=true"
+                title="SoundCloud player"
+              ></iframe>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
 
-</script>
+    <!-- Short scroll area so maintenance can be revealed intentionally -->
+    <div class="bottomSpacer"></div>
+  </div>
 
+  <!-- Maintenance: hidden until deep scroll; error shown permanently -->
+  <div id="maint" class="maint" aria-hidden="true">
+    <div class="maintBox">
+      <div class="pill">v0.29.1</div>
+      <div class="pill">chapter-00 / panel01</div>
+      <div class="pill">audio: chapter-00audio</div>
+      <div class="pill">Paper: <span class="ok">OK ✓</span></div>
+      <div class="pill">error: <span id="errText" class="err">(none)</span></div>
+    </div>
+  </div>
+
+  <script>
+    (function(){
+      const VERSION = "v0.29.1";
+
+      const loading = document.getElementById("loading");
+      const coverImg = document.getElementById("coverImg");
+      const panelImg = document.getElementById("panelImg");
+
+      const player = document.getElementById("player");
+      const playerBtn = document.getElementById("playerBtn");
+      const maint = document.getElementById("maint");
+      const errText = document.getElementById("errText");
+
+      // Always keep error panel present (per your request), but content updated:
+      function setError(msg){
+        errText.textContent = msg ? msg : "(none)";
+      }
+
+      // Expand/collapse player (collapsed = ONLY button)
+      playerBtn.addEventListener("click", () => {
+        player.classList.toggle("expanded");
+        // Update title tooltip for sanity
+        playerBtn.title = player.classList.contains("expanded") ? "Close player" : "Open player";
+      }, { passive:true });
+
+      // Loading: show cover banner briefly, then fade out AFTER panel is ready.
+      // No text container. Only the cover image (hung banner).
+      let panelReady = false;
+      let coverReady = false;
+
+      function tryHideLoading(){
+        if(!panelReady) return;
+
+        // Keep it visible for a short "cinematic beat"
+        setTimeout(() => {
+          loading.style.opacity = "0";
+          loading.setAttribute("aria-hidden", "true");
+          setTimeout(() => { loading.style.display = "none"; }, 420);
+        }, 550);
+      }
+
+      coverImg.addEventListener("load", () => { coverReady = true; }, { passive:true });
+      coverImg.addEventListener("error", () => { coverReady = false; }, { passive:true });
+
+      panelImg.addEventListener("load", () => {
+        panelReady = true;
+        setError("(none)");
+        tryHideLoading();
+      }, { passive:true });
+
+      panelImg.addEventListener("error", () => {
+        panelReady = true;
+        setError("Panel image missing / path error");
+        tryHideLoading();
+      }, { passive:true });
+
+      // Maintenance appears only when user scrolls intentionally (deep threshold).
+      const SHOW_Y = 560; // deeper than before
+      function onScroll(){
+        const y = window.scrollY || document.documentElement.scrollTop || 0;
+        if(y > SHOW_Y){
+          maint.classList.add("show");
+          maint.setAttribute("aria-hidden", "false");
+        }else{
+          maint.classList.remove("show");
+          maint.setAttribute("aria-hidden", "true");
+        }
+      }
+      window.addEventListener("scroll", onScroll, { passive:true });
+      onScroll();
+
+      // Safety: stop background repeating by enforcing cover sizing in runtime (some browsers behave oddly)
+      document.body.style.backgroundRepeat = "no-repeat";
+      document.body.style.backgroundSize = "cover";
+      document.body.style.backgroundPosition = "center top";
+
+      // Debug (kept minimal; not displayed on screen)
+      console.log("SANCTUM", VERSION);
+    })();
+  </script>
 </body>
 </html>
+```0
