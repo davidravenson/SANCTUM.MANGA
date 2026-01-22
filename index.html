@@ -3,286 +3,518 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>SANCTUM — Pilot</title>
+  <title>SANCTUM — Reader</title>
 
   <style>
     :root{
-      --version: "v0.28.1";
-      --paper-bg: url("./media/ui/manga_paper_bg.png");
+      --v: "v0.28.2";
+      --bg-paper: url("media/ui/manga_paper_bg.png");
+      --ink: #111;
+      --glass: rgba(255,255,255,.62);
+      --glass2: rgba(255,255,255,.40);
+      --shadow: 0 10px 30px rgba(0,0,0,.28);
+      --radius: 18px;
+      --safe-b: env(safe-area-inset-bottom, 0px);
+      --safe-t: env(safe-area-inset-top, 0px);
     }
 
-    html,body{
-      margin:0;
-      height:100%;
-      background:#000;
+    *{ box-sizing:border-box; }
+    html,body{ height:100%; margin:0; }
+    body{
       font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: #0b0b0b;
+      color: var(--ink);
       overflow-x:hidden;
     }
 
-    body::before{
-      content:"";
+    /* Page background (paper texture) */
+    .bg{
       position:fixed;
       inset:0;
-      z-index:-2;
-      background: var(--paper-bg) center/cover no-repeat;
+      background-image: var(--bg-paper);
+      background-size: cover;
+      background-position: center;
+      background-repeat:no-repeat;
+      transform: translateZ(0);
     }
 
-    body::after{
-      content:"";
-      position:fixed;
-      inset:0;
-      z-index:-1;
-      background: radial-gradient(ellipse at top, rgba(0,0,0,0.65), rgba(0,0,0,0.2));
-      pointer-events:none;
-    }
-
+    /* Main layout */
     .wrap{
+      position:relative;
       min-height:100%;
-      padding:12px 12px 140px;
-      box-sizing:border-box;
-      display:flex;
-      flex-direction:column;
-      align-items:center;
-      gap:12px;
+      padding: calc(10px + var(--safe-t)) 0 calc(20px + var(--safe-b));
     }
 
-    .panel{
-      width:100%;
-      max-width:980px;
-      flex:1 1 auto;
-      border-radius:18px;
-      overflow:hidden;
-      background:rgba(255,255,255,0.18);
-      box-shadow:0 10px 35px rgba(0,0,0,0.25);
+    /* Reader panel area: full width, no rounded “white card” around panel */
+    .panelStage{
+      width: 100%;
+      margin: 0;
+      padding: 0;
     }
-
-    .panel img{
-      width:100%;
-      height:auto;
+    .panelImg{
+      width: 100vw;
+      max-width: 100%;
+      height: auto;
       display:block;
+      margin: 0;
+      border: 0;
+      border-radius: 0;
+      box-shadow: none;
+      background: transparent;
       user-select:none;
-      -webkit-user-select:none;
+      -webkit-user-drag:none;
+      touch-action: pan-y; /* allow vertical scroll + we detect horizontal swipes */
     }
 
-    .soundWrap{
-      width:100%;
-      max-width:980px;
-      background:rgba(255,255,255,0.6);
-      border-radius:18px;
-      box-shadow:0 10px 35px rgba(0,0,0,0.18);
-      padding:10px 12px;
-      box-sizing:border-box;
+    /* Info bubble (auto hide) */
+    .hint{
+      position: fixed;
+      left: 14px;
+      bottom: calc(112px + var(--safe-b));
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: rgba(0,0,0,.55);
+      color: #fff;
+      font-size: 14px;
+      line-height: 1.25;
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      opacity: 0;
+      transform: translateY(6px);
+      transition: opacity .25s ease, transform .25s ease;
+      pointer-events:none;
+      max-width: 78vw;
+      z-index: 30;
+    }
+    .hint.show{
+      opacity: 1;
+      transform: translateY(0);
     }
 
-    .trackTop{
+    /* Minimal audio bar */
+    .audioBar{
+      width: min(920px, 96vw);
+      margin: 12px auto 0;
+      padding: 10px 10px 12px;
+      border-radius: var(--radius);
+      background: rgba(255,255,255,.58);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+    .audioTop{
       display:flex;
+      align-items:flex-end;
       justify-content:space-between;
-      align-items:flex-start;
-      gap:10px;
-      margin-bottom:8px;
+      gap:12px;
+      margin-bottom: 8px;
     }
-
-    .trackText{
+    .trackInfo{
       color:#000;
-      font-weight:800;
-      line-height:1.05;
+      font-weight: 800;
+      letter-spacing: .2px;
+      line-height: 1.05;
+      font-size: 18px;
     }
-    .trackText span{
+    .trackInfo small{
       display:block;
-      font-weight:600;
-      opacity:0.75;
-      margin-top:4px;
+      font-weight: 650;
+      opacity:.85;
+      font-size: 14px;
+      margin-top: 3px;
     }
-
-    .openBtn{
-      border:1px solid rgba(0,0,0,0.18);
-      background:rgba(255,255,255,0.7);
+    .scBtn{
+      appearance:none;
+      border: 1px solid rgba(0,0,0,.18);
+      background: rgba(255,255,255,.55);
       color:#000;
-      padding:10px 12px;
-      border-radius:999px;
-      text-decoration:none;
       font-weight:700;
-      font-size:13px;
+      border-radius: 999px;
+      padding: 10px 14px;
+      cursor:pointer;
+      box-shadow: 0 6px 18px rgba(0,0,0,.12);
       white-space:nowrap;
     }
+    .scBtn:active{ transform: translateY(1px); }
 
-    iframe{
+    .scFrame{
       width:100%;
-      height:110px;
+      height: 110px; /* more minimal */
       border:0;
-      border-radius:14px;
-      background:#fff;
+      border-radius: 14px;
+      overflow:hidden;
+      background: rgba(255,255,255,.55);
     }
 
+    /* Maintenance/debug (hidden until scroll) */
     .maintenance{
-      position:fixed;
-      left:10px;
-      right:10px;
-      bottom:10px;
-      z-index:50;
-      background:rgba(0,0,0,0.55);
-      backdrop-filter:blur(10px);
-      border-radius:14px;
-      padding:10px 12px;
-      color:#fff;
-      font-size:12px;
+      position: fixed;
+      left: 10px;
+      right: 10px;
+      bottom: calc(10px + var(--safe-b));
+      z-index: 40;
+      padding: 10px 12px;
+      border-radius: 14px;
+      background: rgba(0,0,0,.55);
+      color: rgba(255,255,255,.92);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      font-size: 14px;
+      line-height: 1.25;
       display:flex;
-      justify-content:space-between;
+      gap:10px;
+      flex-wrap:wrap;
       align-items:center;
-      box-sizing:border-box;
+
+      opacity: 0;
+      transform: translateY(8px);
+      pointer-events:none;
+      transition: opacity .25s ease, transform .25s ease;
+    }
+    .maintenance.show{
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events:auto;
+    }
+    .maintenance .dot{ opacity:.55; }
+    .maintenance .mono{
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      opacity:.95;
+    }
+    .maintenance .err{
+      color: #fff;
+      opacity: .95;
+    }
+    .maintenance .ok{
+      color: #b6ffb6;
+      font-weight: 800;
     }
 
-    .maintenance code{
-      opacity:0.9;
-    }
-
-    .coverLoader{
-      position:fixed;
-      inset:0;
-      z-index:100;
-      background:#000;
+    /* Loader overlay: “banner hung in front”, background visible + blurry */
+    .loader{
+      position: fixed;
+      inset: 0;
+      z-index: 100;
       display:flex;
       align-items:center;
       justify-content:center;
-      transition:opacity 400ms ease;
+      padding: 24px;
+    }
+    .loader.hidden{ display:none; }
+
+    .loaderBlur{
+      position:absolute;
+      inset:0;
+      /* show the same background, but blurred + slightly darker */
+      background-image: var(--bg-paper);
+      background-size: cover;
+      background-position: center;
+      filter: blur(16px);
+      transform: scale(1.06);
+      opacity: .95;
+    }
+    .loaderDim{
+      position:absolute;
+      inset:0;
+      background: rgba(0,0,0,.40);
     }
 
-    .coverLoader.hide{
+    .coverBanner{
+      position:relative;
+      width: min(520px, 78vw);
+      max-height: 82vh;
+      border-radius: 16px;
+      overflow:hidden;
+      box-shadow: 0 18px 55px rgba(0,0,0,.55);
+      transform: translateY(-2vh); /* subtle “hung” feel */
+    }
+    .coverBanner img{
+      width:100%;
+      height:auto;
+      display:block;
+      background: rgba(255,255,255,.06);
+    }
+
+    /* Tiny spacer to allow “scroll down to reveal maintenance” */
+    .debugSpacer{
+      height: 520px;
       opacity:0;
       pointer-events:none;
-    }
-
-    .coverImg{
-      position:absolute;
-      inset:0;
-      background-size:cover;
-      background-position:center;
-    }
-
-    .coverVeil{
-      position:absolute;
-      inset:0;
-      background:radial-gradient(ellipse at center, rgba(0,0,0,0.15), rgba(0,0,0,0.75));
-    }
-
-    .coverLabel{
-      position:relative;
-      z-index:2;
-      color:#fff;
-      font-weight:800;
-      letter-spacing:0.4px;
-      padding:12px 16px;
-      border-radius:14px;
-      background:rgba(0,0,0,0.45);
-      border:1px solid rgba(255,255,255,0.18);
     }
   </style>
 </head>
 
 <body>
+  <div class="bg" aria-hidden="true"></div>
 
-<!-- COVER / LOADING -->
-<div class="coverLoader" id="coverLoader">
-  <div class="coverImg" id="coverImg"></div>
-  <div class="coverVeil"></div>
-  <div class="coverLabel">SANCTUM</div>
-</div>
+  <!-- LOADER (no text container) -->
+  <div id="loader" class="loader" aria-hidden="true">
+    <div class="loaderBlur"></div>
+    <div class="loaderDim"></div>
 
-<div class="wrap">
-
-  <div class="panel" id="panelArea">
-    <img id="panelImg" alt="SANCTUM panel">
-  </div>
-
-  <div class="soundWrap">
-    <div class="trackTop">
-      <div class="trackText">
-        SENTINEL
-        <span>DAVID RAVENSON</span>
-      </div>
-      <a class="openBtn" href="https://soundcloud.com/user-543596862/sentinel-2" target="_blank" rel="noopener">
-        SoundCloud
-      </a>
+    <div class="coverBanner" aria-label="Cover banner">
+      <img id="coverImg" alt="Cover" />
     </div>
-
-    <!-- SoundCloud stream -->
-    <iframe
-      loading="lazy"
-      allow="autoplay"
-      src="https://w.soundcloud.com/player/?url=https%3A//soundcloud.com/user-543596862/sentinel-2&auto_play=false&hide_related=true&show_comments=false&show_user=false&show_reposts=false&show_teaser=false&visual=false">
-    </iframe>
   </div>
 
-</div>
+  <div class="wrap" id="wrap">
+    <main class="panelStage" id="panelStage">
+      <img id="panelImg" class="panelImg" alt="Panel" />
+    </main>
 
-<div class="maintenance">
-  <div>SENTINEL • DAVID RAVENSON</div>
-  <code>v0.28.1 · chapter-00 · audio: chapter-00audio</code>
-</div>
+    <section class="audioBar" aria-label="Audio">
+      <div class="audioTop">
+        <div class="trackInfo" id="trackInfo">
+          SENTINEL
+          <small>DAVID RAVENSON</small>
+        </div>
+        <button class="scBtn" id="openSC" type="button">Open on SoundCloud</button>
+      </div>
 
-<script>
-/* =========================
-   SANCTUM READER v0.28.1
-   ========================= */
+      <iframe
+        id="scFrame"
+        class="scFrame"
+        allow="autoplay"
+        scrolling="no"
+        frameborder="no"
+        loading="lazy">
+      </iframe>
+    </section>
 
-/* CHAPTER CONFIG */
-const CHAPTER = "chapter-00";
-const TOTAL_PANELS = 20;
+    <!-- invisible spacer (so user can intentionally scroll to see maintenance) -->
+    <div class="debugSpacer"></div>
+  </div>
 
-/* ✅ AUDIO PATH (UPDATED, DOCUMENTED) */
-const AUDIO_FOLDER = "./media/audio/chapter-00audio/";
-const AUDIO_FILE   = "instrumental.mp3";
-/* Full path (future use):
-   ./media/audio/chapter-00audio/instrumental.mp3
-*/
+  <div id="hint" class="hint">Ready.<br>Swipe right to continue.</div>
 
-/* PANEL PATH */
-const pad2 = n => String(n).padStart(2,"0");
-const panelPath = i => `./manga/${CHAPTER}/panel${pad2(i)}.jpg`;
-const coverPath = `./manga/${CHAPTER}/cover.jpg`;
+  <!-- Maintenance/debug (shows only after scroll) -->
+  <div id="maintenance" class="maintenance" role="status" aria-live="polite">
+    <span class="mono" id="ver"></span>
+    <span class="dot">•</span>
+    <span class="mono" id="route"></span>
+    <span class="dot">•</span>
+    <span class="mono" id="audioFolder"></span>
+    <span class="dot">•</span>
+    <span class="err mono" id="errLine">error: (none)</span>
+    <span class="ok" id="paperOK" style="display:none;">Paper OK ✓</span>
+  </div>
 
-const panelImg = document.getElementById("panelImg");
-const coverLoader = document.getElementById("coverLoader");
-const coverImg = document.getElementById("coverImg");
+  <script>
+    // ===== Versioning =====
+    const VERSION = "v0.28.2";
 
-let panelIndex = 1;
+    // ===== Paths / Config =====
+    // Manga
+    const chapterId = "chapter-00";
+    const coverPath = `manga/${chapterId}/cover.jpg`;
+    const panel1Path = `manga/${chapterId}/panel01.jpg`;
 
-/* Cover loader */
-(function(){
-  const img = new Image();
-  img.onload = () => {
-    coverImg.style.backgroundImage = `url('${coverPath}?cb=${Date.now()}')`;
-    setTimeout(()=>coverLoader.classList.add("hide"), 650);
-  };
-  img.onerror = () => {
-    setTimeout(()=>coverLoader.classList.add("hide"), 650);
-  };
-  img.src = `${coverPath}?cb=${Date.now()}`;
-})();
+    // Audio folder rename (as requested)
+    const audioFolder = "chapter-00audio"; // renamed folder in media/audio/
+    // SoundCloud track (embed) — user provided:
+    const soundcloudTrackUrl = "https://soundcloud.com/user-543596862/sentinel-2";
+    const soundcloudOpenUrl = soundcloudTrackUrl;
 
-/* Render panel */
-function render(){
-  panelImg.src = panelPath(panelIndex) + `?cb=${Date.now()}`;
-}
-render();
+    // ===== Elements =====
+    const loader = document.getElementById("loader");
+    const coverImg = document.getElementById("coverImg");
+    const panelImg = document.getElementById("panelImg");
+    const hint = document.getElementById("hint");
+    const maintenance = document.getElementById("maintenance");
+    const verEl = document.getElementById("ver");
+    const routeEl = document.getElementById("route");
+    const audioFolderEl = document.getElementById("audioFolder");
+    const errLine = document.getElementById("errLine");
+    const paperOK = document.getElementById("paperOK");
+    const scFrame = document.getElementById("scFrame");
+    const openSC = document.getElementById("openSC");
 
-/* Swipe right = next */
-let sx=0, sy=0;
-document.getElementById("panelArea").addEventListener("touchstart", e=>{
-  if(e.touches.length!==1) return;
-  sx=e.touches[0].clientX;
-  sy=e.touches[0].clientY;
-},{passive:true});
+    // ===== Persistent error display (as requested) =====
+    function setError(msg){
+      errLine.textContent = `error: ${msg}`;
+    }
 
-document.getElementById("panelArea").addEventListener("touchend", e=>{
-  const dx=e.changedTouches[0].clientX-sx;
-  const dy=e.changedTouches[0].clientY-sy;
-  if(Math.abs(dx)>40 && Math.abs(dx)>Math.abs(dy)){
-    if(dx>0 && panelIndex<TOTAL_PANELS){ panelIndex++; render(); }
-    if(dx<0 && panelIndex>1){ panelIndex--; render(); }
-  }
-},{passive:true});
-</script>
+    // ===== Maintenance reveal on scroll =====
+    function updateMaintenanceVisibility(){
+      const y = window.scrollY || document.documentElement.scrollTop || 0;
+      if (y > 120) maintenance.classList.add("show");
+      else maintenance.classList.remove("show");
+    }
+    window.addEventListener("scroll", updateMaintenanceVisibility, {passive:true});
 
+    // ===== Hash route system (page-stack) =====
+    // We keep it simple: cover is only a LOADER overlay (not a page).
+    // Pages: panel01 now. (You can extend with panel02..)
+    function parseHash(){
+      const raw = (location.hash || "").replace(/^#/, "").trim();
+      // expected: chapter-00/panel01
+      const [ch, page] = raw.split("/").map(s => (s||"").trim());
+      return {
+        chapter: ch || chapterId,
+        page: page || "panel01"
+      };
+    }
+
+    function setHash(chapter, page){
+      location.hash = `#${chapter}/${page}`;
+    }
+
+    // ===== Loader behavior =====
+    let loaderMinVisibleMs = 650; // short, but noticeable
+    let loaderStart = 0;
+
+    function showLoader(){
+      loaderStart = performance.now();
+      loader.classList.remove("hidden");
+    }
+    function hideLoaderSoon(){
+      const elapsed = performance.now() - loaderStart;
+      const wait = Math.max(0, loaderMinVisibleMs - elapsed);
+      window.setTimeout(() => loader.classList.add("hidden"), wait);
+    }
+
+    // ===== Paper bg check (optional) =====
+    // Just a small sanity: if bg image fails, we don't hard error, but we report.
+    function checkPaper(){
+      const test = new Image();
+      test.onload = () => { paperOK.style.display = "inline"; };
+      test.onerror = () => { setError("paper bg not found: media/ui/manga_paper_bg.png"); };
+      test.src = "media/ui/manga_paper_bg.png";
+    }
+
+    // ===== SoundCloud embed =====
+    function buildSoundcloudEmbed(url){
+      // Minimal player look; still SoundCloud's iframe.
+      const params = new URLSearchParams({
+        url,
+        color: "#111111",
+        auto_play: "false",
+        hide_related: "true",
+        show_comments: "false",
+        show_user: "false",
+        show_reposts: "false",
+        show_teaser: "false",
+        visual: "false"
+      });
+      return `https://w.soundcloud.com/player/?${params.toString()}`;
+    }
+
+    // ===== Swipe right to continue =====
+    let touchStartX = 0, touchStartY = 0, touching = false;
+
+    function onTouchStart(e){
+      if (!e.touches || !e.touches.length) return;
+      touching = true;
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+    }
+    function onTouchEnd(e){
+      if (!touching) return;
+      touching = false;
+
+      const t = (e.changedTouches && e.changedTouches[0]) ? e.changedTouches[0] : null;
+      if (!t) return;
+
+      const dx = t.clientX - touchStartX;
+      const dy = t.clientY - touchStartY;
+
+      // mostly horizontal + right swipe
+      if (Math.abs(dx) > 70 && Math.abs(dy) < 60 && dx > 0){
+        goNext();
+      }
+    }
+
+    function showHintOnce(){
+      hint.classList.add("show");
+      window.setTimeout(() => hint.classList.remove("show"), 1400);
+    }
+
+    // ===== Page navigation (extendable) =====
+    const pages = ["panel01"]; // extend later: ["panel01","panel02","panel03"...]
+    function goNext(){
+      const {chapter, page} = parseHash();
+      const idx = pages.indexOf(page);
+      const next = pages[Math.min(pages.length - 1, (idx === -1 ? 0 : idx + 1))];
+      if (next !== page) setHash(chapter, next);
+      else {
+        // reached end, just show hint softly
+        showHintOnce();
+      }
+    }
+
+    // ===== Render =====
+    async function render(){
+      const {chapter, page} = parseHash();
+
+      // maintenance text (even if hidden until scroll)
+      verEl.textContent = VERSION;
+      routeEl.textContent = `${chapter} / ${page}`;
+      audioFolderEl.textContent = `audio: ${audioFolder}`;
+
+      // Always show loader (cover) briefly on navigation
+      showLoader();
+
+      // set cover image path
+      coverImg.src = coverPath;
+
+      // load target panel
+      let panelSrc = panel1Path;
+      if (page === "panel01") panelSrc = `manga/${chapter}/panel01.jpg`;
+
+      // Attempt to load panel, report errors
+      await new Promise((resolve) => {
+        const tmp = new Image();
+        tmp.onload = () => {
+          panelImg.src = panelSrc;
+          setError("(none)");
+          resolve();
+        };
+        tmp.onerror = () => {
+          panelImg.src = "";
+          setError(`panel not found: ${panelSrc}`);
+          resolve();
+        };
+        tmp.src = panelSrc + `?v=${encodeURIComponent(VERSION)}`;
+      });
+
+      // Cover load sanity (do not block)
+      coverImg.onerror = () => setError(`cover not found: ${coverPath}`);
+
+      // Hide loader after minimum time
+      hideLoaderSoon();
+
+      // hint for swipe
+      showHintOnce();
+    }
+
+    // ===== Init =====
+    function init(){
+      // Bind swipe
+      document.addEventListener("touchstart", onTouchStart, {passive:true});
+      document.addEventListener("touchend", onTouchEnd, {passive:true});
+
+      // SoundCloud
+      scFrame.src = buildSoundcloudEmbed(soundcloudTrackUrl);
+      openSC.addEventListener("click", () => window.open(soundcloudOpenUrl, "_blank", "noopener,noreferrer"));
+
+      // Paper check
+      checkPaper();
+
+      // Default hash
+      if (!location.hash) setHash(chapterId, "panel01");
+
+      // Render on hash change
+      window.addEventListener("hashchange", render);
+
+      // Maintenance visibility
+      updateMaintenanceVisibility();
+
+      // First render
+      render();
+    }
+
+    init();
+  </script>
 </body>
 </html>
+```0
