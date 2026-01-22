@@ -1,521 +1,647 @@
 <!doctype html>
-<html lang="en">
+<html lang="de">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>SANCTUM — Reader</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>SANCTUM — Pilot</title>
 
-<style>
-  :root{
-    --paper-bg: url("media/ui/manga_paper_bg.png");
-  }
+  <style>
+    :root{
+      /* ===== VERSION ===== */
+      --version: "v0.27";
 
-  html, body{
-    margin:0;
-    padding:0;
-    height:100%;
-    background:#000;
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-    overflow:hidden;
-    touch-action: manipulation; /* allows swipe/tap, pinch zoom still depends on browser */
-  }
+      /* ===== BACKGROUND (Paper/Space) ===== */
+      --paper-bg: url("./media/ui/manga_paper_bg.png"); /* deine Paper/Space Texture */
 
-  body{
-    background: var(--paper-bg) center / cover no-repeat fixed;
-  }
+      /* ===== LOADING ART ===== */
+      --loading-art: url("./media/ui/loading_pilot00.png");
 
-  .app{
-    height:100vh;
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    box-sizing:border-box;
-    padding: 6px 6px 10px; /* minimal frame */
-    gap: 8px;
-    position:relative;
-  }
+      /* ===== LAYOUT ===== */
+      --maxw: 980px;
 
-  /* ===== VIEWPORT (Cover or Panel) ===== */
-  .viewWrap{
-    flex: 1 1 auto;
-    width:100%;
-    max-width: 1100px;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    background: rgba(255,255,255,0.55); /* thin paper aura */
-    border-radius: 14px;
-    padding: 4px; /* minimal white frame */
-    box-shadow: 0 10px 30px rgba(0,0,0,.35);
-    position:relative;
-    overflow:hidden;
-  }
+      /* Panel */
+      --panel-radius: 18px;
+      --panel-border: rgba(255,255,255,0.18);
+      --panel-shadow: 0 18px 50px rgba(0,0,0,0.35);
 
-  .viewImg{
-    width:100%;
-    height:auto;
-    max-height: calc(100vh - 150px);
-    object-fit: contain;
-    display:block;
-    background:#fff;
-    border-radius: 10px;
-    user-select:none;
-    -webkit-user-select:none;
-    -webkit-touch-callout:none;
-  }
+      /* Bar */
+      --bar-radius: 18px;
+      --bar-bg: rgba(255,255,255,0.70);
+      --bar-border: rgba(0,0,0,0.08);
+      --bar-shadow: 0 14px 40px rgba(0,0,0,0.22);
+      --text-dark: rgba(0,0,0,0.92);
+      --text-muted: rgba(0,0,0,0.62);
 
-  /* subtle left glow cue */
-  .edgeGlow{
-    position:absolute;
-    left:4px;
-    top:4px;
-    bottom:4px;
-    width:12%;
-    pointer-events:none;
-    border-radius: 10px;
-    background: linear-gradient(
-      to right,
-      rgba(255,255,255,0.18),
-      rgba(255,255,255,0.06),
-      rgba(255,255,255,0.00)
-    );
-    mix-blend-mode: screen;
-    opacity:.85;
-  }
+      /* Toast */
+      --toast-bg: rgba(30,30,30,0.65);
+      --toast-border: rgba(255,255,255,0.14);
+    }
 
-  /* ===== HINT / INFO HUD ===== */
-  .hud{
-    position:absolute;
-    left:12px;
-    bottom:12px;
-    background: rgba(0,0,0,.55);
-    color:#fff;
-    font-size:0.85rem;
-    padding: 7px 10px;
-    border-radius: 10px;
-    pointer-events:none;
-    opacity:0;
-    transform: translateY(4px);
-    transition: opacity .22s ease, transform .22s ease;
-    max-width: 80%;
-    line-height: 1.25;
-    z-index: 5;
-  }
-  .hud.show{
-    opacity:1;
-    transform: translateY(0);
-  }
+    html, body{
+      height:100%;
+      margin:0;
+      background:#000;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      touch-action:auto;
+    }
 
-  /* ===== AUDIO BAR ===== */
-  .audioBar{
-    width:100%;
-    max-width: 1100px;
-    padding: 8px 10px;
-    border-radius: 14px;
-    background: rgba(255,255,255,0.78);
-    backdrop-filter: blur(6px);
-    box-shadow: 0 8px 24px rgba(0,0,0,.25);
-    box-sizing:border-box;
-  }
+    /* ===== Full-page background ===== */
+    body::before{
+      content:"";
+      position:fixed;
+      inset:0;
+      z-index:-2;
+      background-image: var(--paper-bg);
+      background-size: cover;
+      background-position: center;
+      background-repeat:no-repeat;
+      opacity: 1;
+    }
 
-  .trackRow{
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    gap: 10px;
-    margin-bottom:6px;
-  }
+    /* subtle veil to keep contrast */
+    body::after{
+      content:"";
+      position:fixed;
+      inset:0;
+      z-index:-1;
+      background: radial-gradient(1200px 900px at 50% 30%, rgba(0,0,0,0.18), rgba(0,0,0,0.45));
+      pointer-events:none;
+    }
 
-  .trackText{
-    color:#000;
-    min-width: 0;
-  }
+    /* ===== WRAP ===== */
+    .wrap{
+      min-height:100%;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:flex-start;
+      padding:12px;
+      box-sizing:border-box;
+      gap:10px;
+    }
 
-  .trackTitle{
-    font-weight:800;
-    font-size:0.95rem;
-    letter-spacing:.2px;
-    white-space:nowrap;
-    overflow:hidden;
-    text-overflow:ellipsis;
-  }
+    /* ===== PANEL AREA ===== */
+    .panel{
+      width:100%;
+      max-width: var(--maxw);
+      flex: 1 1 auto;
+      min-height: 60vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      position:relative;
+      overflow:hidden;
 
-  .trackArtist{
-    font-size:0.8rem;
-    opacity:.7;
-    white-space:nowrap;
-    overflow:hidden;
-    text-overflow:ellipsis;
-  }
+      border-radius: var(--panel-radius);
+      border: 1px solid var(--panel-border);
+      box-shadow: var(--panel-shadow);
+      background: rgba(255,255,255,0.06);
+      backdrop-filter: blur(2px);
+    }
 
-  .openLink{
-    flex: 0 0 auto;
-    font-size:0.8rem;
-    color:#000;
-    text-decoration:none;
-    border:1px solid rgba(0,0,0,.15);
-    padding: 5px 12px;
-    border-radius: 999px;
-    opacity:.75;
-    background: rgba(255,255,255,.6);
-  }
+    .panel img{
+      width:100%;
+      height:100%;
+      object-fit: contain;
+      display:block;
+      user-select:none;
+      -webkit-user-select:none;
+      touch-action:auto;
+      background: transparent;
+    }
 
-  iframe{
-    width:100%;
-    height:86px;
-    border:0;
-    border-radius: 10px;
-  }
+    /* ===== BOTTOM BAR (minimal) ===== */
+    .bar{
+      width:100%;
+      max-width: var(--maxw);
+      border-radius: var(--bar-radius);
+      background: var(--bar-bg);
+      border: 1px solid var(--bar-border);
+      box-shadow: var(--bar-shadow);
+      overflow:hidden;
+    }
 
-  /* ===== MAINTENANCE CORNER (sticky bottom-right) ===== */
-  .maintCorner{
-    position: fixed;
-    right: 10px;
-    bottom: 10px;
-    z-index: 9999;
-    font-size: 11px;
-    letter-spacing: .2px;
-    color: rgba(255,255,255,0.65);
-    background: rgba(0,0,0,0.30);
-    border: 1px solid rgba(255,255,255,0.10);
-    border-radius: 10px;
-    padding: 6px 8px;
-    user-select:none;
-    -webkit-user-select:none;
-    pointer-events:none;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-  }
-</style>
+    .barTop{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      padding:10px 12px;
+      box-sizing:border-box;
+    }
+
+    .trackInfo{
+      color: var(--text-dark);
+      line-height: 1.05;
+      min-width: 0;
+    }
+
+    .trackTitle{
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .trackArtist{
+      margin-top: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .barActions{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      flex: 0 0 auto;
+    }
+
+    .btn{
+      appearance:none;
+      border:1px solid rgba(0,0,0,0.10);
+      background: rgba(255,255,255,0.55);
+      color: rgba(0,0,0,0.86);
+      border-radius: 999px;
+      padding: 9px 12px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor:pointer;
+      text-decoration:none;
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      backdrop-filter: blur(6px);
+    }
+
+    .btn:active{ transform: scale(0.98); }
+
+    /* SoundCloud iframe wrapper */
+    .scWrap{
+      width:100%;
+      background: rgba(255,255,255,0.52);
+      border-top: 1px solid rgba(0,0,0,0.08);
+    }
+    .scWrap iframe{
+      width:100%;
+      height:110px;     /* minimal, aber bedienbar */
+      border:0;
+      display:block;
+    }
+
+    /* ===== TOAST (auto-hide 1s) ===== */
+    .toast{
+      position:fixed;
+      left:12px;
+      right:12px;
+      bottom: 160px; /* über Soundcloud-Bar */
+      max-width: var(--maxw);
+      margin: 0 auto;
+      z-index: 30;
+
+      background: var(--toast-bg);
+      border: 1px solid var(--toast-border);
+      color: rgba(255,255,255,0.92);
+      padding: 10px 12px;
+      border-radius: 14px;
+      backdrop-filter: blur(8px);
+      font-size: 13px;
+      line-height: 1.25;
+
+      opacity:0;
+      transform: translateY(6px);
+      transition: opacity 200ms ease, transform 200ms ease;
+      pointer-events:none;
+    }
+    .toast.show{
+      opacity:1;
+      transform: translateY(0);
+    }
+
+    /* ===== Maintenance pill (sticky bottom-right) ===== */
+    .maintPill{
+      position: fixed;
+      right: 10px;
+      bottom: 10px;
+      z-index: 50;
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding: 10px 12px;
+      border-radius: 999px;
+
+      background: rgba(0,0,0,0.35);
+      border: 1px solid rgba(255,255,255,0.16);
+      color: rgba(255,255,255,0.92);
+      font-size: 12px;
+      font-weight: 700;
+      backdrop-filter: blur(10px);
+      cursor:pointer;
+      user-select:none;
+      -webkit-user-select:none;
+    }
+    .maintPill small{
+      font-size: 11px;
+      font-weight: 700;
+      opacity: 0.82;
+    }
+
+    /* ===== Debug Drawer (hidden until tap) ===== */
+    .drawer{
+      position: fixed;
+      left: 10px;
+      right: 10px;
+      bottom: 10px;
+      z-index: 60;
+
+      max-width: var(--maxw);
+      margin: 0 auto;
+
+      background: rgba(0,0,0,0.72);
+      border: 1px solid rgba(255,255,255,0.16);
+      color: rgba(255,255,255,0.90);
+      border-radius: 18px;
+      backdrop-filter: blur(12px);
+
+      transform: translateY(140%);
+      transition: transform 260ms ease;
+      overflow:hidden;
+    }
+    .drawer.open{ transform: translateY(0); }
+
+    .drawerHead{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding: 12px 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.12);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .drawerBody{
+      padding: 10px 12px 12px;
+      font-size: 12px;
+      line-height: 1.35;
+      opacity: 0.92;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .drawerBtn{
+      appearance:none;
+      border: 1px solid rgba(255,255,255,0.18);
+      background: rgba(255,255,255,0.10);
+      color: rgba(255,255,255,0.92);
+      border-radius: 999px;
+      padding: 8px 10px;
+      font-size: 12px;
+      font-weight: 800;
+      cursor:pointer;
+    }
+
+    /* ===== LOADING OVERLAY ===== */
+    .loading{
+      position: fixed;
+      inset: 0;
+      z-index: 999;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background: rgba(0,0,0,0.25);
+      opacity: 1;
+      transition: opacity 520ms ease;
+      pointer-events: none;
+    }
+    .loading.hide{
+      opacity: 0;
+    }
+    .loadingArt{
+      position:absolute;
+      inset:0;
+      background-image: var(--loading-art);
+      background-repeat: no-repeat;
+      background-size: cover;
+      background-position: 50% 35%;
+      filter: contrast(1.05) brightness(0.98);
+    }
+    .loadingLabel{
+      position: relative;
+      z-index: 1;
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: rgba(0,0,0,0.35);
+      border: 1px solid rgba(255,255,255,0.14);
+      color: rgba(255,255,255,0.92);
+      font-weight: 800;
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      backdrop-filter: blur(8px);
+    }
+
+    /* Give panel more height on tall screens */
+    @media (min-height: 740px){
+      .panel{ min-height: 68vh; }
+    }
+  </style>
 </head>
 
 <body>
 
-<!-- Maintenance sticky corner -->
-<div class="maintCorner" id="maintCorner">v0.26</div>
-
-<div class="app" id="app">
-
-  <div class="viewWrap" id="viewWrap">
-    <img class="viewImg" id="viewImg" src="" alt="SANCTUM">
-    <div class="edgeGlow" aria-hidden="true"></div>
-    <div class="hud" id="hud">Ready.</div>
+  <!-- LOADING SCREEN -->
+  <div class="loading" id="loading">
+    <div class="loadingArt" aria-hidden="true"></div>
+    <div class="loadingLabel">SANCTUM</div>
   </div>
 
-  <div class="audioBar">
-    <div class="trackRow">
-      <div class="trackText">
-        <div class="trackTitle" id="trackTitle">SENTINEL</div>
-        <div class="trackArtist" id="trackArtist">DAVID RAVENSON</div>
-      </div>
-      <a class="openLink" id="trackLink" href="https://soundcloud.com/user-543596862/sentinel-2" target="_blank" rel="noopener">
-        Open
-      </a>
+  <!-- TOAST -->
+  <div class="toast" id="toast"></div>
+
+  <!-- Maintenance pill -->
+  <div class="maintPill" id="maintPill" title="Debug / Maintenance">
+    <span id="maintText"></span>
+    <small>tap</small>
+  </div>
+
+  <!-- Debug Drawer -->
+  <div class="drawer" id="drawer" aria-hidden="true">
+    <div class="drawerHead">
+      <div>Maintenance</div>
+      <button class="drawerBtn" id="drawerClose">Close</button>
+    </div>
+    <div class="drawerBody" id="drawerBody">…</div>
+  </div>
+
+  <div class="wrap">
+
+    <!-- PANEL -->
+    <div class="panel" id="panelArea">
+      <img id="panelImg" src="" alt="SANCTUM Panel">
     </div>
 
-    <iframe
-      id="scPlayer"
-      src="https://w.soundcloud.com/player/?url=https%3A//soundcloud.com/user-543596862/sentinel-2&auto_play=false&hide_related=true&show_comments=false&show_user=false&show_reposts=false&visual=false">
-    </iframe>
+    <!-- BAR -->
+    <div class="bar">
+
+      <div class="barTop">
+        <div class="trackInfo">
+          <div class="trackTitle" id="trackTitle">SENTINEL</div>
+          <div class="trackArtist" id="trackArtist">DAVID RAVENSON</div>
+        </div>
+
+        <div class="barActions">
+          <a class="btn" id="openSoundcloud" href="https://soundcloud.com/user-543596862/sentinel-2" target="_blank" rel="noopener">
+            Open on SoundCloud
+          </a>
+        </div>
+      </div>
+
+      <div class="scWrap">
+        <!-- SoundCloud Embed -->
+        <iframe
+          id="scFrame"
+          scrolling="no"
+          allow="autoplay"
+          src="https://w.soundcloud.com/player/?url=https%3A//soundcloud.com/user-543596862/sentinel-2&color=%23000000&auto_play=false&hide_related=true&show_comments=false&show_user=false&show_reposts=false&show_teaser=false&visual=false">
+        </iframe>
+      </div>
+
+    </div>
+
   </div>
 
-</div>
+  <script>
+    // =========================
+    // SANCTUM READER — v0.27
+    // =========================
+    const VERSION = "v0.27";
 
-<script>
-/* =========================================================
-   SANCTUM Reader v0.26
-   - Page stack: chapters + panels
-   - Cover screen first
-   - Swipe right = next, swipe left = prev
-   - Hash deep-links
-   ========================================================= */
+    // ===== CHAPTER STACK (prepared for 00–04) =====
+    // You can extend: add chapter-01, chapter-02... later with just folder + total.
+    const CHAPTERS = [
+      { id: "chapter-00", title: "Pilot", total: 20, filePattern: "panel##.jpg" },
+      { id: "chapter-01", title: "Chapter 01", total: 20, filePattern: "panel##.jpg" },
+      { id: "chapter-02", title: "Chapter 02", total: 20, filePattern: "panel##.jpg" },
+      { id: "chapter-03", title: "Chapter 03", total: 20, filePattern: "panel##.jpg" },
+      { id: "chapter-04", title: "Chapter 04", total: 20, filePattern: "panel##.jpg" },
+    ];
 
-/* --------- PAGE STACK (edit here only) --------- */
-const STACK = [
-  {
-    id: "chapter-00",
-    title: "Pilot / Chapter 00",
-    cover: "manga/chapter-00/cover.jpg",     // <<< create/upload this
-    panels: [
-      "manga/chapter-00/panel01.jpg",
-      // add more when ready:
-      // "manga/chapter-00/panel02.jpg",
-      // "manga/chapter-00/panel03.jpg",
-    ]
-  },
+    // ===== PATHS =====
+    // Panels live at: manga/chapter-00/panel01.jpg
+    const MANGA_ROOT = "./manga/";
 
-  // placeholders for future (create folders later, panels optional)
-  {
-    id: "chapter-01",
-    title: "Chapter 01",
-    cover: "manga/chapter-01/cover.jpg",
-    panels: [
-      "manga/chapter-01/panel01.jpg"
-    ]
-  },
-  {
-    id: "chapter-02",
-    title: "Chapter 02",
-    cover: "manga/chapter-02/cover.jpg",
-    panels: [
-      "manga/chapter-02/panel01.jpg"
-    ]
-  },
-  {
-    id: "chapter-03",
-    title: "Chapter 03",
-    cover: "manga/chapter-03/cover.jpg",
-    panels: [
-      "manga/chapter-03/panel01.jpg"
-    ]
-  },
-  {
-    id: "chapter-04",
-    title: "Chapter 04",
-    cover: "manga/chapter-04/cover.jpg",
-    panels: [
-      "manga/chapter-04/panel01.jpg"
-    ]
-  }
-];
+    // ===== UI =====
+    const panelArea = document.getElementById("panelArea");
+    const panelImg  = document.getElementById("panelImg");
+    const toast     = document.getElementById("toast");
+    const maintPill = document.getElementById("maintPill");
+    const maintText = document.getElementById("maintText");
+    const drawer    = document.getElementById("drawer");
+    const drawerBody= document.getElementById("drawerBody");
+    const drawerClose = document.getElementById("drawerClose");
+    const loading   = document.getElementById("loading");
 
-/* --------- TRACK META (display only) --------- */
-const TRACK = {
-  title: "SENTINEL",
-  artist: "DAVID RAVENSON",
-  url: "https://soundcloud.com/user-543596862/sentinel-2"
-};
+    const trackTitleEl  = document.getElementById("trackTitle");
+    const trackArtistEl = document.getElementById("trackArtist");
 
-/* --------- Elements --------- */
-const viewWrap = document.getElementById("viewWrap");
-const viewImg  = document.getElementById("viewImg");
-const hud      = document.getElementById("hud");
-const maint    = document.getElementById("maintCorner");
+    // ===== Track info (set explicitly so it's never "wrong") =====
+    const TRACK = {
+      title: "SENTINEL",
+      artist: "DAVID RAVENSON",
+      soundcloudUrl: "https://soundcloud.com/user-543596862/sentinel-2"
+    };
+    trackTitleEl.textContent = TRACK.title;
+    trackArtistEl.textContent = TRACK.artist;
+    document.getElementById("openSoundcloud").href = TRACK.soundcloudUrl;
 
-const trackTitle  = document.getElementById("trackTitle");
-const trackArtist = document.getElementById("trackArtist");
-const trackLink   = document.getElementById("trackLink");
-const scPlayer    = document.getElementById("scPlayer");
+    // ===== Helpers =====
+    function two(n){ return String(n).padStart(2, "0"); }
 
-/* Apply track meta */
-trackTitle.textContent  = TRACK.title;
-trackArtist.textContent = TRACK.artist;
-trackLink.href          = TRACK.url;
-scPlayer.src            = "https://w.soundcloud.com/player/?url=" + encodeURIComponent(TRACK.url)
-                        + "&auto_play=false&hide_related=true&show_comments=false&show_user=false&show_reposts=false&visual=false";
-
-/* --------- State --------- */
-let chapIndex = 0;
-let pageIndex = -1; // -1 means cover, 0..n means panel index
-
-function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
-
-function currentChapter(){
-  return STACK[chapIndex];
-}
-
-function updateMaintenance(){
-  const chap = currentChapter();
-  const where = (pageIndex === -1)
-    ? `${chap.id} · cover`
-    : `${chap.id} · panel ${pageIndex+1}/${chap.panels.length}`;
-  maint.textContent = `v0.26 · ${where}`;
-}
-
-function showHud(text, ms=1000){
-  hud.textContent = text;
-  hud.classList.add("show");
-  setTimeout(()=>hud.classList.remove("show"), ms);
-}
-
-function setHash(){
-  const chap = currentChapter();
-  const p = (pageIndex === -1) ? "cover" : String(pageIndex+1);
-  // #chapter-00/cover  or  #chapter-00/3
-  location.hash = `${chap.id}/${p}`;
-}
-
-function parseHash(){
-  const raw = (location.hash || "").replace("#","").trim();
-  if(!raw) return false;
-
-  const parts = raw.split("/");
-  if(parts.length !== 2) return false;
-
-  const chapId = parts[0];
-  const p = parts[1];
-
-  const idx = STACK.findIndex(c => c.id === chapId);
-  if(idx === -1) return false;
-
-  chapIndex = idx;
-
-  if(p === "cover"){
-    pageIndex = -1;
-    return true;
-  }
-
-  const n = Number(p);
-  if(!Number.isFinite(n)) return false;
-
-  pageIndex = clamp(n-1, 0, Math.max(0, currentChapter().panels.length-1));
-  return true;
-}
-
-/* --------- Render --------- */
-function render(){
-  const chap = currentChapter();
-
-  if(pageIndex === -1){
-    viewImg.src = chap.cover;
-    viewImg.alt = `${chap.title} — Cover`;
-    showHud("Tap / Swipe right to begin.", 1000);
-  } else {
-    const src = chap.panels[pageIndex];
-    viewImg.src = src;
-    viewImg.alt = `${chap.title} — Panel ${pageIndex+1}`;
-    showHud(`Panel ${pageIndex+1} / ${chap.panels.length}`, 900);
-    // preload neighbors
-    preload(chap, pageIndex+1);
-    preload(chap, pageIndex-1);
-  }
-
-  setHash();
-  updateMaintenance();
-}
-
-function preload(chap, idx){
-  if(idx < 0 || idx >= chap.panels.length) return;
-  const img = new Image();
-  img.src = chap.panels[idx];
-}
-
-viewImg.addEventListener("error", ()=>{
-  const chap = currentChapter();
-  if(pageIndex === -1){
-    showHud(`Cover missing: ${chap.cover}`, 1400);
-  } else {
-    showHud(`Missing: ${chap.panels[pageIndex]}`, 1400);
-  }
-});
-
-/* --------- Navigation --------- */
-function next(){
-  const chap = currentChapter();
-
-  if(pageIndex === -1){
-    // cover -> first panel (if exists)
-    if(chap.panels.length > 0){
-      pageIndex = 0;
-      render();
-    } else {
-      showHud("No panels yet.", 1200);
+    function buildPanelUrl(chapterId, panelIndex){
+      // pattern: panel##.jpg (01..99)
+      const file = "panel" + two(panelIndex) + ".jpg";
+      return `${MANGA_ROOT}${chapterId}/${file}`;
     }
-    return;
-  }
 
-  if(pageIndex < chap.panels.length - 1){
-    pageIndex++;
-    render();
-    return;
-  }
-
-  // end of chapter -> next chapter cover
-  if(chapIndex < STACK.length - 1){
-    chapIndex++;
-    pageIndex = -1;
-    render();
-    return;
-  }
-
-  showHud("End of stack.", 1100);
-}
-
-function prev(){
-  const chap = currentChapter();
-
-  if(pageIndex === -1){
-    // cover -> previous chapter last panel
-    if(chapIndex > 0){
-      chapIndex--;
-      const prevChap = currentChapter();
-      pageIndex = Math.max(-1, prevChap.panels.length - 1);
-      render();
-    } else {
-      showHud("Start.", 900);
+    function showToast(msg){
+      toast.textContent = msg;
+      toast.classList.add("show");
+      clearTimeout(showToast._t);
+      showToast._t = setTimeout(()=> toast.classList.remove("show"), 1000);
     }
-    return;
-  }
 
-  if(pageIndex > 0){
-    pageIndex--;
-    render();
-    return;
-  }
-
-  // first panel -> cover
-  pageIndex = -1;
-  render();
-}
-
-/* --------- Swipe handling --------- */
-let startX=null, startY=null, startT=0, isPinching=false;
-
-function onTouchStart(e){
-  if(e.touches.length >= 2){
-    isPinching = true;
-    return;
-  }
-  isPinching = false;
-  const t = e.touches[0];
-  startX = t.clientX;
-  startY = t.clientY;
-  startT = Date.now();
-}
-
-function onTouchEnd(e){
-  if(isPinching) return;
-  if(startX === null) return;
-
-  const t = e.changedTouches[0];
-  const dx = t.clientX - startX;
-  const dy = t.clientY - startY;
-  const dt = Date.now() - startT;
-
-  // swipe threshold
-  if(Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(dy)*1.2 && dt < 800){
-    if(dx > 0){
-      // Swipe RIGHT to continue
-      next();
-    } else {
-      prev();
+    function setMaintenanceText(chId, p){
+      maintText.textContent = `${VERSION} · ${chId} · p${two(p)}`;
     }
-  }
 
-  startX=null; startY=null;
-}
+    function setDrawerText(chId, p, url){
+      drawerBody.textContent =
+`Version: ${VERSION}
+Chapter: ${chId}
+Panel: ${p}
+Panel URL: ${url}
 
-viewWrap.addEventListener("touchstart", onTouchStart, {passive:true});
-viewWrap.addEventListener("touchend", onTouchEnd, {passive:true});
-viewWrap.addEventListener("touchmove", (e)=>{
-  if(e.touches.length >= 2) isPinching = true;
-}, {passive:true});
+Notes:
+- Swipe RIGHT to continue (next panel).
+- Debug shown only when you tap the pill.`;
+    }
 
-/* click/tap to show small info + cover->start convenience */
-viewWrap.addEventListener("click", ()=>{
-  if(pageIndex === -1) next();
-  else showHud(`Swipe right to continue.`, 900);
-});
+    // ===== STATE =====
+    let chapterIndex = 0;
+    let panelIndex = 1;
 
-/* --------- Init --------- */
-(function init(){
-  // deep link support
-  if(!parseHash()){
-    chapIndex = 0;
-    pageIndex = -1; // start on cover
-  }
-  render();
-})();
-</script>
+    // Accept deep link: #chapter-00/p01
+    function parseHash(){
+      const h = (location.hash || "").replace("#","");
+      // formats:
+      // chapter-00/p01
+      // chapter-00/01
+      // p01 (defaults to current chapter)
+      if (!h) return;
+
+      const parts = h.split("/");
+      if (parts.length === 2){
+        const ch = parts[0];
+        const p  = parts[1].replace("p","");
+        const ci = CHAPTERS.findIndex(x => x.id === ch);
+        const pn = Number(p);
+        if (ci >= 0) chapterIndex = ci;
+        if (pn && pn >= 1) panelIndex = pn;
+      } else if (parts.length === 1){
+        const maybeP = Number(parts[0].replace("p",""));
+        if (maybeP && maybeP >= 1) panelIndex = maybeP;
+      }
+    }
+
+    function writeHash(){
+      const chId = CHAPTERS[chapterIndex].id;
+      history.replaceState(null, "", `#${chId}/p${two(panelIndex)}`);
+    }
+
+    // ===== Render =====
+    function render(){
+      const ch = CHAPTERS[chapterIndex];
+      const url = buildPanelUrl(ch.id, panelIndex);
+
+      panelImg.onerror = null;
+      panelImg.src = url;
+
+      panelImg.onerror = () => {
+        // If chapter folder doesn't exist yet: show a gentle hint
+        showToast(`Panel nicht gefunden: ${ch.id}/panel${two(panelIndex)}.jpg`);
+      };
+
+      writeHash();
+      setMaintenanceText(ch.id, panelIndex);
+      setDrawerText(ch.id, panelIndex, url);
+    }
+
+    // ===== Navigation =====
+    function nextPanel(){
+      const ch = CHAPTERS[chapterIndex];
+      if (panelIndex < ch.total){
+        panelIndex++;
+        render();
+        return;
+      }
+      // End of chapter => go next chapter if available
+      if (chapterIndex < CHAPTERS.length - 1){
+        chapterIndex++;
+        panelIndex = 1;
+        render();
+        showToast(`Weiter: ${CHAPTERS[chapterIndex].id}`);
+      } else {
+        showToast("Ende des Stacks (noch).");
+      }
+    }
+
+    function prevPanel(){
+      if (panelIndex > 1){
+        panelIndex--;
+        render();
+        return;
+      }
+      if (chapterIndex > 0){
+        chapterIndex--;
+        panelIndex = CHAPTERS[chapterIndex].total;
+        render();
+        showToast(`Zurück: ${CHAPTERS[chapterIndex].id}`);
+      } else {
+        showToast("Ganz am Anfang.");
+      }
+    }
+
+    // ===== Swipe RIGHT to continue =====
+    let startX=0, startY=0, startT=0;
+    let isPinching=false, isSwiping=false;
+
+    panelArea.addEventListener("touchstart", (e)=>{
+      if (e.touches.length >= 2){
+        isPinching=true; isSwiping=false;
+        return;
+      }
+      isPinching=false; isSwiping=true;
+      const t = e.touches[0];
+      startX=t.clientX; startY=t.clientY; startT=Date.now();
+    }, {passive:true});
+
+    panelArea.addEventListener("touchmove", (e)=>{
+      if (e.touches.length >= 2){
+        isPinching=true; isSwiping=false;
+      }
+    }, {passive:true});
+
+    panelArea.addEventListener("touchend", (e)=>{
+      if (!isSwiping || isPinching) return;
+      const t = e.changedTouches[0];
+      const dx = t.clientX - startX;
+      const dy = t.clientY - startY;
+      const dt = Date.now() - startT;
+
+      if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.2 && dt < 700){
+        // RIGHT swipe => continue (next)
+        if (dx > 0) nextPanel();
+        else prevPanel();
+      }
+    }, {passive:true});
+
+    // Tap panel = small hint (no autoplay battles)
+    panelArea.addEventListener("click", ()=>{
+      showToast("Ready. Swipe right to continue.");
+    });
+
+    // ===== Maintenance drawer =====
+    maintPill.addEventListener("click", ()=>{
+      drawer.classList.toggle("open");
+      drawer.setAttribute("aria-hidden", drawer.classList.contains("open") ? "false" : "true");
+    });
+    drawerClose.addEventListener("click", ()=>{
+      drawer.classList.remove("open");
+      drawer.setAttribute("aria-hidden", "true");
+    });
+
+    // ===== Loading screen behavior =====
+    // show briefly, then fade; not a "page" — just an overlay.
+    function hideLoadingSoon(){
+      // slight delay so it actually feels intentional
+      setTimeout(()=>{
+        loading.classList.add("hide");
+        // after fade, remove from layout
+        setTimeout(()=> loading.style.display = "none", 700);
+      }, 700);
+    }
+
+    // ===== INIT =====
+    parseHash();
+    render();
+    showToast("Ready. Swipe right to continue.");
+    hideLoadingSoon();
+  </script>
 
 </body>
 </html>
