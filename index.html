@@ -7,24 +7,17 @@
 
   <style>
     :root{
-      /* ===== VERSION ===== */
-      --version: "v0.27";
+      --version: "v0.28";
 
-      /* ===== BACKGROUND (Paper/Space) ===== */
-      --paper-bg: url("./media/ui/manga_paper_bg.png"); /* deine Paper/Space Texture */
-
-      /* ===== LOADING ART ===== */
+      --paper-bg: url("./media/ui/manga_paper_bg.png");
       --loading-art: url("./media/ui/loading_pilot00.png");
 
-      /* ===== LAYOUT ===== */
       --maxw: 980px;
 
-      /* Panel */
       --panel-radius: 18px;
       --panel-border: rgba(255,255,255,0.18);
       --panel-shadow: 0 18px 50px rgba(0,0,0,0.35);
 
-      /* Bar */
       --bar-radius: 18px;
       --bar-bg: rgba(255,255,255,0.70);
       --bar-border: rgba(0,0,0,0.08);
@@ -32,20 +25,21 @@
       --text-dark: rgba(0,0,0,0.92);
       --text-muted: rgba(0,0,0,0.62);
 
-      /* Toast */
       --toast-bg: rgba(30,30,30,0.65);
       --toast-border: rgba(255,255,255,0.14);
     }
 
     html, body{
-      height:100%;
+      height: auto;              /* wichtig: nicht "festklemmen" */
+      min-height: 100%;
       margin:0;
       background:#000;
       font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-      touch-action:auto;
+      overflow-y: auto;          /* Pull-to-refresh braucht Scroll-Kontext */
+      -webkit-overflow-scrolling: touch;
+      touch-action: auto;
     }
 
-    /* ===== Full-page background ===== */
     body::before{
       content:"";
       position:fixed;
@@ -58,7 +52,6 @@
       opacity: 1;
     }
 
-    /* subtle veil to keep contrast */
     body::after{
       content:"";
       position:fixed;
@@ -68,9 +61,8 @@
       pointer-events:none;
     }
 
-    /* ===== WRAP ===== */
     .wrap{
-      min-height:100%;
+      min-height: 100vh;
       display:flex;
       flex-direction:column;
       align-items:center;
@@ -80,7 +72,6 @@
       gap:10px;
     }
 
-    /* ===== PANEL AREA ===== */
     .panel{
       width:100%;
       max-width: var(--maxw);
@@ -110,7 +101,6 @@
       background: transparent;
     }
 
-    /* ===== BOTTOM BAR (minimal) ===== */
     .bar{
       width:100%;
       max-width: var(--maxw);
@@ -155,13 +145,6 @@
       text-overflow: ellipsis;
     }
 
-    .barActions{
-      display:flex;
-      align-items:center;
-      gap:10px;
-      flex: 0 0 auto;
-    }
-
     .btn{
       appearance:none;
       border:1px solid rgba(0,0,0,0.10);
@@ -178,10 +161,8 @@
       gap:8px;
       backdrop-filter: blur(6px);
     }
-
     .btn:active{ transform: scale(0.98); }
 
-    /* SoundCloud iframe wrapper */
     .scWrap{
       width:100%;
       background: rgba(255,255,255,0.52);
@@ -189,17 +170,16 @@
     }
     .scWrap iframe{
       width:100%;
-      height:110px;     /* minimal, aber bedienbar */
+      height:110px;
       border:0;
       display:block;
     }
 
-    /* ===== TOAST (auto-hide 1s) ===== */
     .toast{
       position:fixed;
       left:12px;
       right:12px;
-      bottom: 160px; /* über Soundcloud-Bar */
+      bottom: 160px;
       max-width: var(--maxw);
       margin: 0 auto;
       z-index: 30;
@@ -218,12 +198,8 @@
       transition: opacity 200ms ease, transform 200ms ease;
       pointer-events:none;
     }
-    .toast.show{
-      opacity:1;
-      transform: translateY(0);
-    }
+    .toast.show{ opacity:1; transform: translateY(0); }
 
-    /* ===== Maintenance pill (sticky bottom-right) ===== */
     .maintPill{
       position: fixed;
       right: 10px;
@@ -245,13 +221,8 @@
       user-select:none;
       -webkit-user-select:none;
     }
-    .maintPill small{
-      font-size: 11px;
-      font-weight: 700;
-      opacity: 0.82;
-    }
+    .maintPill small{ font-size: 11px; font-weight: 700; opacity: 0.82; }
 
-    /* ===== Debug Drawer (hidden until tap) ===== */
     .drawer{
       position: fixed;
       left: 10px;
@@ -293,7 +264,6 @@
       white-space: pre-wrap;
       word-break: break-word;
     }
-
     .drawerBtn{
       appearance:none;
       border: 1px solid rgba(255,255,255,0.18);
@@ -306,7 +276,6 @@
       cursor:pointer;
     }
 
-    /* ===== LOADING OVERLAY ===== */
     .loading{
       position: fixed;
       inset: 0;
@@ -319,9 +288,7 @@
       transition: opacity 520ms ease;
       pointer-events: none;
     }
-    .loading.hide{
-      opacity: 0;
-    }
+    .loading.hide{ opacity: 0; }
     .loadingArt{
       position:absolute;
       inset:0;
@@ -345,7 +312,14 @@
       backdrop-filter: blur(8px);
     }
 
-    /* Give panel more height on tall screens */
+    /* ganz kleiner Spacer => Seite ist scrollbar => Pull-to-refresh geht */
+    .scrollSpacer{
+      height: 72px;
+      width: 100%;
+      max-width: var(--maxw);
+      opacity: 0.0001;
+    }
+
     @media (min-height: 740px){
       .panel{ min-height: 68vh; }
     }
@@ -354,22 +328,18 @@
 
 <body>
 
-  <!-- LOADING SCREEN -->
   <div class="loading" id="loading">
     <div class="loadingArt" aria-hidden="true"></div>
     <div class="loadingLabel">SANCTUM</div>
   </div>
 
-  <!-- TOAST -->
   <div class="toast" id="toast"></div>
 
-  <!-- Maintenance pill -->
   <div class="maintPill" id="maintPill" title="Debug / Maintenance">
     <span id="maintText"></span>
     <small>tap</small>
   </div>
 
-  <!-- Debug Drawer -->
   <div class="drawer" id="drawer" aria-hidden="true">
     <div class="drawerHead">
       <div>Maintenance</div>
@@ -380,12 +350,10 @@
 
   <div class="wrap">
 
-    <!-- PANEL -->
     <div class="panel" id="panelArea">
       <img id="panelImg" src="" alt="SANCTUM Panel">
     </div>
 
-    <!-- BAR -->
     <div class="bar">
 
       <div class="barTop">
@@ -402,7 +370,6 @@
       </div>
 
       <div class="scWrap">
-        <!-- SoundCloud Embed -->
         <iframe
           id="scFrame"
           scrolling="no"
@@ -413,29 +380,26 @@
 
     </div>
 
+    <div class="scrollSpacer" aria-hidden="true"></div>
+
   </div>
 
   <script>
     // =========================
-    // SANCTUM READER — v0.27
+    // SANCTUM READER — v0.28
     // =========================
-    const VERSION = "v0.27";
+    const VERSION = "v0.28";
 
-    // ===== CHAPTER STACK (prepared for 00–04) =====
-    // You can extend: add chapter-01, chapter-02... later with just folder + total.
     const CHAPTERS = [
-      { id: "chapter-00", title: "Pilot", total: 20, filePattern: "panel##.jpg" },
-      { id: "chapter-01", title: "Chapter 01", total: 20, filePattern: "panel##.jpg" },
-      { id: "chapter-02", title: "Chapter 02", total: 20, filePattern: "panel##.jpg" },
-      { id: "chapter-03", title: "Chapter 03", total: 20, filePattern: "panel##.jpg" },
-      { id: "chapter-04", title: "Chapter 04", total: 20, filePattern: "panel##.jpg" },
+      { id: "chapter-00", title: "Pilot", total: 20, filePattern: "panel##.jpg", cover: "cover.jpg" },
+      { id: "chapter-01", title: "Chapter 01", total: 20, filePattern: "panel##.jpg", cover: "cover.jpg" },
+      { id: "chapter-02", title: "Chapter 02", total: 20, filePattern: "panel##.jpg", cover: "cover.jpg" },
+      { id: "chapter-03", title: "Chapter 03", total: 20, filePattern: "panel##.jpg", cover: "cover.jpg" },
+      { id: "chapter-04", title: "Chapter 04", total: 20, filePattern: "panel##.jpg", cover: "cover.jpg" },
     ];
 
-    // ===== PATHS =====
-    // Panels live at: manga/chapter-00/panel01.jpg
     const MANGA_ROOT = "./manga/";
 
-    // ===== UI =====
     const panelArea = document.getElementById("panelArea");
     const panelImg  = document.getElementById("panelImg");
     const toast     = document.getElementById("toast");
@@ -446,26 +410,26 @@
     const drawerClose = document.getElementById("drawerClose");
     const loading   = document.getElementById("loading");
 
-    const trackTitleEl  = document.getElementById("trackTitle");
-    const trackArtistEl = document.getElementById("trackArtist");
-
-    // ===== Track info (set explicitly so it's never "wrong") =====
     const TRACK = {
       title: "SENTINEL",
       artist: "DAVID RAVENSON",
       soundcloudUrl: "https://soundcloud.com/user-543596862/sentinel-2"
     };
-    trackTitleEl.textContent = TRACK.title;
-    trackArtistEl.textContent = TRACK.artist;
-    document.getElementById("openSoundcloud").href = TRACK.soundcloudUrl;
+    document.getElementById("trackTitle").textContent  = TRACK.title;
+    document.getElementById("trackArtist").textContent = TRACK.artist;
+    document.getElementById("openSoundcloud").href     = TRACK.soundcloudUrl;
 
-    // ===== Helpers =====
     function two(n){ return String(n).padStart(2, "0"); }
 
     function buildPanelUrl(chapterId, panelIndex){
-      // pattern: panel##.jpg (01..99)
       const file = "panel" + two(panelIndex) + ".jpg";
       return `${MANGA_ROOT}${chapterId}/${file}`;
+    }
+
+    function buildCoverUrl(chapterId){
+      const ch = CHAPTERS.find(x => x.id === chapterId);
+      const coverFile = (ch && ch.cover) ? ch.cover : "cover.jpg";
+      return `${MANGA_ROOT}${chapterId}/${coverFile}`;
     }
 
     function showToast(msg){
@@ -475,83 +439,129 @@
       showToast._t = setTimeout(()=> toast.classList.remove("show"), 1000);
     }
 
-    function setMaintenanceText(chId, p){
-      maintText.textContent = `${VERSION} · ${chId} · p${two(p)}`;
+    function setMaintenanceText(chId, mode, p){
+      if (mode === "cover") maintText.textContent = `${VERSION} · ${chId} · cover`;
+      else maintText.textContent = `${VERSION} · ${chId} · p${two(p)}`;
     }
 
-    function setDrawerText(chId, p, url){
+    function setDrawerText(chId, mode, p, url){
       drawerBody.textContent =
 `Version: ${VERSION}
 Chapter: ${chId}
-Panel: ${p}
-Panel URL: ${url}
+View: ${mode}
+Panel: ${mode === "panel" ? p : "-"}
+URL: ${url}
 
-Notes:
-- Swipe RIGHT to continue (next panel).
-- Debug shown only when you tap the pill.`;
+Hash formats:
+- #chapter-00/p01
+- #chapter-00/cover
+
+Gestures:
+- Swipe RIGHT: next
+- Swipe LEFT: back`;
     }
 
-    // ===== STATE =====
     let chapterIndex = 0;
     let panelIndex = 1;
+    let viewMode = "panel"; // "panel" | "cover"
 
-    // Accept deep link: #chapter-00/p01
     function parseHash(){
       const h = (location.hash || "").replace("#","");
-      // formats:
-      // chapter-00/p01
-      // chapter-00/01
-      // p01 (defaults to current chapter)
       if (!h) return;
 
       const parts = h.split("/");
       if (parts.length === 2){
         const ch = parts[0];
-        const p  = parts[1].replace("p","");
+        const raw = parts[1].trim().toLowerCase();
+
         const ci = CHAPTERS.findIndex(x => x.id === ch);
-        const pn = Number(p);
         if (ci >= 0) chapterIndex = ci;
-        if (pn && pn >= 1) panelIndex = pn;
-      } else if (parts.length === 1){
-        const maybeP = Number(parts[0].replace("p",""));
-        if (maybeP && maybeP >= 1) panelIndex = maybeP;
+
+        if (raw === "cover"){
+          viewMode = "cover";
+          return;
+        }
+
+        const pStr = raw.replace("p","");
+        const pn = Number(pStr);
+        if (pn && pn >= 1){
+          viewMode = "panel";
+          panelIndex = pn;
+        }
       }
     }
 
     function writeHash(){
       const chId = CHAPTERS[chapterIndex].id;
-      history.replaceState(null, "", `#${chId}/p${two(panelIndex)}`);
+      if (viewMode === "cover"){
+        history.replaceState(null, "", `#${chId}/cover`);
+      } else {
+        history.replaceState(null, "", `#${chId}/p${two(panelIndex)}`);
+      }
     }
 
-    // ===== Render =====
     function render(){
       const ch = CHAPTERS[chapterIndex];
-      const url = buildPanelUrl(ch.id, panelIndex);
+      let url = "";
 
       panelImg.onerror = null;
+
+      if (viewMode === "cover"){
+        url = buildCoverUrl(ch.id);
+        panelImg.src = url;
+
+        // fallback: wenn cover fehlt -> panel01
+        panelImg.onerror = () => {
+          const fallback = buildPanelUrl(ch.id, 1);
+          panelImg.onerror = () => showToast(`Weder cover.jpg noch panel01.jpg gefunden in ${ch.id}`);
+          panelImg.src = fallback;
+          showToast("Cover fehlt → fallback auf panel01.");
+          setMaintenanceText(ch.id, "panel", 1);
+          setDrawerText(ch.id, "panel", 1, fallback);
+          viewMode = "panel";
+          panelIndex = 1;
+          writeHash();
+        };
+
+        setMaintenanceText(ch.id, "cover", panelIndex);
+        setDrawerText(ch.id, "cover", panelIndex, url);
+        writeHash();
+        return;
+      }
+
+      url = buildPanelUrl(ch.id, panelIndex);
       panelImg.src = url;
 
       panelImg.onerror = () => {
-        // If chapter folder doesn't exist yet: show a gentle hint
-        showToast(`Panel nicht gefunden: ${ch.id}/panel${two(panelIndex)}.jpg`);
+        showToast(`Panel fehlt: ${ch.id}/panel${two(panelIndex)}.jpg`);
       };
 
       writeHash();
-      setMaintenanceText(ch.id, panelIndex);
-      setDrawerText(ch.id, panelIndex, url);
+      setMaintenanceText(ch.id, "panel", panelIndex);
+      setDrawerText(ch.id, "panel", panelIndex, url);
     }
 
-    // ===== Navigation =====
     function nextPanel(){
       const ch = CHAPTERS[chapterIndex];
+
+      // wenn man auf cover ist: erster Swipe bringt dich ins panel01
+      if (viewMode === "cover"){
+        viewMode = "panel";
+        panelIndex = 1;
+        render();
+        showToast("Swipe → panel01");
+        return;
+      }
+
       if (panelIndex < ch.total){
         panelIndex++;
         render();
         return;
       }
-      // End of chapter => go next chapter if available
+
       if (chapterIndex < CHAPTERS.length - 1){
         chapterIndex++;
+        viewMode = "panel";
         panelIndex = 1;
         render();
         showToast(`Weiter: ${CHAPTERS[chapterIndex].id}`);
@@ -561,13 +571,21 @@ Notes:
     }
 
     function prevPanel(){
+      // von cover zurück? bleib einfach dort
+      if (viewMode === "cover"){
+        showToast("Cover. Swipe right → panel01.");
+        return;
+      }
+
       if (panelIndex > 1){
         panelIndex--;
         render();
         return;
       }
+
       if (chapterIndex > 0){
         chapterIndex--;
+        viewMode = "panel";
         panelIndex = CHAPTERS[chapterIndex].total;
         render();
         showToast(`Zurück: ${CHAPTERS[chapterIndex].id}`);
@@ -576,7 +594,7 @@ Notes:
       }
     }
 
-    // ===== Swipe RIGHT to continue =====
+    // Swipe ONLY on panel area; never blocks page scroll
     let startX=0, startY=0, startT=0;
     let isPinching=false, isSwiping=false;
 
@@ -604,43 +622,44 @@ Notes:
       const dt = Date.now() - startT;
 
       if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.2 && dt < 700){
-        // RIGHT swipe => continue (next)
-        if (dx > 0) nextPanel();
-        else prevPanel();
+        if (dx > 0) nextPanel();   // RIGHT = continue
+        else prevPanel();          // LEFT = back
       }
     }, {passive:true});
 
-    // Tap panel = small hint (no autoplay battles)
     panelArea.addEventListener("click", ()=>{
       showToast("Ready. Swipe right to continue.");
     });
 
-    // ===== Maintenance drawer =====
     maintPill.addEventListener("click", ()=>{
       drawer.classList.toggle("open");
       drawer.setAttribute("aria-hidden", drawer.classList.contains("open") ? "false" : "true");
     });
+
     drawerClose.addEventListener("click", ()=>{
       drawer.classList.remove("open");
       drawer.setAttribute("aria-hidden", "true");
     });
 
-    // ===== Loading screen behavior =====
-    // show briefly, then fade; not a "page" — just an overlay.
     function hideLoadingSoon(){
-      // slight delay so it actually feels intentional
       setTimeout(()=>{
         loading.classList.add("hide");
-        // after fade, remove from layout
         setTimeout(()=> loading.style.display = "none", 700);
       }, 700);
     }
 
-    // ===== INIT =====
+    // INIT
     parseHash();
     render();
     showToast("Ready. Swipe right to continue.");
     hideLoadingSoon();
+
+    // If hash changes manually
+    window.addEventListener("hashchange", ()=>{
+      parseHash();
+      render();
+      showToast("Jump.");
+    });
   </script>
 
 </body>
