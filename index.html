@@ -1,155 +1,108 @@
 <!doctype html>
 <html lang="de">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>SANCTUM — Chapter 1</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>SANCTUM — Chapter 1</title>
 
-  <style>
-    html, body {
-      height: 100%;
-      margin: 0;
-      background: #000;
-      color: #fff;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-      overflow: hidden; /* verhindert “zu weit nach unten scrollen” */
-    }
+<style>
+html, body {
+  margin: 0;
+  height: 100%;
+  background: #000;
+  color: #fff;
+  font-family: system-ui, sans-serif;
+  overflow: hidden;
+}
 
-    /* === DEIN PANEL/HINTERGRUND (Beispiel) === */
-    .stage {
-      height: 100%;
-      display: grid;
-      place-items: center;
-      padding: 0;
-    }
+/* === PANEL === */
+.stage {
+  height: 100%;
+  display: grid;
+  place-items: center;
+}
 
-    .panel {
-      width: min(92vw, 900px);
-      height: min(92vh, 1400px);
-      display: block;
-      object-fit: contain;
-      background: #000;
-    }
+.panel {
+  width: min(92vw, 900px);
+  height: min(92vh, 1400px);
+  object-fit: contain;
+  display: block;
+}
 
-    /* === SOUNDLOUD PLAYER: CROPPING TRICK ===
-       Idee: Im “closed” Zustand sieht man nur das Fenster um den SC-Playbutton.
-       Beim “open” Zustand wird die Box höher und zeigt den ganzen Embed.
-    */
-    .sc-shell {
-      position: fixed;
-      left: 50%;
-      transform: translateX(-50%);
-      bottom: 24px;
-      z-index: 50;
+/* === SOUNDCloud L U K E === */
+.sc-shell {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 24px;
+  z-index: 100;
 
-      width: min(92vw, 900px);
-      border-radius: 16px;
-      overflow: hidden;
+  width: min(92vw, 900px);
+  border-radius: 16px;
+  overflow: hidden;
 
-      /* leichter Frost-Look, falls dein Panel hell ist */
-      background: rgba(0,0,0,0.55);
-      backdrop-filter: blur(6px);
-      box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(6px);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.6);
 
-      /* Animation */
-      transition: height 520ms ease;
-      will-change: height;
+  height: 86px;                /* eingeklappt = nur Playbutton-Zone */
+  transition: height 0.55s ease;
+}
 
-      /* geschlossen: nur “Playbutton-Zone” */
-      height: 86px;
-    }
+.sc-shell.open {
+  height: 220px;               /* aufgeklappt = ganzer Player */
+}
 
-    .sc-shell.open {
-      /* offen: volle “Mini-Player”-Höhe (kannst du anpassen) */
-      height: 220px;
-    }
+/* iframe bewusst größer → wir croppen */
+.sc-frame {
+  width: 1200px;
+  height: 220px;
+  border: 0;
+  display: block;
 
-    /* iframe wird absichtlich größer als die sichtbare Box gesetzt,
-       dann können wir per translate den Playbutton “zentrieren”.
-       Wichtig: Das ist ein Crop/Shift, kein echtes “UI entfernen”.
-    */
-    .sc-frame {
-      width: 1200px;          /* größer als Container => shift möglich */
-      height: 220px;          /* entspricht open-height */
-      border: 0;
-      display: block;
-
-      /* === SHIFT: hier stellst du ein, WO der Playbutton im Crop sitzt ===
-         Negativer X-Wert schiebt den Player nach links, sodass links sitzende
-         Elemente (Play) eher mittig im Sichtfenster landen.
-         Y bleibt 0, weil wir unten platzieren.
-      */
-      transform: translateX(-320px);
-      transform-origin: left top;
-      pointer-events: auto;
-    }
-
-    /* Im geschlossenen Zustand bleibt iframe klickbar, aber du siehst nur das Crop-Fenster.
-       Der Tap geht auf den echten SoundCloud-Playbutton im iframe.
-    */
-
-    /* Optional: kleiner Hinweis, wenn geschlossen (kannst du löschen) */
-    .hint {
-      position: fixed;
-      left: 50%;
-      transform: translateX(-50%);
-      bottom: 8px;
-      font-size: 12px;
-      opacity: 0.55;
-      user-select: none;
-      pointer-events: none;
-      z-index: 60;
-    }
-  </style>
+  /* Pixel-Shift für Android/Chrome:
+     sorgt dafür, dass der SC-Playbutton mittig sichtbar ist */
+  transform: translateX(-320px);
+}
+</style>
 </head>
 
 <body>
-  <div class="stage">
-    <!-- Beispielbild (ersetze src durch dein Panel) -->
-    <img class="panel" src="./manga/my-series/chapter-1/001.jpg" alt="SANCTUM Panel 001" />
-  </div>
 
-  <!-- SoundCloud Cropped Embed -->
-  <div id="scShell" class="sc-shell" aria-label="SoundCloud Player">
-    <!--
-      1) Ersetze TRACK_URL mit deiner SoundCloud Track-URL
-      Beispiel: https://soundcloud.com/deinname/trackname
+<div class="stage">
+  <!-- DEIN PANEL -->
+  <img
+    class="panel"
+    src="./manga/my-series/chapter-1/001.jpg"
+    alt="SANCTUM Panel 001">
+</div>
 
-      2) Embed URL Format:
-      https://w.soundcloud.com/player/?url=ENCODED_TRACK_URL&auto_play=false&hide_related=true&show_comments=false&show_user=true&show_reposts=false&visual=false
+<!-- SOUNDCloud Player (cropped) -->
+<div id="scShell" class="sc-shell">
+  <iframe
+    class="sc-frame"
+    allow="autoplay"
+    scrolling="no"
+    src="https://w.soundcloud.com/player/?url=https%3A//soundcloud.com/user-543596862/sentinel-2&auto_play=false&hide_related=true&show_comments=false&show_user=true&show_reposts=false&visual=false">
+  </iframe>
+</div>
 
-      Hinweis: visual=false ist der “classic” Player (wie auf deinem Screenshot).
-    -->
-    <iframe
-      class="sc-frame"
-      id="scFrame"
-      scrolling="no"
-      allow="autoplay"
-      src="https://w.soundcloud.com/player/?url=https%3A//soundcloud.com/DEINNAME/DEINTRACK&auto_play=false&hide_related=true&show_comments=false&show_user=true&show_reposts=false&visual=false">
-    </iframe>
-  </div>
+<script>
+// v0.7 — SoundCloud-Playbutton = Luke
 
-  <div class="hint">Tippe den SoundCloud-Playbutton → Player klappt auf</div>
+const scShell = document.getElementById("scShell");
 
-  <script>
-    // v0.5 — SoundCloud-only Button: Crop im closed Zustand, expand beim Tap
+/*
+  Wichtig:
+  - Wir verhindern NICHT den Klick
+  - Der Tap geht durch zum echten SoundCloud-Playbutton
+  - Gleichzeitig klappt der Container auf
+*/
+scShell.addEventListener("pointerdown", () => {
+  scShell.classList.add("open");
+}, { passive: true });
 
-    const scShell = document.getElementById("scShell");
+</script>
 
-    // Trick: Wir reagieren auf pointerdown (früher als click),
-    // klappen auf, aber verhindern NICHT den Klick.
-    // Der Klick geht weiter in den iframe und trifft den echten SC-Playbutton.
-    scShell.addEventListener("pointerdown", () => {
-      scShell.classList.add("open");
-    }, { passive: true });
-
-    // Optional: Wenn du per zweitem Tap wieder einklappen willst,
-    // uncomment das hier. (Ich lasse es erstmal “nur aufklappen”, wie du es wolltest.)
-    /*
-    scShell.addEventListener("dblclick", () => {
-      scShell.classList.remove("open");
-    });
-    */
-  </script>
 </body>
 </html>
