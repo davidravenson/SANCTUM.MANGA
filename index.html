@@ -7,520 +7,282 @@
 
   <style>
     :root{
-      --version: "v0.27";
+      --version: "v0.28.1";
       --paper-bg: url("./media/ui/manga_paper_bg.png");
-      --ui-bg: rgba(255,255,255,0.78);
-      --ui-border: rgba(0,0,0,0.12);
-      --ui-shadow: 0 8px 24px rgba(0,0,0,0.18);
-      --ink: #111;
     }
 
     html,body{
-      height:100%;
       margin:0;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      height:100%;
       background:#000;
-      overscroll-behavior-y:auto; /* pull-to-refresh nicht absägen */
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      overflow-x:hidden;
     }
 
-    /* Papier + dunkler Himmel (oben) */
     body::before{
       content:"";
       position:fixed;
       inset:0;
       z-index:-2;
-      background:
-        radial-gradient(1200px 520px at 50% -120px, rgba(0,0,0,0.92), rgba(0,0,0,0.85) 40%, rgba(0,0,0,0.25) 68%, rgba(0,0,0,0.00) 78%),
-        var(--paper-bg);
-      background-size: cover, cover;
-      background-position: top center, center;
-      background-repeat:no-repeat, no-repeat;
+      background: var(--paper-bg) center/cover no-repeat;
     }
 
-    /* dezente Sternchen oben (sehr fein) */
     body::after{
       content:"";
       position:fixed;
       inset:0;
       z-index:-1;
+      background: radial-gradient(ellipse at top, rgba(0,0,0,0.65), rgba(0,0,0,0.2));
       pointer-events:none;
-      background-image:
-        radial-gradient(circle at 12% 10%, rgba(255,255,255,0.9) 0 1px, transparent 2px),
-        radial-gradient(circle at 78% 12%, rgba(255,255,255,0.7) 0 1px, transparent 2px),
-        radial-gradient(circle at 40% 20%, rgba(255,255,255,0.5) 0 1px, transparent 2px),
-        radial-gradient(circle at 62% 28%, rgba(255,255,255,0.35) 0 1px, transparent 2px);
-      opacity:0.35;
     }
 
     .wrap{
       min-height:100%;
+      padding:12px 12px 140px;
+      box-sizing:border-box;
       display:flex;
       flex-direction:column;
       align-items:center;
-      justify-content:flex-start;
-      padding:12px 12px calc(92px + env(safe-area-inset-bottom));
-      box-sizing:border-box;
-      gap:10px;
+      gap:12px;
     }
 
-    /* PANEL CARD */
-    .panelCard{
+    .panel{
       width:100%;
       max-width:980px;
-      background: rgba(255,255,255,0.55);
-      border: 1px solid rgba(0,0,0,0.08);
-      border-radius: 18px;
-      box-shadow: var(--ui-shadow);
+      flex:1 1 auto;
+      border-radius:18px;
       overflow:hidden;
+      background:rgba(255,255,255,0.18);
+      box-shadow:0 10px 35px rgba(0,0,0,0.25);
     }
 
-    .panelArea{
-      width:100%;
-      touch-action: pan-y pinch-zoom;
-      user-select:none;
-      -webkit-user-select:none;
-      background: rgba(0,0,0,0.08);
-    }
-
-    .panelArea img{
+    .panel img{
       width:100%;
       height:auto;
       display:block;
-      background:#fff;
+      user-select:none;
+      -webkit-user-select:none;
     }
 
-    /* HUD (kurz sichtbar, nicht dauerhaft im Weg) */
-    .hud{
-      position:fixed;
-      left:12px;
-      bottom: calc(92px + env(safe-area-inset-bottom));
-      z-index:20;
-      max-width: 86vw;
-      background: rgba(30,30,30,0.68);
-      color:#fff;
-      padding:10px 12px;
-      border-radius:14px;
-      font-size:14px;
-      opacity:0;
-      transform: translateY(6px);
-      transition: opacity 200ms ease, transform 200ms ease;
-      pointer-events:none;
-      white-space:pre-line;
-    }
-    .hud.show{
-      opacity:1;
-      transform: translateY(0);
-    }
-
-    /* Minimal Trackbar */
-    .trackbar{
+    .soundWrap{
       width:100%;
       max-width:980px;
-      background: var(--ui-bg);
-      border:1px solid var(--ui-border);
+      background:rgba(255,255,255,0.6);
       border-radius:18px;
-      box-shadow: var(--ui-shadow);
-      overflow:hidden;
+      box-shadow:0 10px 35px rgba(0,0,0,0.18);
+      padding:10px 12px;
+      box-sizing:border-box;
     }
 
-    .trackHead{
+    .trackTop{
       display:flex;
-      align-items:flex-start;
       justify-content:space-between;
+      align-items:flex-start;
       gap:10px;
-      padding:10px 12px 8px;
-      color:var(--ink);
+      margin-bottom:8px;
     }
 
     .trackText{
+      color:#000;
+      font-weight:800;
       line-height:1.05;
     }
-
-    .trackTitle{
-      font-weight:800;
-      letter-spacing:0.4px;
-      font-size:18px;
-    }
-
-    .trackArtist{
-      margin-top:4px;
-      opacity:0.85;
-      font-size:14px;
+    .trackText span{
+      display:block;
       font-weight:600;
+      opacity:0.75;
+      margin-top:4px;
     }
 
-    .scBtn{
-      flex:0 0 auto;
-      align-self:center;
-      border:1px solid rgba(0,0,0,0.10);
-      background: rgba(255,255,255,0.75);
+    .openBtn{
+      border:1px solid rgba(0,0,0,0.18);
+      background:rgba(255,255,255,0.7);
+      color:#000;
       padding:10px 12px;
-      border-radius:14px;
-      font-weight:700;
-      color:#111;
+      border-radius:999px;
       text-decoration:none;
-      display:inline-block;
+      font-weight:700;
+      font-size:13px;
+      white-space:nowrap;
     }
 
-    .scEmbed{
+    iframe{
       width:100%;
       height:110px;
       border:0;
-      display:block;
+      border-radius:14px;
       background:#fff;
     }
 
-    /* Maintenance bar sticky bottom */
     .maintenance{
       position:fixed;
-      left:0;
-      right:0;
-      bottom:0;
-      z-index:30;
-      padding:8px 10px calc(8px + env(safe-area-inset-bottom));
-      display:flex;
-      justify-content:center;
-      pointer-events:none; /* nicht klicken im Weg */
-    }
-
-    .maintenanceInner{
-      width:min(980px, 96vw);
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
-      background: rgba(0,0,0,0.36);
-      color: rgba(255,255,255,0.85);
-      border: 1px solid rgba(255,255,255,0.12);
-      border-radius: 16px;
-      padding:8px 10px;
+      left:10px;
+      right:10px;
+      bottom:10px;
+      z-index:50;
+      background:rgba(0,0,0,0.55);
+      backdrop-filter:blur(10px);
+      border-radius:14px;
+      padding:10px 12px;
+      color:#fff;
       font-size:12px;
-      backdrop-filter: blur(6px);
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      box-sizing:border-box;
     }
 
-    .maintLeft{ opacity:0.9; }
-    .maintRight{ opacity:0.85; }
-    .maintRight code{ opacity:0.95; }
+    .maintenance code{
+      opacity:0.9;
+    }
 
-    /* LOADER (Cover Screen) */
-    .loader{
+    .coverLoader{
       position:fixed;
       inset:0;
-      z-index:999;
+      z-index:100;
+      background:#000;
       display:flex;
       align-items:center;
       justify-content:center;
-      padding:24px;
-      box-sizing:border-box;
-      background:
-        radial-gradient(1200px 520px at 50% -120px, rgba(0,0,0,0.95), rgba(0,0,0,0.86) 42%, rgba(0,0,0,0.35) 72%, rgba(0,0,0,0.00) 84%),
-        var(--paper-bg);
-      background-size: cover, cover;
-      background-position: top center, center;
-      background-repeat:no-repeat, no-repeat;
-      transition: opacity 260ms ease;
-      opacity:1;
+      transition:opacity 400ms ease;
     }
 
-    .loader.hide{
+    .coverLoader.hide{
       opacity:0;
       pointer-events:none;
     }
 
-    .coverBox{
-      width:min(520px, 88vw);
-      border-radius: 18px;
-      overflow:hidden;
-      background: rgba(255,255,255,0.62);
-      border:1px solid rgba(0,0,0,0.10);
-      box-shadow: var(--ui-shadow);
-    }
-
     .coverImg{
-      width:100%;
-      height:auto;
-      display:block;
-      background: transparent;
+      position:absolute;
+      inset:0;
+      background-size:cover;
+      background-position:center;
     }
 
-    .coverFallback{
-      padding:14px 14px 16px;
-      color:#111;
+    .coverVeil{
+      position:absolute;
+      inset:0;
+      background:radial-gradient(ellipse at center, rgba(0,0,0,0.15), rgba(0,0,0,0.75));
+    }
+
+    .coverLabel{
+      position:relative;
+      z-index:2;
+      color:#fff;
       font-weight:800;
       letter-spacing:0.4px;
+      padding:12px 16px;
+      border-radius:14px;
+      background:rgba(0,0,0,0.45);
+      border:1px solid rgba(255,255,255,0.18);
     }
   </style>
 </head>
 
 <body>
 
-  <!-- LOADING / COVER -->
-  <div class="loader" id="loader">
-    <div class="coverBox">
-      <img id="coverImg" class="coverImg" alt="SANCTUM Cover" />
-      <div id="coverFallback" class="coverFallback" style="display:none;">
-        SANCTUM — Loading…
-      </div>
-    </div>
+<!-- COVER / LOADING -->
+<div class="coverLoader" id="coverLoader">
+  <div class="coverImg" id="coverImg"></div>
+  <div class="coverVeil"></div>
+  <div class="coverLabel">SANCTUM</div>
+</div>
+
+<div class="wrap">
+
+  <div class="panel" id="panelArea">
+    <img id="panelImg" alt="SANCTUM panel">
   </div>
 
-  <div class="wrap">
-
-    <div class="panelCard">
-      <div class="panelArea" id="panelArea">
-        <img id="panelImg" alt="SANCTUM Panel" />
+  <div class="soundWrap">
+    <div class="trackTop">
+      <div class="trackText">
+        SENTINEL
+        <span>DAVID RAVENSON</span>
       </div>
+      <a class="openBtn" href="https://soundcloud.com/user-543596862/sentinel-2" target="_blank" rel="noopener">
+        SoundCloud
+      </a>
     </div>
 
-    <div class="trackbar">
-      <div class="trackHead">
-        <div class="trackText">
-          <div class="trackTitle">SENTINEL</div>
-          <div class="trackArtist">DAVID RAVENSON</div>
-        </div>
-        <a class="scBtn" id="openSc" href="https://soundcloud.com/user-543596862/sentinel-2" target="_blank" rel="noopener">
-          Open on SoundCloud
-        </a>
-      </div>
-
-      <!-- SoundCloud embed (streaming, kein mp3-download) -->
-      <iframe
-        class="scEmbed"
-        id="scEmbed"
-        scrolling="no"
-        allow="autoplay"
-        src=""
-        title="SoundCloud Player">
-      </iframe>
-    </div>
-
+    <!-- SoundCloud stream -->
+    <iframe
+      loading="lazy"
+      allow="autoplay"
+      src="https://w.soundcloud.com/player/?url=https%3A//soundcloud.com/user-543596862/sentinel-2&auto_play=false&hide_related=true&show_comments=false&show_user=false&show_reposts=false&show_teaser=false&visual=false">
+    </iframe>
   </div>
 
-  <div class="hud" id="hud"></div>
+</div>
 
-  <div class="maintenance">
-    <div class="maintenanceInner">
-      <div class="maintLeft" id="maintLeft"></div>
-      <div class="maintRight" id="maintRight"></div>
-    </div>
-  </div>
+<div class="maintenance">
+  <div>SENTINEL • DAVID RAVENSON</div>
+  <code>v0.28.1 · chapter-00 · audio: chapter-00audio</code>
+</div>
 
-  <script>
-    // =========================
-    // VERSION
-    // =========================
-    const VERSION = "v0.27";
+<script>
+/* =========================
+   SANCTUM READER v0.28.1
+   ========================= */
 
-    // =========================
-    // CONFIG (Kapitel / Panels)
-    // =========================
-    // Panels: manga/chapter-00/panel01.jpg ...
-    // Cover:  manga/chapter-00/cover.jpg
-    const DEFAULT_CHAPTER = "chapter-00";
-    const TOTAL_PANELS = 20;
+/* CHAPTER CONFIG */
+const CHAPTER = "chapter-00";
+const TOTAL_PANELS = 20;
 
-    const pad2 = (n) => String(n).padStart(2, "0");
-    const panelPath = (chapter, index1based) => `./manga/${chapter}/panel${pad2(index1based)}.jpg`;
-    const coverPath = (chapter) => `./manga/${chapter}/cover.jpg`;
+/* ✅ AUDIO PATH (UPDATED, DOCUMENTED) */
+const AUDIO_FOLDER = "./media/audio/chapter-00audio/";
+const AUDIO_FILE   = "instrumental.mp3";
+/* Full path (future use):
+   ./media/audio/chapter-00audio/instrumental.mp3
+*/
 
-    // =========================
-    // ELEMENTS
-    // =========================
-    const loader = document.getElementById("loader");
-    const coverImg = document.getElementById("coverImg");
-    const coverFallback = document.getElementById("coverFallback");
+/* PANEL PATH */
+const pad2 = n => String(n).padStart(2,"0");
+const panelPath = i => `./manga/${CHAPTER}/panel${pad2(i)}.jpg`;
+const coverPath = `./manga/${CHAPTER}/cover.jpg`;
 
-    const panelArea = document.getElementById("panelArea");
-    const panelImg = document.getElementById("panelImg");
-    const hud = document.getElementById("hud");
+const panelImg = document.getElementById("panelImg");
+const coverLoader = document.getElementById("coverLoader");
+const coverImg = document.getElementById("coverImg");
 
-    const maintLeft = document.getElementById("maintLeft");
-    const maintRight = document.getElementById("maintRight");
+let panelIndex = 1;
 
-    const scEmbed = document.getElementById("scEmbed");
+/* Cover loader */
+(function(){
+  const img = new Image();
+  img.onload = () => {
+    coverImg.style.backgroundImage = `url('${coverPath}?cb=${Date.now()}')`;
+    setTimeout(()=>coverLoader.classList.add("hide"), 650);
+  };
+  img.onerror = () => {
+    setTimeout(()=>coverLoader.classList.add("hide"), 650);
+  };
+  img.src = `${coverPath}?cb=${Date.now()}`;
+})();
 
-    // =========================
-    // HUD show helper (auto hide)
-    // =========================
-    let hudTimer = null;
-    function showHud(text, ms=1000){
-      hud.textContent = text;
-      hud.classList.add("show");
-      if (hudTimer) clearTimeout(hudTimer);
-      hudTimer = setTimeout(()=>hud.classList.remove("show"), ms);
-    }
+/* Render panel */
+function render(){
+  panelImg.src = panelPath(panelIndex) + `?cb=${Date.now()}`;
+}
+render();
 
-    // =========================
-    // ROUTER (hash)
-    // #chapter-00/cover
-    // #chapter-00/01
-    // =========================
-    function parseHash(){
-      const raw = (location.hash || "").replace(/^#/, "").trim();
-      if (!raw) return { chapter: DEFAULT_CHAPTER, mode: "panel", panel: 1 };
+/* Swipe right = next */
+let sx=0, sy=0;
+document.getElementById("panelArea").addEventListener("touchstart", e=>{
+  if(e.touches.length!==1) return;
+  sx=e.touches[0].clientX;
+  sy=e.touches[0].clientY;
+},{passive:true});
 
-      const parts = raw.split("/");
-      const chapter = parts[0] || DEFAULT_CHAPTER;
-      const second = (parts[1] || "").toLowerCase();
+document.getElementById("panelArea").addEventListener("touchend", e=>{
+  const dx=e.changedTouches[0].clientX-sx;
+  const dy=e.changedTouches[0].clientY-sy;
+  if(Math.abs(dx)>40 && Math.abs(dx)>Math.abs(dy)){
+    if(dx>0 && panelIndex<TOTAL_PANELS){ panelIndex++; render(); }
+    if(dx<0 && panelIndex>1){ panelIndex--; render(); }
+  }
+},{passive:true});
+</script>
 
-      if (second === "cover") return { chapter, mode: "cover", panel: 1 };
-
-      // panel number
-      const n = Number(second);
-      if (Number.isFinite(n) && n >= 1) return { chapter, mode: "panel", panel: Math.min(n, TOTAL_PANELS) };
-
-      return { chapter, mode: "panel", panel: 1 };
-    }
-
-    function setHash(chapter, panel){
-      location.hash = `#${chapter}/${pad2(panel)}`;
-    }
-
-    // =========================
-    // SOUNDCLOUD EMBED
-    // =========================
-    const SC_TRACK_URL = "https://soundcloud.com/user-543596862/sentinel-2";
-    function setSoundCloud(){
-      const encoded = encodeURIComponent(SC_TRACK_URL);
-      // minimal player; still shows waveform but smaller footprint
-      scEmbed.src = `https://w.soundcloud.com/player/?url=${encoded}&auto_play=false&hide_related=true&show_comments=false&show_user=false&show_reposts=false&visual=false`;
-    }
-
-    // =========================
-    // LOADER (Cover screen)
-    // - shows cover image if it exists
-    // - hides after a minimum time + once first panel loaded
-    // =========================
-    let loaderMinDone = false;
-    let panelLoaded = false;
-    let loaderHidden = false;
-
-    function tryHideLoader(){
-      if (loaderHidden) return;
-      if (!loaderMinDone) return;
-      if (!panelLoaded) return;
-
-      loaderHidden = true;
-      loader.classList.add("hide");
-      setTimeout(()=>{ loader.style.display = "none"; }, 320);
-    }
-
-    function showLoaderForChapter(chapter){
-      loader.style.display = "flex";
-      loader.classList.remove("hide");
-      loaderHidden = false;
-      panelLoaded = false;
-      loaderMinDone = false;
-
-      // Minimum show time to feel intentional (nicht “blip”)
-      setTimeout(()=>{ loaderMinDone = true; tryHideLoader(); }, 900);
-
-      // Load cover image (if missing, show fallback text)
-      coverFallback.style.display = "none";
-      coverImg.style.display = "block";
-
-      const url = coverPath(chapter) + `?v=${encodeURIComponent(VERSION)}`;
-      coverImg.src = url;
-
-      coverImg.onload = () => {
-        // nice, nothing else
-      };
-      coverImg.onerror = () => {
-        // cover not found -> show text instead of tiny alt-label
-        coverImg.style.display = "none";
-        coverFallback.style.display = "block";
-        showHud("Cover nicht gefunden.\nLege cover.jpg in manga/"+chapter+"/", 1400);
-      };
-    }
-
-    // =========================
-    // PANEL RENDER
-    // =========================
-    let state = parseHash();
-    function renderPanel(chapter, panelIndex){
-      const url = panelPath(chapter, panelIndex) + `?v=${encodeURIComponent(VERSION)}`;
-      panelImg.src = url;
-
-      maintLeft.textContent = `SENTINEL • DAVID RAVENSON`;
-      maintRight.innerHTML = `<code>${VERSION}</code> • ${chapter} • panel ${pad2(panelIndex)}`;
-
-      showHud(`Ready.\nSwipe right to continue.`, 1000);
-    }
-
-    panelImg.onload = () => {
-      panelLoaded = true;
-      tryHideLoader();
-    };
-
-    panelImg.onerror = () => {
-      panelLoaded = true; // don't softlock loader
-      tryHideLoader();
-      showHud("Panel fehlt.\nPrüfe: manga/"+state.chapter+"/panel"+pad2(state.panel)+".jpg", 1800);
-    };
-
-    // =========================
-    // SWIPE (rechts = weiter)
-    // =========================
-    let startX=0, startY=0, startT=0;
-    let isPinching=false, isSwiping=false;
-
-    panelArea.addEventListener("touchstart", (e)=>{
-      if (e.touches.length >= 2){ isPinching=true; isSwiping=false; return; }
-      isPinching=false; isSwiping=true;
-      const t = e.touches[0];
-      startX=t.clientX; startY=t.clientY; startT=Date.now();
-    }, {passive:true});
-
-    panelArea.addEventListener("touchend", (e)=>{
-      if (!isSwiping || isPinching) return;
-      const t = e.changedTouches[0];
-      const dx = t.clientX - startX;
-      const dy = t.clientY - startY;
-      const dt = Date.now() - startT;
-
-      if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.2 && dt < 700) {
-        // Swipe RIGHT => NEXT
-        if (dx > 0) nextPanel();
-        else prevPanel();
-      }
-    }, {passive:true});
-
-    function nextPanel(){
-      if (state.panel < TOTAL_PANELS) state.panel++;
-      setHash(state.chapter, state.panel);
-      renderPanel(state.chapter, state.panel);
-    }
-    function prevPanel(){
-      if (state.panel > 1) state.panel--;
-      setHash(state.chapter, state.panel);
-      renderPanel(state.chapter, state.panel);
-    }
-
-    // =========================
-    // INIT / HASH CHANGE
-    // =========================
-    function applyRoute(){
-      state = parseHash();
-
-      setSoundCloud();
-
-      // immer kurz Cover-Ladescreen zeigen (aber nicht als “eigene Seite” festklemmen)
-      showLoaderForChapter(state.chapter);
-
-      // wenn jemand direkt /cover im hash hat, starten wir trotzdem bei panel 1 danach
-      if (state.mode === "cover"){
-        state.panel = 1;
-        // hash sauber setzen, damit du nicht auf /cover “hängst”
-        setHash(state.chapter, state.panel);
-      }
-
-      renderPanel(state.chapter, state.panel);
-    }
-
-    window.addEventListener("hashchange", applyRoute);
-
-    // Start
-    applyRoute();
-  </script>
 </body>
 </html>
