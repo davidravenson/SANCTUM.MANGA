@@ -1,94 +1,413 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>SANCTUM Panel</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>SANCTUM — Reader</title>
 
-<style>
-/* =========================
-   SANCTUM v0.29.2 STABLE
-   ONE FILE — NO MAGIC
-   ========================= */
+  <style>
+    :root{
+      --v: "v0.30.0";
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
 
-:root{
-  --safe-bottom: env(safe-area-inset-bottom, 0px);
-  --player-gap: 18px;
-  --player-height: 166px; /* SoundCloud iframe height */
-}
+      --bg: url("./media/ui/manga_paper_bg.png");
+      --ink: #0b0b0b;
+      --glass: rgba(255,255,255,.14);
+      --glass2: rgba(255,255,255,.10);
+      --shadow: 0 16px 40px rgba(0,0,0,.35);
+    }
 
-/* Base */
-html, body{
-  margin:0;
-  padding:0;
-  background:#000;
-  color:#fff;
-  font-family: system-ui, sans-serif;
-}
+    html, body{
+      height:100%;
+      margin:0;
+      background: #000;
+      color:#fff;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      overflow-x:hidden;
+    }
 
-/* Reserve space so player NEVER overlaps content */
-body{
-  padding-bottom: calc(var(--player-height) + var(--player-gap) + var(--safe-bottom));
-}
+    body{
+      background-image: var(--bg);
+      background-size: cover;
+      background-position: center top;
+      background-repeat: no-repeat;
+      background-attachment: fixed;
+      overscroll-behavior: none;
+      touch-action: pan-y;
+    }
 
-/* Panel area */
-.reader{
-  max-width: 900px;
-  margin: 0 auto;
-  padding: 12px;
-}
+    .page{
+      min-height:100vh;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+    }
 
-.reader h1{
-  font-size: 1.1rem;
-  font-weight: 500;
-  opacity: .85;
-  margin: 0 0 12px;
-}
+    .stage{
+      position:relative;
+      width:100%;
+      max-width: 860px;
+      padding-top: calc(8px + var(--safe-top));
+      padding-bottom: 16px;
+      display:flex;
+      justify-content:center;
+      align-items:center;
+    }
 
-/* Image safe: page will NOT go black if image path is wrong */
-.reader img{
-  width:100%;
-  height:auto;
-  display:block;
-  background:#111;
-}
+    .panelShell{
+      position:relative;
+      width:100%;
+      display:flex;
+      justify-content:center;
+      align-items:center;
+    }
 
-/* Player dock */
-#playerDock{
-  position: fixed;
-  left: 12px;
-  right: 12px;
-  bottom: calc(var(--player-gap) + var(--safe-bottom));
-  z-index: 9999;
-}
-</style>
+    .panelImg{
+      width: min(100vw, 860px);
+      height: auto;
+      display:block;
+      border-radius: 0;
+      box-shadow: none;
+      background: #000;
+    }
+
+    .playerDock{
+      position:absolute;
+      left: 50%;
+      bottom: -26px;
+      transform: translateX(-50%);
+      z-index: 20;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      pointer-events: auto;
+    }
+
+    .player{
+      position:relative;
+      width: 78px;
+      height: 78px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.10);
+      border: 1px solid rgba(255,255,255,.18);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      overflow:hidden;
+      transition: width .28s ease, height .28s ease, border-radius .28s ease;
+    }
+
+    /* Collapsed = only button */
+    .player .embedWrap{ display:none; }
+
+    .playerBtn{
+      width:100%;
+      height:100%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      cursor:pointer;
+      user-select:none;
+    }
+
+    .playIcon{
+      width: 0;
+      height: 0;
+      border-top: 12px solid transparent;
+      border-bottom: 12px solid transparent;
+      border-left: 18px solid rgba(255,255,255,.92);
+      transform: translateX(2px);
+      filter: drop-shadow(0 2px 6px rgba(0,0,0,.35));
+    }
+
+    .player.expanded{
+      width: min(92vw, 640px);
+      height: 240px;
+      border-radius: 22px;
+      background: rgba(255,255,255,.12);
+    }
+
+    .player.expanded .embedWrap{ display:block; }
+
+    .player.expanded .playerBtn{
+      position:absolute;
+      left: 10px;
+      top: 10px;
+      width: 54px;
+      height: 54px;
+      border-radius: 999px;
+      background: rgba(0,0,0,.26);
+      border: 1px solid rgba(255,255,255,.18);
+    }
+
+    .player.expanded .playIcon{
+      border-top-width: 10px;
+      border-bottom-width: 10px;
+      border-left-width: 16px;
+    }
+
+    .embedWrap{
+      position:absolute;
+      left: 10px;
+      right: 10px;
+      bottom: 10px;
+      top: 10px;     /* WICHTIG: jetzt ohne Meta/OpenBtn nutzen wir volle Fläche */
+      border-radius: 18px;
+      overflow:hidden;
+      border: 1px solid rgba(255,255,255,.18);
+      background: rgba(255,255,255,.10);
+    }
+
+    .embedWrap iframe{
+      width:100%;
+      height:100%;
+      border:0;
+      display:block;
+    }
+
+    .loading{
+      position:fixed;
+      inset:0;
+      z-index: 9999;
+      display:flex;
+      align-items:flex-start;
+      justify-content:center;
+      padding-top: var(--safe-top);
+      background: rgba(0,0,0,.08);
+      opacity:1;
+      transition: opacity .35s ease;
+    }
+
+    .loading::before{
+      content:"";
+      position:absolute;
+      inset:0;
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      background: rgba(0,0,0,.10);
+    }
+
+    .coverBanner{
+      position:relative;
+      width: min(92vw, 520px);
+      margin-top: 0;
+      border-radius: 0;
+      overflow:hidden;
+      box-shadow: 0 30px 70px rgba(0,0,0,.55);
+      transform: translateZ(0);
+    }
+
+    .coverBanner img{
+      width:100%;
+      height:auto;
+      display:block;
+      border-radius: 0;
+    }
+
+    .bottomSpacer{
+      height: 420px;
+      width: 100%;
+    }
+
+    .maint{
+      position:fixed;
+      left: 50%;
+      bottom: calc(10px + var(--safe-bottom));
+      transform: translateX(-50%);
+      width: min(92vw, 720px);
+      z-index: 50;
+
+      opacity: 0;
+      pointer-events:none;
+      transition: opacity .25s ease, transform .25s ease;
+    }
+
+    .maint.show{
+      opacity:1;
+      pointer-events:auto;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .maintBox{
+      background: rgba(0,0,0,.40);
+      border: 1px solid rgba(255,255,255,.16);
+      border-radius: 18px;
+      padding: 12px 14px;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      box-shadow: 0 16px 40px rgba(0,0,0,.35);
+      font-size: 14px;
+      line-height: 1.25;
+      color: rgba(255,255,255,.90);
+      display:flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items:center;
+      justify-content: space-between;
+    }
+
+    .pill{ opacity:.9; white-space: nowrap; }
+    .ok{ color: #7CFF9A; font-weight: 800; }
+    .err{ color: #FF7C7C; font-weight: 800; }
+  </style>
 </head>
 
 <body>
+  <div id="loading" class="loading" aria-hidden="false">
+    <div class="coverBanner" role="img" aria-label="SANCTUM cover">
+      <img id="coverImg" src="./manga/chapter-00/cover.jpg" alt="SANCTUM Cover" />
+    </div>
+  </div>
 
-<!-- ===== PANEL ===== -->
-<div class="reader">
-  <h1>SANCTUM Panel</h1>
+  <div class="page">
+    <div class="stage" id="stage">
+      <div class="panelShell">
+        <img
+          id="panelImg"
+          class="panelImg"
+          src="./manga/chapter-00/panel01.jpg"
+          alt="Panel 01"
+          loading="eager"
+          decoding="async"
+        />
 
-  <!-- OPTIONAL IMAGE
-       If the path is wrong, the page still works -->
-  <img
-    src="./panel.jpg"
-    alt="SANCTUM Panel"
-    onerror="this.style.display='none'">
-</div>
+        <div class="playerDock">
+          <div id="player" class="player" aria-label="Player">
+            <div id="playerBtn" class="playerBtn" title="Open player">
+              <div class="playIcon" aria-hidden="true"></div>
+            </div>
 
-<!-- ===== PLAYER ===== -->
-<div id="playerDock">
-  <iframe
-    width="100%"
-    height="166"
-    scrolling="no"
-    frameborder="no"
-    allow="autoplay"
-    src="https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/tracks/XXXXXXXX&auto_play=false">
-  </iframe>
-</div>
+            <div class="embedWrap" aria-hidden="true">
+              <iframe
+                id="scFrame"
+                allow="autoplay"
+                scrolling="no"
+                frameborder="no"
+                src="https://w.soundcloud.com/player/?url=https%3A//soundcloud.com/user-543596862/sentinel-2&color=%23000000&auto_play=false&hide_related=true&show_comments=false&show_user=true&show_reposts=false&show_teaser=false&visual=true"
+                title="SoundCloud player"
+              ></iframe>
+            </div>
+          </div>
+        </div>
 
+      </div>
+    </div>
+
+    <div class="bottomSpacer"></div>
+  </div>
+
+  <div id="maint" class="maint" aria-hidden="true">
+    <div class="maintBox">
+      <div class="pill">v0.30.0</div>
+      <div class="pill">chapter-00 / panel01</div>
+      <div class="pill">Paper: <span class="ok">OK ✓</span></div>
+      <div class="pill">error: <span id="errText" class="err">(none)</span></div>
+    </div>
+  </div>
+
+  <!-- SoundCloud Widget API (offiziell) -->
+  <script src="https://w.soundcloud.com/player/api.js"></script>
+
+  <script>
+    (function(){
+      const VERSION = "v0.30.0";
+
+      const loading = document.getElementById("loading");
+      const coverImg = document.getElementById("coverImg");
+      const panelImg = document.getElementById("panelImg");
+
+      const player = document.getElementById("player");
+      const playerBtn = document.getElementById("playerBtn");
+      const maint = document.getElementById("maint");
+      const errText = document.getElementById("errText");
+
+      const scFrame = document.getElementById("scFrame");
+      let widget = null;
+
+      function setError(msg){
+        errText.textContent = msg ? msg : "(none)";
+      }
+
+      // init SoundCloud widget when iframe is ready
+      function initWidget(){
+        try{
+          widget = SC.Widget(scFrame);
+        }catch(e){
+          widget = null;
+        }
+      }
+
+      // Expand + Play (single button)
+      playerBtn.addEventListener("click", () => {
+        const willExpand = !player.classList.contains("expanded");
+        player.classList.toggle("expanded");
+
+        playerBtn.title = player.classList.contains("expanded") ? "Close player" : "Open player";
+
+        // If opening: start playing immediately (counts as user gesture → mobile-friendly)
+        if(willExpand){
+          if(!widget) initWidget();
+          if(widget){
+            // Start right away; if it fails silently, user can press inside embed.
+            widget.play();
+          }
+        }
+      }, { passive:true });
+
+      // Loading overlay logic
+      let panelReady = false;
+
+      function tryHideLoading(){
+        if(!panelReady) return;
+        setTimeout(() => {
+          loading.style.opacity = "0";
+          loading.setAttribute("aria-hidden", "true");
+          setTimeout(() => { loading.style.display = "none"; }, 420);
+        }, 550);
+      }
+
+      coverImg.addEventListener("load", () => {}, { passive:true });
+      coverImg.addEventListener("error", () => {}, { passive:true });
+
+      panelImg.addEventListener("load", () => {
+        panelReady = true;
+        setError("(none)");
+        tryHideLoading();
+      }, { passive:true });
+
+      panelImg.addEventListener("error", () => {
+        panelReady = true;
+        setError("Panel image missing / path error");
+        tryHideLoading();
+      }, { passive:true });
+
+      // Maintenance reveal on deep scroll
+      const SHOW_Y = 560;
+      function onScroll(){
+        const y = window.scrollY || document.documentElement.scrollTop || 0;
+        if(y > SHOW_Y){
+          maint.classList.add("show");
+          maint.setAttribute("aria-hidden", "false");
+        }else{
+          maint.classList.remove("show");
+          maint.setAttribute("aria-hidden", "true");
+        }
+      }
+      window.addEventListener("scroll", onScroll, { passive:true });
+      onScroll();
+
+      // Safety background
+      document.body.style.backgroundRepeat = "no-repeat";
+      document.body.style.backgroundSize = "cover";
+      document.body.style.backgroundPosition = "center top";
+
+      // Prepare widget as early as possible
+      initWidget();
+
+      console.log("SANCTUM", VERSION);
+    })();
+  </script>
 </body>
 </html>
