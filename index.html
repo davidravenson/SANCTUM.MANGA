@@ -7,12 +7,22 @@
 
   <style>
     :root{
-      --v: "v0.30.2";
+      --v: "v0.30.3";
       --safe-top: env(safe-area-inset-top, 0px);
       --safe-bottom: env(safe-area-inset-bottom, 0px);
 
       --bg: url("./media/ui/manga_paper_bg.png");
       --shadow: 0 16px 40px rgba(0,0,0,.35);
+
+      /* === Luke-Crop Tuning ===
+         Wenn der Playbutton minimal daneben sitzt:
+         - mehr nach rechts im Kreis:  X größer machen
+         - mehr nach links:           X kleiner machen
+         - mehr nach oben:            Y negativer
+         - mehr nach unten:           Y weniger negativ
+      */
+      --crop-x: 64px;   /* WICHTIG: positiv = iframe nach rechts schieben → Play kommt ins Sichtfenster */
+      --crop-y: -44px;
     }
 
     html, body{
@@ -70,7 +80,6 @@
       background: #000;
     }
 
-    /* Dock */
     .playerDock{
       position:absolute;
       left: 50%;
@@ -98,44 +107,41 @@
       transition: width .28s ease, height .28s ease, border-radius .28s ease;
     }
 
-    /* Expanded shows the full classic player */
     .player.expanded{
       width: min(92vw, 640px);
-      height: 190px; /* classic embed is smaller than visual */
+      height: 170px;          /* classic player wirkt hier besser */
       border-radius: 22px;
       background: rgba(255,255,255,.12);
     }
 
-    /* === CROPPED WINDOW ===
-       Collapsed: we show ONLY the area where the SC play button sits.
-       This is done by keeping the iframe BIG and shifting it.
-    */
     .embedWrap{
       position:absolute;
-      inset: 0;
+      inset:0;
       overflow:hidden;
       border-radius: inherit;
     }
 
-    /* The iframe is intentionally wider; we shift it to center the play button in the 78x78 window. */
+    /* Classic SoundCloud Embed (visual=false) */
     #scFrame{
-      width: 640px;   /* big enough to shift around */
-      height: 190px;  /* classic player height */
+      width: 640px;
+      height: 170px;
       border:0;
       display:block;
-
-      /* Collapsed "Luke": move iframe so the play button lands in the 78x78 circle.
-         If it’s slightly off on your phone, adjust only these two numbers. */
-      transform: translate(-18px, -54px);
+      pointer-events:auto;
       transform-origin: top left;
+
+      /* Collapsed crop: nur der Bereich um den Play-Button */
+      transform: translate(var(--crop-x), var(--crop-y));
     }
 
-    /* When expanded, we reset transform so the player displays normally */
-    .player.expanded #scFrame{
+    /* Trick: Beim Aufklappen NICHT sofort den Crop lösen,
+       damit der Tap garantiert noch den Play-Button trifft.
+       Erst kurz danach wird der iframe “normal” gezeigt. */
+    .player.expanded:not(.holdCrop) #scFrame{
       transform: translate(0px, 0px);
     }
 
-    /* Loading overlay (unchanged) */
+    /* Loading overlay */
     .loading{
       position:fixed;
       inset:0;
@@ -187,6 +193,7 @@
       transform: translateX(-50%);
       width: min(92vw, 720px);
       z-index: 50;
+
       opacity: 0;
       pointer-events:none;
       transition: opacity .25s ease, transform .25s ease;
@@ -242,7 +249,6 @@
         />
 
         <div class="playerDock">
-          <!-- LUKE: only SoundCloud play is visible when collapsed -->
           <div id="player" class="player" aria-label="Player">
             <div class="embedWrap">
               <iframe
@@ -265,7 +271,7 @@
 
   <div id="maint" class="maint" aria-hidden="true">
     <div class="maintBox">
-      <div class="pill">v0.30.2</div>
+      <div class="pill">v0.30.3</div>
       <div class="pill">chapter-00 / panel01</div>
       <div class="pill">Paper: <span class="ok">OK ✓</span></div>
       <div class="pill">error: <span id="errText" class="err">(none)</span></div>
@@ -274,7 +280,7 @@
 
   <script>
     (function(){
-      const VERSION = "v0.30.2";
+      const VERSION = "v0.30.3";
 
       const loading = document.getElementById("loading");
       const panelImg = document.getElementById("panelImg");
@@ -286,23 +292,22 @@
         errText.textContent = msg ? msg : "(none)";
       }
 
-      // KEY TRICK:
-      // Expand on pointerdown (earlier than click) so the player unfolds
-      // while the click still hits the SoundCloud play button in the iframe.
-      // To avoid the click missing due to transform reset, we expand first,
-      // but delay the iframe transform reset by one animation frame.
+      // Luke behavior:
+      // pointerdown expands immediately, but holds crop for a moment
+      // so the tap still hits the SoundCloud play button.
       player.addEventListener("pointerdown", () => {
         if(player.classList.contains("expanded")) return;
 
         player.classList.add("expanded");
+        player.classList.add("holdCrop");
 
-        // Delay transform reset a tiny bit so the tap still lands on the play button area
-        // (CSS handles the actual reset via .player.expanded #scFrame rule).
-        // This gives the browser a moment to register the click target.
-        requestAnimationFrame(() => {});
+        // release crop shortly after expansion begins
+        setTimeout(() => {
+          player.classList.remove("holdCrop");
+        }, 180);
       }, { passive:true });
 
-      // Loading overlay logic (unchanged behavior)
+      // Loading overlay
       let panelReady = false;
 
       function tryHideLoading(){
@@ -326,7 +331,7 @@
         tryHideLoading();
       }, { passive:true });
 
-      // Maintenance reveal on deep scroll
+      // Maintenance reveal
       const SHOW_Y = 560;
       function onScroll(){
         const y = window.scrollY || document.documentElement.scrollTop || 0;
