@@ -7,7 +7,7 @@
 
   <style>
     :root{
-      --v: "v0.30.0";
+      --v: "v0.30.1";
       --safe-top: env(safe-area-inset-top, 0px);
       --safe-bottom: env(safe-area-inset-bottom, 0px);
 
@@ -140,6 +140,7 @@
       border-radius: 999px;
       background: rgba(0,0,0,.26);
       border: 1px solid rgba(255,255,255,.18);
+      z-index: 5;
     }
 
     .player.expanded .playIcon{
@@ -153,7 +154,7 @@
       left: 10px;
       right: 10px;
       bottom: 10px;
-      top: 10px;     /* WICHTIG: jetzt ohne Meta/OpenBtn nutzen wir volle Fläche */
+      top: 10px;
       border-radius: 18px;
       overflow:hidden;
       border: 1px solid rgba(255,255,255,.18);
@@ -275,7 +276,7 @@
 
         <div class="playerDock">
           <div id="player" class="player" aria-label="Player">
-            <div id="playerBtn" class="playerBtn" title="Open player">
+            <div id="playerBtn" class="playerBtn" title="Play / Pause">
               <div class="playIcon" aria-hidden="true"></div>
             </div>
 
@@ -300,7 +301,7 @@
 
   <div id="maint" class="maint" aria-hidden="true">
     <div class="maintBox">
-      <div class="pill">v0.30.0</div>
+      <div class="pill">v0.30.1</div>
       <div class="pill">chapter-00 / panel01</div>
       <div class="pill">Paper: <span class="ok">OK ✓</span></div>
       <div class="pill">error: <span id="errText" class="err">(none)</span></div>
@@ -312,7 +313,7 @@
 
   <script>
     (function(){
-      const VERSION = "v0.30.0";
+      const VERSION = "v0.30.1";
 
       const loading = document.getElementById("loading");
       const coverImg = document.getElementById("coverImg");
@@ -325,35 +326,62 @@
 
       const scFrame = document.getElementById("scFrame");
       let widget = null;
+      let isPlaying = false;
 
       function setError(msg){
         errText.textContent = msg ? msg : "(none)";
       }
 
-      // init SoundCloud widget when iframe is ready
       function initWidget(){
         try{
           widget = SC.Widget(scFrame);
+
+          // Keep internal state in sync
+          widget.bind(SC.Widget.Events.PLAY, () => { isPlaying = true; });
+          widget.bind(SC.Widget.Events.PAUSE, () => { isPlaying = false; });
+          widget.bind(SC.Widget.Events.FINISH, () => {
+            isPlaying = false;
+            player.classList.remove("expanded");
+            playerBtn.title = "Play / Pause";
+          });
+
         }catch(e){
           widget = null;
+          setError("SoundCloud widget init failed");
         }
       }
 
-      // Expand + Play (single button)
+      // Single button behavior:
+      // - If closed: expand + play immediately (during animation)
+      // - If open & playing: pause + collapse
+      // - If open & paused: play (stay open)
       playerBtn.addEventListener("click", () => {
-        const willExpand = !player.classList.contains("expanded");
-        player.classList.toggle("expanded");
+        const wasExpanded = player.classList.contains("expanded");
 
-        playerBtn.title = player.classList.contains("expanded") ? "Close player" : "Open player";
+        if(!widget) initWidget();
 
-        // If opening: start playing immediately (counts as user gesture → mobile-friendly)
-        if(willExpand){
-          if(!widget) initWidget();
-          if(widget){
-            // Start right away; if it fails silently, user can press inside embed.
-            widget.play();
-          }
+        // Expand first, so the UI starts unfolding immediately
+        if(!wasExpanded){
+          player.classList.add("expanded");
         }
+
+        // Now control audio (still inside the user gesture)
+        if(widget){
+          if(!wasExpanded){
+            widget.play();
+          }else{
+            if(isPlaying){
+              widget.pause();
+              player.classList.remove("expanded");
+            }else{
+              widget.play();
+            }
+          }
+        }else{
+          setError("SoundCloud widget unavailable");
+        }
+
+        playerBtn.title = player.classList.contains("expanded") ? "Play / Pause" : "Play";
       }, { passive:true });
 
       // Loading overlay logic
@@ -398,12 +426,10 @@
       window.addEventListener("scroll", onScroll, { passive:true });
       onScroll();
 
-      // Safety background
       document.body.style.backgroundRepeat = "no-repeat";
       document.body.style.backgroundSize = "cover";
       document.body.style.backgroundPosition = "center top";
 
-      // Prepare widget as early as possible
       initWidget();
 
       console.log("SANCTUM", VERSION);
