@@ -1,65 +1,85 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-<title>SANCTUM — Reader</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SANCTUM Panel</title>
 
 <style>
-/* =====================
-   SANCTUM v0.29.2
-   minimal hotfix only
-   ===================== */
+/* =========================
+   SANCTUM v0.29.2 STABLE
+   ONE FILE — NO MAGIC
+   ========================= */
 
 :root{
   --safe-bottom: env(safe-area-inset-bottom, 0px);
-  --player-offset: 18px;   /* WIE WEIT RUNTER der Player sitzt */
-  --player-height: 170px;  /* REALISTISCHE Höhe des Popups */
+  --player-gap: 18px;
+  --player-height: 166px; /* SoundCloud iframe height */
 }
 
-/* 👉 DAS IST DER GANZE TRICK:
-   Platz unter dem Panel reservieren */
-body{
+/* Base */
+html, body{
   margin:0;
+  padding:0;
   background:#000;
   color:#fff;
   font-family: system-ui, sans-serif;
-  padding-bottom: calc(var(--player-height) + var(--player-offset) + var(--safe-bottom));
 }
 
-/* Panel / Reader */
+/* Reserve space so player NEVER overlaps content */
+body{
+  padding-bottom: calc(var(--player-height) + var(--player-gap) + var(--safe-bottom));
+}
+
+/* Panel area */
 .reader{
-  max-width:900px;
-  margin:0 auto;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 12px;
 }
 
+.reader h1{
+  font-size: 1.1rem;
+  font-weight: 500;
+  opacity: .85;
+  margin: 0 0 12px;
+}
+
+/* Image safe: page will NOT go black if image path is wrong */
 .reader img{
   width:100%;
   height:auto;
   display:block;
+  background:#111;
 }
 
-/* Player bleibt unten, berührt das Panel nicht */
+/* Player dock */
 #playerDock{
-  position:fixed;
-  left:12px;
-  right:12px;
-  bottom: calc(var(--player-offset) + var(--safe-bottom));
-  z-index:9999;
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: calc(var(--player-gap) + var(--safe-bottom));
+  z-index: 9999;
 }
 </style>
 </head>
 
 <body>
 
-<!-- ===== PANEL (UNVERÄNDERT) ===== -->
+<!-- ===== PANEL ===== -->
 <div class="reader">
-  <img src="./manga/my-series/chapter-1/001.jpg" alt="SANCTUM Panel">
+  <h1>SANCTUM Panel</h1>
+
+  <!-- OPTIONAL IMAGE
+       If the path is wrong, the page still works -->
+  <img
+    src="./panel.jpg"
+    alt="SANCTUM Panel"
+    onerror="this.style.display='none'">
 </div>
 
-<!-- ===== PLAYER (UNVERÄNDERT, NUR GEDOCKT) ===== -->
+<!-- ===== PLAYER ===== -->
 <div id="playerDock">
-  <!-- DEIN BESTEHENDER PLAYER / SOUNDCLOUD / AUDIO -->
   <iframe
     width="100%"
     height="166"
