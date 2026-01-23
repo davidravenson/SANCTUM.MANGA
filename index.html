@@ -7,23 +7,19 @@
 
   <style>
     :root{
-      --v: "v0.29.2";
+      --v: "v0.29.3";
       --safe-top: env(safe-area-inset-top, 0px);
       --safe-bottom: env(safe-area-inset-bottom, 0px);
 
       --bg: url("./media/ui/manga_paper_bg.png");
-      --ink: #0b0b0b;
       --shadow: 0 16px 40px rgba(0,0,0,.35);
 
-      /* Minimal cinematic bars (responsive) */
       --cine-top: clamp(10px, 2.2vh, 22px);
       --cine-bottom: clamp(14px, 2.8vh, 30px);
 
-      /* Stage width cap for large screens */
       --stage-max: 860px;
-
-      /* Player overlap into bottom bar */
       --player-overlap: 26px;
+      --player-shift: 200px;
     }
 
     html, body{
@@ -32,11 +28,10 @@
       background:#000;
       color:#fff;
       font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-      -webkit-tap-highlight-color: transparent;
       overflow-x:hidden;
+      -webkit-tap-highlight-color: transparent;
     }
 
-    /* Background: no repeat, no seams */
     body{
       background-image: var(--bg);
       background-size: cover;
@@ -47,7 +42,6 @@
       touch-action: pan-y;
     }
 
-    /* PAGE WRAP */
     .page{
       min-height:100vh;
       display:flex;
@@ -55,76 +49,58 @@
       align-items:center;
     }
 
-    /* STAGE */
     .stage{
-      position:relative;
       width:100%;
       max-width: var(--stage-max);
       padding-top: calc(var(--safe-top) + 8px);
       display:flex;
       justify-content:center;
-      align-items:center;
     }
 
-    /* PANEL SHELL */
     .panelShell{
       position:relative;
       width:100%;
-      display:flex;
-      justify-content:center;
-      align-items:center;
     }
 
-    /* CINEMATIC FRAME: minimal black bars, no rounding, no white frame */
     .cineFrame{
-      position:relative;
-      width: min(100vw, var(--stage-max));
       background:#000;
-      /* top/bottom bar sizes (minimal) */
       padding-top: var(--cine-top);
       padding-bottom: var(--cine-bottom);
-      box-sizing:border-box;
     }
 
-    /* Panel image fills available width; no rounding */
     .panelImg{
       width:100%;
-      height:auto;
       display:block;
-      border-radius: 0;
-      box-shadow: none;
-      background: #000;
+      background:#000;
+      cursor:pointer;
     }
 
-    /* Player dock overlaps the lower black bar (partly) */
+    /* PLAYER */
     .playerDock{
       position:absolute;
-      left: 50%;
+      left:50%;
       bottom: calc(var(--cine-bottom) - var(--player-overlap));
       transform: translateX(-50%);
-      z-index: 20;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      pointer-events:auto;
+      z-index:20;
+      transition: transform .35s ease;
     }
 
-    /* Collapsible player */
+    .playerDock.shifted{
+      transform: translateX(-50%) translateY(var(--player-shift));
+    }
+
     .player{
-      position:relative;
-      width: 72px;
-      height: 72px;
-      border-radius: 999px;
-      background: rgba(255,255,255,.10);
-      border: 1px solid rgba(255,255,255,.18);
-      box-shadow: var(--shadow);
+      width:72px;
+      height:72px;
+      border-radius:999px;
+      background: rgba(255,255,255,.1);
+      border:1px solid rgba(255,255,255,.18);
       backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-      overflow:hidden;
+      box-shadow: var(--shadow);
       transition: width .28s ease, height .28s ease, border-radius .28s ease;
+      overflow:hidden;
     }
 
-    /* Collapsed = only button, NO text */
     .player .meta,
     .player .embedWrap,
     .player .openBtn{
@@ -138,25 +114,20 @@
       align-items:center;
       justify-content:center;
       cursor:pointer;
-      user-select:none;
     }
 
     .playIcon{
-      width: 0;
-      height: 0;
-      border-top: 12px solid transparent;
-      border-bottom: 12px solid transparent;
-      border-left: 18px solid rgba(255,255,255,.92);
+      width:0;height:0;
+      border-top:12px solid transparent;
+      border-bottom:12px solid transparent;
+      border-left:18px solid rgba(255,255,255,.95);
       transform: translateX(2px);
-      filter: drop-shadow(0 2px 6px rgba(0,0,0,.35));
     }
 
-    /* Expanded player */
     .player.expanded{
-      width: min(92vw, 640px);
-      height: 240px;
-      border-radius: 18px;
-      background: rgba(255,255,255,.12);
+      width:min(92vw,640px);
+      height:240px;
+      border-radius:18px;
     }
 
     .player.expanded .meta,
@@ -165,98 +136,78 @@
       display:block;
     }
 
-    /* In expanded state, keep button as a close toggle */
     .player.expanded .playerBtn{
       position:absolute;
-      left: 10px;
-      top: 10px;
-      width: 52px;
-      height: 52px;
-      border-radius: 999px;
-      background: rgba(0,0,0,.26);
-      border: 1px solid rgba(255,255,255,.18);
-    }
-
-    .player.expanded .playIcon{
-      border-top-width: 10px;
-      border-bottom-width: 10px;
-      border-left-width: 16px;
+      left:10px;
+      top:10px;
+      width:52px;
+      height:52px;
+      background: rgba(0,0,0,.3);
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.2);
     }
 
     .meta{
       position:absolute;
-      left: 74px;
-      top: 12px;
-      right: 140px;
-      line-height: 1.05;
-      color:#111;
+      left:74px;
+      top:12px;
+      right:140px;
       background: rgba(255,255,255,.78);
-      border-radius: 14px;
-      padding: 10px 12px;
-      box-shadow: 0 10px 18px rgba(0,0,0,.18);
+      color:#000;
+      border-radius:14px;
+      padding:10px 12px;
+      font-weight:800;
     }
-    .meta .t{
-      font-weight: 900;
-      letter-spacing: .03em;
-      font-size: 18px;
-      color:#0d0d0d;
-    }
+
     .meta .a{
-      margin-top: 2px;
-      font-weight: 700;
-      opacity: .92;
-      font-size: 13px;
-      color:#0d0d0d;
+      font-size:13px;
+      font-weight:700;
+      opacity:.85;
     }
 
     .openBtn{
       position:absolute;
-      top: 14px;
-      right: 12px;
-      padding: 10px 12px;
-      border-radius: 999px;
-      border: 1px solid rgba(255,255,255,.22);
-      background: rgba(0,0,0,.18);
+      top:14px;
+      right:12px;
+      padding:8px 12px;
+      border-radius:999px;
+      background: rgba(0,0,0,.25);
       color:#fff;
-      font-weight: 700;
-      font-size: 13px;
-      cursor:pointer;
+      font-weight:700;
       text-decoration:none;
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-      white-space:nowrap;
     }
 
     .embedWrap{
       position:absolute;
-      left: 10px;
-      right: 10px;
-      bottom: 10px;
-      top: 80px;
-      border-radius: 16px;
+      left:10px;
+      right:10px;
+      bottom:10px;
+      top:80px;
+      border-radius:16px;
       overflow:hidden;
-      border: 1px solid rgba(255,255,255,.18);
-      background: rgba(255,255,255,.10);
     }
 
     .embedWrap iframe{
       width:100%;
       height:100%;
       border:0;
-      display:block;
     }
 
-    /* Loading overlay: hung banner cover, no rounded corners, no tag */
+    .bottomSpacer{
+      height:260px;
+      width:100%;
+    }
+
+    /* LOADING */
     .loading{
       position:fixed;
       inset:0;
-      z-index: 9999;
+      z-index:9999;
       display:flex;
-      align-items:flex-start;
       justify-content:center;
+      align-items:flex-start;
       padding-top: var(--safe-top);
-      background: rgba(0,0,0,.08);
-      opacity:1;
+      background: rgba(0,0,0,.1);
       transition: opacity .35s ease;
     }
 
@@ -265,235 +216,107 @@
       position:absolute;
       inset:0;
       backdrop-filter: blur(14px);
-      -webkit-backdrop-filter: blur(14px);
-      background: rgba(0,0,0,.10);
+      background: rgba(0,0,0,.1);
     }
 
     .coverBanner{
-      position:relative;
-      width: min(92vw, 520px);
-      margin-top: 0;
-      border-radius: 0;
-      overflow:hidden;
-      box-shadow: 0 30px 70px rgba(0,0,0,.55);
-      transform: translateZ(0);
+      width:min(92vw,520px);
+      box-shadow:0 30px 70px rgba(0,0,0,.55);
     }
 
     .coverBanner img{
       width:100%;
-      height:auto;
       display:block;
-      border-radius: 0;
-    }
-
-    /* Scroll: keep it short, reveal maintenance intentionally */
-    .bottomSpacer{
-      height: 260px;
-      width: 100%;
-    }
-
-    /* Maintenance panel: appears only after scroll threshold */
-    .maint{
-      position:fixed;
-      left: 50%;
-      bottom: calc(10px + var(--safe-bottom));
-      transform: translateX(-50%);
-      width: min(92vw, 720px);
-      z-index: 50;
-
-      opacity: 0;
-      pointer-events:none;
-      transition: opacity .25s ease, transform .25s ease;
-    }
-
-    .maint.show{
-      opacity:1;
-      pointer-events:auto;
-      transform: translateX(-50%) translateY(0);
-    }
-
-    .maintBox{
-      background: rgba(0,0,0,.42);
-      border: 1px solid rgba(255,255,255,.16);
-      border-radius: 18px;
-      padding: 12px 14px;
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-      box-shadow: 0 16px 40px rgba(0,0,0,.35);
-      font-size: 14px;
-      line-height: 1.25;
-      color: rgba(255,255,255,.90);
-      display:flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      align-items:center;
-      justify-content: space-between;
-    }
-
-    .pill{ opacity:.9; white-space: nowrap; }
-    .ok{ color: #7CFF9A; font-weight: 800; }
-    .err{ color: #FF7C7C; font-weight: 800; }
-
-    /* Ensure background doesn't tile on super-tall viewports */
-    @media (min-height: 900px){
-      body{ background-size: cover; }
     }
   </style>
 </head>
 
 <body>
-  <!-- LOADING OVERLAY (cover banner only) -->
-  <div id="loading" class="loading" aria-hidden="false">
-    <div class="coverBanner" role="img" aria-label="SANCTUM cover">
-      <img id="coverImg" src="./manga/chapter-00/cover.jpg" alt="SANCTUM Cover" />
-    </div>
+
+<!-- LOADING -->
+<div id="loading" class="loading">
+  <div class="coverBanner">
+    <img src="./manga/chapter-00/cover.jpg" alt="SANCTUM cover">
   </div>
+</div>
 
-  <div class="page">
-    <div class="stage" id="stage">
-      <div class="panelShell">
-        <div class="cineFrame" aria-label="Cinematic frame">
-          <img
-            id="panelImg"
-            class="panelImg"
-            src="./manga/chapter-00/panel01.jpg"
-            alt="Panel 01"
-            loading="eager"
-            decoding="async"
-          />
-        </div>
+<div class="page">
+  <div class="stage">
+    <div class="panelShell">
 
-        <!-- Collapsible player dock (overlaps bottom black bar) -->
-        <div class="playerDock">
-          <div id="player" class="player" aria-label="Player">
-            <div id="playerBtn" class="playerBtn" title="Open player">
-              <div class="playIcon" aria-hidden="true"></div>
-            </div>
-
-            <div class="meta" aria-hidden="true">
-              <div class="t">SENTINEL</div>
-              <div class="a">DAVID RAVENSON</div>
-            </div>
-
-            <a
-              class="openBtn"
-              href="https://soundcloud.com/user-543596862/sentinel-2"
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-hidden="true"
-            >Open on SoundCloud</a>
-
-            <div class="embedWrap" aria-hidden="true">
-              <iframe
-                id="scFrame"
-                allow="autoplay"
-                scrolling="no"
-                frameborder="no"
-                src="https://w.soundcloud.com/player/?url=https%3A//soundcloud.com/user-543596862/sentinel-2&color=%23000000&auto_play=false&hide_related=true&show_comments=false&show_user=true&show_reposts=false&show_teaser=false&visual=true"
-                title="SoundCloud player"
-              ></iframe>
-            </div>
-          </div>
-        </div>
-
+      <div class="cineFrame">
+        <img
+          id="panelImg"
+          class="panelImg"
+          src="./manga/chapter-00/panel01.jpg"
+          alt="Panel 01"
+        >
       </div>
-    </div>
 
-    <div class="bottomSpacer"></div>
+      <div id="playerDock" class="playerDock">
+        <div id="player" class="player">
+
+          <div id="playerBtn" class="playerBtn">
+            <div class="playIcon"></div>
+          </div>
+
+          <div class="meta">
+            <div>SENTINEL</div>
+            <div class="a">DAVID RAVENSON</div>
+          </div>
+
+          <a class="openBtn"
+             href="https://soundcloud.com/user-543596862/sentinel-2"
+             target="_blank">SoundCloud</a>
+
+          <div class="embedWrap">
+            <iframe
+              allow="autoplay"
+              src="https://w.soundcloud.com/player/?url=https%3A//soundcloud.com/user-543596862/sentinel-2&auto_play=false&hide_related=true&show_comments=false&show_user=true&show_reposts=false&show_teaser=false">
+            </iframe>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
   </div>
 
-  <!-- Maintenance: hidden until scroll; error always present -->
-  <div id="maint" class="maint" aria-hidden="true">
-    <div class="maintBox">
-      <div class="pill">v0.29.2</div>
-      <div class="pill">chapter-00 / panel01</div>
-      <div class="pill">audio: chapter-00audio</div>
-      <div class="pill">Paper: <span id="paperText" class="ok">OK ✓</span></div>
-      <div class="pill">error: <span id="errText" class="err">(none)</span></div>
-    </div>
-  </div>
+  <div class="bottomSpacer"></div>
+</div>
 
-  <script>
-    (function(){
-      const VERSION = "v0.29.2";
+<script>
+(function(){
+  const loading = document.getElementById("loading");
+  const panelImg = document.getElementById("panelImg");
+  const player = document.getElementById("player");
+  const playerBtn = document.getElementById("playerBtn");
+  const playerDock = document.getElementById("playerDock");
 
-      const loading = document.getElementById("loading");
-      const coverImg = document.getElementById("coverImg");
-      const panelImg = document.getElementById("panelImg");
+  // Hide loading once panel is ready
+  panelImg.onload = () => {
+    setTimeout(() => {
+      loading.style.opacity = "0";
+      setTimeout(() => loading.remove(), 400);
+    }, 500);
+  };
 
-      const player = document.getElementById("player");
-      const playerBtn = document.getElementById("playerBtn");
+  // Toggle player
+  playerBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    player.classList.toggle("expanded");
+    playerDock.classList.remove("shifted");
+  });
 
-      const maint = document.getElementById("maint");
-      const errText = document.getElementById("errText");
-      const paperText = document.getElementById("paperText");
+  // Tap panel → move expanded player down
+  panelImg.addEventListener("click", () => {
+    if(player.classList.contains("expanded")){
+      playerDock.classList.toggle("shifted");
+    }
+  });
 
-      // Keep error visible in maintenance always (as requested)
-      function setError(msg){
-        errText.textContent = msg ? msg : "(none)";
-      }
+})();
+</script>
 
-      // Quick paper check (background image loads indirectly; we just assume OK)
-      paperText.textContent = "OK ✓";
-
-      // Expand/collapse player (collapsed = ONLY button)
-      playerBtn.addEventListener("click", () => {
-        player.classList.toggle("expanded");
-        playerBtn.title = player.classList.contains("expanded") ? "Close player" : "Open player";
-      }, { passive:true });
-
-      // Loading: show cover banner briefly, then fade out AFTER panel is ready
-      let panelReady = false;
-
-      function hideLoading(){
-        setTimeout(() => {
-          loading.style.opacity = "0";
-          loading.setAttribute("aria-hidden", "true");
-          setTimeout(() => { loading.style.display = "none"; }, 420);
-        }, 520);
-      }
-
-      panelImg.addEventListener("load", () => {
-        panelReady = true;
-        setError("(none)");
-        hideLoading();
-      }, { passive:true });
-
-      panelImg.addEventListener("error", () => {
-        panelReady = true;
-        setError("Panel image missing / path error");
-        hideLoading();
-      }, { passive:true });
-
-      // If panel already cached
-      if(panelImg.complete && panelImg.naturalWidth > 0){
-        panelReady = true;
-        setError("(none)");
-        hideLoading();
-      }
-
-      // Maintenance appears only when user scrolls intentionally
-      const SHOW_Y = 220; // must scroll down a bit
-      function onScroll(){
-        const y = window.scrollY || document.documentElement.scrollTop || 0;
-        if(y > SHOW_Y){
-          maint.classList.add("show");
-          maint.setAttribute("aria-hidden", "false");
-        }else{
-          maint.classList.remove("show");
-          maint.setAttribute("aria-hidden", "true");
-        }
-      }
-      window.addEventListener("scroll", onScroll, { passive:true });
-      onScroll();
-
-      // Lock background behavior (no tiling)
-      document.body.style.backgroundRepeat = "no-repeat";
-      document.body.style.backgroundSize = "cover";
-      document.body.style.backgroundPosition = "center top";
-
-      console.log("SANCTUM", VERSION);
-    })();
-  </script>
 </body>
 </html>
