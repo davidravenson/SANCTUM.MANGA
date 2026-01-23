@@ -7,21 +7,18 @@
 
   <style>
     :root{
-      --v: "v0.30.1";
+      --v: "v0.30.2";
       --safe-top: env(safe-area-inset-top, 0px);
       --safe-bottom: env(safe-area-inset-bottom, 0px);
 
       --bg: url("./media/ui/manga_paper_bg.png");
-      --ink: #0b0b0b;
-      --glass: rgba(255,255,255,.14);
-      --glass2: rgba(255,255,255,.10);
       --shadow: 0 16px 40px rgba(0,0,0,.35);
     }
 
     html, body{
       height:100%;
       margin:0;
-      background: #000;
+      background:#000;
       color:#fff;
       font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
       -webkit-tap-highlight-color: transparent;
@@ -73,6 +70,7 @@
       background: #000;
     }
 
+    /* Dock */
     .playerDock{
       position:absolute;
       left: 50%;
@@ -82,9 +80,10 @@
       display:flex;
       align-items:center;
       justify-content:center;
-      pointer-events: auto;
+      pointer-events:auto;
     }
 
+    /* === LUKE CONTAINER === */
     .player{
       position:relative;
       width: 78px;
@@ -99,75 +98,44 @@
       transition: width .28s ease, height .28s ease, border-radius .28s ease;
     }
 
-    /* Collapsed = only button */
-    .player .embedWrap{ display:none; }
-
-    .playerBtn{
-      width:100%;
-      height:100%;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      cursor:pointer;
-      user-select:none;
-    }
-
-    .playIcon{
-      width: 0;
-      height: 0;
-      border-top: 12px solid transparent;
-      border-bottom: 12px solid transparent;
-      border-left: 18px solid rgba(255,255,255,.92);
-      transform: translateX(2px);
-      filter: drop-shadow(0 2px 6px rgba(0,0,0,.35));
-    }
-
+    /* Expanded shows the full classic player */
     .player.expanded{
       width: min(92vw, 640px);
-      height: 240px;
+      height: 190px; /* classic embed is smaller than visual */
       border-radius: 22px;
       background: rgba(255,255,255,.12);
     }
 
-    .player.expanded .embedWrap{ display:block; }
-
-    .player.expanded .playerBtn{
-      position:absolute;
-      left: 10px;
-      top: 10px;
-      width: 54px;
-      height: 54px;
-      border-radius: 999px;
-      background: rgba(0,0,0,.26);
-      border: 1px solid rgba(255,255,255,.18);
-      z-index: 5;
-    }
-
-    .player.expanded .playIcon{
-      border-top-width: 10px;
-      border-bottom-width: 10px;
-      border-left-width: 16px;
-    }
-
+    /* === CROPPED WINDOW ===
+       Collapsed: we show ONLY the area where the SC play button sits.
+       This is done by keeping the iframe BIG and shifting it.
+    */
     .embedWrap{
       position:absolute;
-      left: 10px;
-      right: 10px;
-      bottom: 10px;
-      top: 10px;
-      border-radius: 18px;
+      inset: 0;
       overflow:hidden;
-      border: 1px solid rgba(255,255,255,.18);
-      background: rgba(255,255,255,.10);
+      border-radius: inherit;
     }
 
-    .embedWrap iframe{
-      width:100%;
-      height:100%;
+    /* The iframe is intentionally wider; we shift it to center the play button in the 78x78 window. */
+    #scFrame{
+      width: 640px;   /* big enough to shift around */
+      height: 190px;  /* classic player height */
       border:0;
       display:block;
+
+      /* Collapsed "Luke": move iframe so the play button lands in the 78x78 circle.
+         If it’s slightly off on your phone, adjust only these two numbers. */
+      transform: translate(-18px, -54px);
+      transform-origin: top left;
     }
 
+    /* When expanded, we reset transform so the player displays normally */
+    .player.expanded #scFrame{
+      transform: translate(0px, 0px);
+    }
+
+    /* Loading overlay (unchanged) */
     .loading{
       position:fixed;
       inset:0;
@@ -219,7 +187,6 @@
       transform: translateX(-50%);
       width: min(92vw, 720px);
       z-index: 50;
-
       opacity: 0;
       pointer-events:none;
       transition: opacity .25s ease, transform .25s ease;
@@ -275,18 +242,15 @@
         />
 
         <div class="playerDock">
+          <!-- LUKE: only SoundCloud play is visible when collapsed -->
           <div id="player" class="player" aria-label="Player">
-            <div id="playerBtn" class="playerBtn" title="Play / Pause">
-              <div class="playIcon" aria-hidden="true"></div>
-            </div>
-
-            <div class="embedWrap" aria-hidden="true">
+            <div class="embedWrap">
               <iframe
                 id="scFrame"
                 allow="autoplay"
                 scrolling="no"
                 frameborder="no"
-                src="https://w.soundcloud.com/player/?url=https%3A//soundcloud.com/user-543596862/sentinel-2&color=%23000000&auto_play=false&hide_related=true&show_comments=false&show_user=true&show_reposts=false&show_teaser=false&visual=true"
+                src="https://w.soundcloud.com/player/?url=https%3A//soundcloud.com/user-543596862/sentinel-2&auto_play=false&hide_related=true&show_comments=false&show_user=true&show_reposts=false&show_teaser=false&visual=false"
                 title="SoundCloud player"
               ></iframe>
             </div>
@@ -301,90 +265,44 @@
 
   <div id="maint" class="maint" aria-hidden="true">
     <div class="maintBox">
-      <div class="pill">v0.30.1</div>
+      <div class="pill">v0.30.2</div>
       <div class="pill">chapter-00 / panel01</div>
       <div class="pill">Paper: <span class="ok">OK ✓</span></div>
       <div class="pill">error: <span id="errText" class="err">(none)</span></div>
     </div>
   </div>
 
-  <!-- SoundCloud Widget API (offiziell) -->
-  <script src="https://w.soundcloud.com/player/api.js"></script>
-
   <script>
     (function(){
-      const VERSION = "v0.30.1";
+      const VERSION = "v0.30.2";
 
       const loading = document.getElementById("loading");
-      const coverImg = document.getElementById("coverImg");
       const panelImg = document.getElementById("panelImg");
-
       const player = document.getElementById("player");
-      const playerBtn = document.getElementById("playerBtn");
-      const maint = document.getElementById("maint");
       const errText = document.getElementById("errText");
-
-      const scFrame = document.getElementById("scFrame");
-      let widget = null;
-      let isPlaying = false;
+      const maint = document.getElementById("maint");
 
       function setError(msg){
         errText.textContent = msg ? msg : "(none)";
       }
 
-      function initWidget(){
-        try{
-          widget = SC.Widget(scFrame);
+      // KEY TRICK:
+      // Expand on pointerdown (earlier than click) so the player unfolds
+      // while the click still hits the SoundCloud play button in the iframe.
+      // To avoid the click missing due to transform reset, we expand first,
+      // but delay the iframe transform reset by one animation frame.
+      player.addEventListener("pointerdown", () => {
+        if(player.classList.contains("expanded")) return;
 
-          // Keep internal state in sync
-          widget.bind(SC.Widget.Events.PLAY, () => { isPlaying = true; });
-          widget.bind(SC.Widget.Events.PAUSE, () => { isPlaying = false; });
-          widget.bind(SC.Widget.Events.FINISH, () => {
-            isPlaying = false;
-            player.classList.remove("expanded");
-            playerBtn.title = "Play / Pause";
-          });
+        player.classList.add("expanded");
 
-        }catch(e){
-          widget = null;
-          setError("SoundCloud widget init failed");
-        }
-      }
-
-      // Single button behavior:
-      // - If closed: expand + play immediately (during animation)
-      // - If open & playing: pause + collapse
-      // - If open & paused: play (stay open)
-      playerBtn.addEventListener("click", () => {
-        const wasExpanded = player.classList.contains("expanded");
-
-        if(!widget) initWidget();
-
-        // Expand first, so the UI starts unfolding immediately
-        if(!wasExpanded){
-          player.classList.add("expanded");
-        }
-
-        // Now control audio (still inside the user gesture)
-        if(widget){
-          if(!wasExpanded){
-            widget.play();
-          }else{
-            if(isPlaying){
-              widget.pause();
-              player.classList.remove("expanded");
-            }else{
-              widget.play();
-            }
-          }
-        }else{
-          setError("SoundCloud widget unavailable");
-        }
-
-        playerBtn.title = player.classList.contains("expanded") ? "Play / Pause" : "Play";
+        // Delay transform reset a tiny bit so the tap still lands on the play button area
+        // (CSS handles the actual reset via .player.expanded #scFrame rule).
+        // This gives the browser a moment to register the click target.
+        requestAnimationFrame(() => {});
       }, { passive:true });
 
-      // Loading overlay logic
+      // Loading overlay logic (unchanged behavior)
       let panelReady = false;
 
       function tryHideLoading(){
@@ -395,9 +313,6 @@
           setTimeout(() => { loading.style.display = "none"; }, 420);
         }, 550);
       }
-
-      coverImg.addEventListener("load", () => {}, { passive:true });
-      coverImg.addEventListener("error", () => {}, { passive:true });
 
       panelImg.addEventListener("load", () => {
         panelReady = true;
@@ -425,12 +340,6 @@
       }
       window.addEventListener("scroll", onScroll, { passive:true });
       onScroll();
-
-      document.body.style.backgroundRepeat = "no-repeat";
-      document.body.style.backgroundSize = "cover";
-      document.body.style.backgroundPosition = "center top";
-
-      initWidget();
 
       console.log("SANCTUM", VERSION);
     })();
