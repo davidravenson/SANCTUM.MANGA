@@ -7,107 +7,130 @@
 
   <style>
     :root{
-      --v: "v0.29.1";
+      --v: "v0.29.2";
       --safe-top: env(safe-area-inset-top, 0px);
       --safe-bottom: env(safe-area-inset-bottom, 0px);
 
-      --bg: url("./media/ui/manga_paper_bg.png");
-      --ink: #0b0b0b;
-      --glass: rgba(255,255,255,.14);
-      --glass2: rgba(255,255,255,.10);
-      --shadow: 0 16px 40px rgba(0,0,0,.35);
+      /* Assets */
+      --paper: url("./media/ui/manga_paper_bg.png");
+
+      /* Stage tuning */
+      --stage-max: 980px;          /* desktop/tablet stage width ceiling */
+      --stage-pad-x: clamp(10px, 2.2vw, 22px);
+      --stage-top-pad: calc(10px + var(--safe-top));
+
+      /* Panel + player overlap */
+      --player-size: 76px;
+      --player-overlap: 28px;      /* overlaps into the panel bottom black bar */
+      --player-expanded-h: 240px;
+
+      /* Visual */
+      --shadow: 0 18px 48px rgba(0,0,0,.42);
+      --glass: rgba(255,255,255,.10);
+      --glassBorder: rgba(255,255,255,.18);
     }
 
     html, body{
       height:100%;
       margin:0;
-      background: #000;
+      background:#000;
       color:#fff;
       font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
       -webkit-tap-highlight-color: transparent;
       overflow-x:hidden;
     }
 
-    /* Background: no repeat, no seams */
-    body{
-      background-image: var(--bg);
+    /* Fixed, non-repeating background layer (prevents "repeat seams" & long-page weirdness) */
+    body::before{
+      content:"";
+      position: fixed;
+      inset: 0;
+      z-index: -2;
+      background-image: var(--paper);
       background-size: cover;
       background-position: center top;
       background-repeat: no-repeat;
-      background-attachment: fixed;
+      transform: translateZ(0);
     }
 
-    /* PAGE WRAP */
+    /* Optional subtle vignette so edges feel intentional on desktop */
+    body::after{
+      content:"";
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      pointer-events:none;
+      background: radial-gradient(1200px 800px at 50% 35%, rgba(0,0,0,.05), rgba(0,0,0,.35));
+    }
+
+    /* Keep overscroll sane (Android/Chrome) */
+    body{
+      overscroll-behavior: none;
+      touch-action: pan-y;
+    }
+
+    /* PAGE */
     .page{
-      min-height:100vh;
+      min-height: 100vh;
       display:flex;
       flex-direction:column;
       align-items:center;
     }
 
-    /* STAGE (panel area) */
+    /* STAGE */
     .stage{
-      position:relative;
-      width:100%;
-      max-width: 860px;
-      padding-top: calc(8px + var(--safe-top));
-      padding-bottom: 16px;
+      width: 100%;
+      padding-top: var(--stage-top-pad);
+      padding-left: var(--stage-pad-x);
+      padding-right: var(--stage-pad-x);
+      box-sizing: border-box;
       display:flex;
       justify-content:center;
-      align-items:center;
     }
 
     .panelShell{
       position:relative;
-      width:100%;
+      width: min(100%, var(--stage-max));
       display:flex;
       justify-content:center;
-      align-items:center;
+      align-items:flex-start;
     }
 
-    /* Panel image: fill width; no white frame; no rounding */
+    /* Panel image: fill stage width; NO rounding; NO frame */
     .panelImg{
-      width: min(100vw, 860px);
+      width: 100%;
       height: auto;
       display:block;
       border-radius: 0;
       box-shadow: none;
       background: #000;
+      user-select:none;
+      -webkit-user-drag: none;
     }
 
-    /* Player dock overlaps the lower black bar of the panel */
+    /* Player dock overlaps panel bottom bar */
     .playerDock{
       position:absolute;
       left: 50%;
-      bottom: -26px; /* overlap */
+      bottom: calc(-1 * var(--player-overlap));
       transform: translateX(-50%);
       z-index: 20;
-      display:flex;
-      align-items:center;
-      justify-content:center;
       pointer-events: auto;
     }
 
-    /* Collapsible player */
+    /* PLAYER (collapsed: button only) */
     .player{
       position:relative;
-      width: 78px;
-      height: 78px;
+      width: var(--player-size);
+      height: var(--player-size);
       border-radius: 999px;
-      background: rgba(255,255,255,.10);
-      border: 1px solid rgba(255,255,255,.18);
+      background: var(--glass);
+      border: 1px solid var(--glassBorder);
       box-shadow: var(--shadow);
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
       overflow:hidden;
-      transition: width .28s ease, height .28s ease, border-radius .28s ease;
-    }
-
-    /* Collapsed = only button, NO text */
-    .player .meta,
-    .player .embedWrap,
-    .player .openBtn{
-      display:none;
+      transition: width .28s ease, height .28s ease, border-radius .28s ease, transform .28s ease;
     }
 
     .playerBtn{
@@ -121,8 +144,7 @@
     }
 
     .playIcon{
-      width: 0;
-      height: 0;
+      width:0;height:0;
       border-top: 12px solid transparent;
       border-bottom: 12px solid transparent;
       border-left: 18px solid rgba(255,255,255,.92);
@@ -130,28 +152,31 @@
       filter: drop-shadow(0 2px 6px rgba(0,0,0,.35));
     }
 
-    /* Expanded player */
+    /* Everything else hidden while collapsed */
+    .player .meta,
+    .player .openBtn,
+    .player .embedWrap{ display:none; }
+
+    /* EXPANDED */
     .player.expanded{
       width: min(92vw, 640px);
-      height: 240px;
+      height: var(--player-expanded-h);
       border-radius: 22px;
-      background: rgba(255,255,255,.12);
     }
 
     .player.expanded .meta,
-    .player.expanded .embedWrap,
-    .player.expanded .openBtn{
-      display:block;
-    }
+    .player.expanded .openBtn,
+    .player.expanded .embedWrap{ display:block; }
 
+    /* When expanded, the button becomes a small corner control */
     .player.expanded .playerBtn{
       position:absolute;
       left: 10px;
       top: 10px;
-      width: 54px;
-      height: 54px;
+      width: 52px;
+      height: 52px;
       border-radius: 999px;
-      background: rgba(0,0,0,.26);
+      background: rgba(0,0,0,.24);
       border: 1px solid rgba(255,255,255,.18);
     }
 
@@ -163,12 +188,12 @@
 
     .meta{
       position:absolute;
-      left: 78px;
+      left: 72px;
       top: 14px;
-      right: 140px;
+      right: 148px;
       line-height: 1.05;
       color:#111;
-      background: rgba(255,255,255,.75);
+      background: rgba(255,255,255,.78);
       border-radius: 14px;
       padding: 10px 12px;
       box-shadow: 0 10px 18px rgba(0,0,0,.18);
@@ -181,7 +206,7 @@
     }
     .meta .a{
       margin-top: 2px;
-      font-weight: 700;
+      font-weight: 800;
       opacity: .92;
       font-size: 13px;
       color:#0d0d0d;
@@ -196,7 +221,7 @@
       border: 1px solid rgba(255,255,255,.22);
       background: rgba(0,0,0,.18);
       color:#fff;
-      font-weight: 700;
+      font-weight: 800;
       font-size: 13px;
       cursor:pointer;
       text-decoration:none;
@@ -223,7 +248,7 @@
       display:block;
     }
 
-    /* Loading overlay: "hung banner" cover, no rounded corners, no top gap */
+    /* LOADING OVERLAY: "hung banner", no rounded corners, flush to top */
     .loading{
       position:fixed;
       inset:0;
@@ -231,29 +256,29 @@
       display:flex;
       align-items:flex-start;
       justify-content:center;
-      padding-top: var(--safe-top);
-      background: rgba(0,0,0,.08);
+      padding-top: var(--safe-top); /* flush with safe area, no extra gap */
+      background: rgba(0,0,0,.10);
       opacity:1;
       transition: opacity .35s ease;
     }
 
-    /* Blurry hint of the page behind, visible on the sides */
+    /* Blur the page behind so sides are visible + dreamy */
     .loading::before{
       content:"";
       position:absolute;
       inset:0;
-      backdrop-filter: blur(14px);
-      -webkit-backdrop-filter: blur(14px);
-      background: rgba(0,0,0,.10);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      background: rgba(0,0,0,.18);
     }
 
     .coverBanner{
       position:relative;
-      width: min(92vw, 520px); /* not full width: feels "hung" */
-      margin-top: 0;          /* NO top gap */
-      border-radius: 0;       /* NO rounded corners */
+      width: min(86vw, 520px); /* NOT full width => "hung" */
+      margin-top: 0;
+      border-radius: 0;        /* NO rounding */
       overflow:hidden;
-      box-shadow: 0 30px 70px rgba(0,0,0,.55);
+      box-shadow: 0 34px 80px rgba(0,0,0,.60);
       transform: translateZ(0);
     }
 
@@ -261,12 +286,12 @@
       width:100%;
       height:auto;
       display:block;
-      border-radius: 0;
+      border-radius:0;
     }
 
-    /* Small space below stage: keep scroll short */
+    /* Controlled scroll: enough to intentionally reveal maintenance, not an endless void */
     .bottomSpacer{
-      height: 420px; /* enough to reveal maintenance intentionally, but not an endless scroll */
+      height: clamp(240px, 32vh, 420px);
       width: 100%;
     }
 
@@ -275,13 +300,12 @@
       position:fixed;
       left: 50%;
       bottom: calc(10px + var(--safe-bottom));
-      transform: translateX(-50%);
+      transform: translateX(-50%) translateY(10px);
       width: min(92vw, 720px);
       z-index: 50;
-
       opacity: 0;
       pointer-events:none;
-      transition: opacity .25s ease, transform .25s ease;
+      transition: opacity .22s ease, transform .22s ease;
     }
 
     .maint.show{
@@ -291,13 +315,13 @@
     }
 
     .maintBox{
-      background: rgba(0,0,0,.40);
+      background: rgba(0,0,0,.42);
       border: 1px solid rgba(255,255,255,.16);
       border-radius: 18px;
       padding: 12px 14px;
       backdrop-filter: blur(10px);
       -webkit-backdrop-filter: blur(10px);
-      box-shadow: 0 16px 40px rgba(0,0,0,.35);
+      box-shadow: var(--shadow);
       font-size: 14px;
       line-height: 1.25;
       color: rgba(255,255,255,.90);
@@ -308,24 +332,25 @@
       justify-content: space-between;
     }
 
-    .pill{
-      opacity:.9;
-      white-space: nowrap;
-    }
-    .ok{ color: #7CFF9A; font-weight: 800; }
-    .warn{ color: #FFD77C; font-weight: 800; }
-    .err{ color: #FF7C7C; font-weight: 800; }
+    .pill{ opacity:.9; white-space: nowrap; }
+    .ok{ color: #7CFF9A; font-weight: 900; }
+    .err{ color: #FF7C7C; font-weight: 900; }
 
-    /* Prevent accidental pull-to-refresh weirdness on some browsers */
-    body{
-      overscroll-behavior: none;
-      touch-action: pan-y;
+    /* Desktop polish: slightly tighter stage spacing, same logic */
+    @media (min-width: 900px){
+      :root{
+        --player-overlap: 30px;
+        --stage-top-pad: calc(14px + var(--safe-top));
+      }
+      .bottomSpacer{
+        height: clamp(220px, 26vh, 360px);
+      }
     }
   </style>
 </head>
 
 <body>
-  <!-- LOADING OVERLAY (Cover banner only, no text container) -->
+  <!-- LOADING OVERLAY (banner image only, no text tag) -->
   <div id="loading" class="loading" aria-hidden="false">
     <div class="coverBanner" role="img" aria-label="SANCTUM cover">
       <img id="coverImg" src="./manga/chapter-00/cover.jpg" alt="SANCTUM Cover" />
@@ -344,13 +369,14 @@
           decoding="async"
         />
 
-        <!-- Collapsible player dock -->
+        <!-- Player dock (collapsed: ONLY button) -->
         <div class="playerDock">
           <div id="player" class="player" aria-label="Player">
             <div id="playerBtn" class="playerBtn" title="Open player">
               <div class="playIcon" aria-hidden="true"></div>
             </div>
 
+            <!-- Expanded-only content -->
             <div class="meta" aria-hidden="true">
               <div class="t">SENTINEL</div>
               <div class="a">DAVID RAVENSON</div>
@@ -365,7 +391,6 @@
             >Open on SoundCloud</a>
 
             <div class="embedWrap" aria-hidden="true">
-              <!-- SoundCloud embed (expanded only) -->
               <iframe
                 id="scFrame"
                 allow="autoplay"
@@ -377,17 +402,17 @@
             </div>
           </div>
         </div>
+
       </div>
     </div>
 
-    <!-- Short scroll area so maintenance can be revealed intentionally -->
-    <div class="bottomSpacer"></div>
+    <div class="bottomSpacer" aria-hidden="true"></div>
   </div>
 
-  <!-- Maintenance: hidden until deep scroll; error shown permanently -->
+  <!-- Maintenance: error stays permanent in code, but UI only appears when scrolled -->
   <div id="maint" class="maint" aria-hidden="true">
     <div class="maintBox">
-      <div class="pill">v0.29.1</div>
+      <div class="pill">v0.29.2</div>
       <div class="pill">chapter-00 / panel01</div>
       <div class="pill">audio: chapter-00audio</div>
       <div class="pill">Paper: <span class="ok">OK ✓</span></div>
@@ -397,7 +422,7 @@
 
   <script>
     (function(){
-      const VERSION = "v0.29.1";
+      const VERSION = "v0.29.2";
 
       const loading = document.getElementById("loading");
       const coverImg = document.getElementById("coverImg");
@@ -405,57 +430,57 @@
 
       const player = document.getElementById("player");
       const playerBtn = document.getElementById("playerBtn");
+
       const maint = document.getElementById("maint");
       const errText = document.getElementById("errText");
 
-      // Always keep error panel present (per your request), but content updated:
       function setError(msg){
         errText.textContent = msg ? msg : "(none)";
       }
 
-      // Expand/collapse player (collapsed = ONLY button)
+      /* Player: collapsed default, button-only.
+         Tap toggles expanded state (shows meta + embed + link). */
       playerBtn.addEventListener("click", () => {
         player.classList.toggle("expanded");
-        // Update title tooltip for sanity
         playerBtn.title = player.classList.contains("expanded") ? "Close player" : "Open player";
       }, { passive:true });
 
-      // Loading: show cover banner briefly, then fade out AFTER panel is ready.
-      // No text container. Only the cover image (hung banner).
+      /* Loading overlay: show cover banner briefly, then fade after panel is ready.
+         No text tag, no rounded corners, not full width, blurry sides visible. */
       let panelReady = false;
-      let coverReady = false;
 
-      function tryHideLoading(){
+      function hideLoadingSoon(){
         if(!panelReady) return;
-
-        // Keep it visible for a short "cinematic beat"
         setTimeout(() => {
           loading.style.opacity = "0";
           loading.setAttribute("aria-hidden", "true");
           setTimeout(() => { loading.style.display = "none"; }, 420);
-        }, 550);
+        }, 520);
       }
 
-      coverImg.addEventListener("load", () => { coverReady = true; }, { passive:true });
-      coverImg.addEventListener("error", () => { coverReady = false; }, { passive:true });
+      coverImg.addEventListener("error", () => {
+        // cover missing shouldn't brick the page — keep going
+      }, { passive:true });
 
       panelImg.addEventListener("load", () => {
         panelReady = true;
         setError("(none)");
-        tryHideLoading();
+        hideLoadingSoon();
       }, { passive:true });
 
       panelImg.addEventListener("error", () => {
         panelReady = true;
         setError("Panel image missing / path error");
-        tryHideLoading();
+        hideLoadingSoon();
       }, { passive:true });
 
-      // Maintenance appears only when user scrolls intentionally (deep threshold).
-      const SHOW_Y = 560; // deeper than before
+      /* Maintenance only after deliberate scroll.
+         Threshold scales with viewport so it behaves similarly on phone/tablet/desktop. */
       function onScroll(){
         const y = window.scrollY || document.documentElement.scrollTop || 0;
-        if(y > SHOW_Y){
+        const vh = Math.max(window.innerHeight || 0, 1);
+        const threshold = Math.round(vh * 0.55); // deep enough to be intentional
+        if(y > threshold){
           maint.classList.add("show");
           maint.setAttribute("aria-hidden", "false");
         }else{
@@ -466,15 +491,8 @@
       window.addEventListener("scroll", onScroll, { passive:true });
       onScroll();
 
-      // Safety: stop background repeating by enforcing cover sizing in runtime (some browsers behave oddly)
-      document.body.style.backgroundRepeat = "no-repeat";
-      document.body.style.backgroundSize = "cover";
-      document.body.style.backgroundPosition = "center top";
-
-      // Debug (kept minimal; not displayed on screen)
       console.log("SANCTUM", VERSION);
     })();
   </script>
 </body>
 </html>
-```0
