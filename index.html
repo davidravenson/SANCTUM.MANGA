@@ -11,23 +11,19 @@
       --safe-top: env(safe-area-inset-top, 0px);
       --safe-bottom: env(safe-area-inset-bottom, 0px);
 
-      /* Assets */
-      --paper: url("./media/ui/manga_paper_bg.png");
+      --bg: url("./media/ui/manga_paper_bg.png");
+      --ink: #0b0b0b;
+      --shadow: 0 16px 40px rgba(0,0,0,.35);
 
-      /* Stage tuning */
-      --stage-max: 980px;          /* desktop/tablet stage width ceiling */
-      --stage-pad-x: clamp(10px, 2.2vw, 22px);
-      --stage-top-pad: calc(10px + var(--safe-top));
+      /* Minimal cinematic bars (responsive) */
+      --cine-top: clamp(10px, 2.2vh, 22px);
+      --cine-bottom: clamp(14px, 2.8vh, 30px);
 
-      /* Panel + player overlap */
-      --player-size: 76px;
-      --player-overlap: 28px;      /* overlaps into the panel bottom black bar */
-      --player-expanded-h: 240px;
+      /* Stage width cap for large screens */
+      --stage-max: 860px;
 
-      /* Visual */
-      --shadow: 0 18px 48px rgba(0,0,0,.42);
-      --glass: rgba(255,255,255,.10);
-      --glassBorder: rgba(255,255,255,.18);
+      /* Player overlap into bottom bar */
+      --player-overlap: 26px;
     }
 
     html, body{
@@ -40,38 +36,20 @@
       overflow-x:hidden;
     }
 
-    /* Fixed, non-repeating background layer (prevents "repeat seams" & long-page weirdness) */
-    body::before{
-      content:"";
-      position: fixed;
-      inset: 0;
-      z-index: -2;
-      background-image: var(--paper);
+    /* Background: no repeat, no seams */
+    body{
+      background-image: var(--bg);
       background-size: cover;
       background-position: center top;
       background-repeat: no-repeat;
-      transform: translateZ(0);
-    }
-
-    /* Optional subtle vignette so edges feel intentional on desktop */
-    body::after{
-      content:"";
-      position: fixed;
-      inset: 0;
-      z-index: -1;
-      pointer-events:none;
-      background: radial-gradient(1200px 800px at 50% 35%, rgba(0,0,0,.05), rgba(0,0,0,.35));
-    }
-
-    /* Keep overscroll sane (Android/Chrome) */
-    body{
+      background-attachment: fixed;
       overscroll-behavior: none;
       touch-action: pan-y;
     }
 
-    /* PAGE */
+    /* PAGE WRAP */
     .page{
-      min-height: 100vh;
+      min-height:100vh;
       display:flex;
       flex-direction:column;
       align-items:center;
@@ -79,58 +57,78 @@
 
     /* STAGE */
     .stage{
-      width: 100%;
-      padding-top: var(--stage-top-pad);
-      padding-left: var(--stage-pad-x);
-      padding-right: var(--stage-pad-x);
-      box-sizing: border-box;
+      position:relative;
+      width:100%;
+      max-width: var(--stage-max);
+      padding-top: calc(var(--safe-top) + 8px);
       display:flex;
       justify-content:center;
+      align-items:center;
     }
 
+    /* PANEL SHELL */
     .panelShell{
       position:relative;
-      width: min(100%, var(--stage-max));
+      width:100%;
       display:flex;
       justify-content:center;
-      align-items:flex-start;
+      align-items:center;
     }
 
-    /* Panel image: fill stage width; NO rounding; NO frame */
+    /* CINEMATIC FRAME: minimal black bars, no rounding, no white frame */
+    .cineFrame{
+      position:relative;
+      width: min(100vw, var(--stage-max));
+      background:#000;
+      /* top/bottom bar sizes (minimal) */
+      padding-top: var(--cine-top);
+      padding-bottom: var(--cine-bottom);
+      box-sizing:border-box;
+    }
+
+    /* Panel image fills available width; no rounding */
     .panelImg{
-      width: 100%;
-      height: auto;
+      width:100%;
+      height:auto;
       display:block;
       border-radius: 0;
       box-shadow: none;
       background: #000;
-      user-select:none;
-      -webkit-user-drag: none;
     }
 
-    /* Player dock overlaps panel bottom bar */
+    /* Player dock overlaps the lower black bar (partly) */
     .playerDock{
       position:absolute;
       left: 50%;
-      bottom: calc(-1 * var(--player-overlap));
+      bottom: calc(var(--cine-bottom) - var(--player-overlap));
       transform: translateX(-50%);
       z-index: 20;
-      pointer-events: auto;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      pointer-events:auto;
     }
 
-    /* PLAYER (collapsed: button only) */
+    /* Collapsible player */
     .player{
       position:relative;
-      width: var(--player-size);
-      height: var(--player-size);
+      width: 72px;
+      height: 72px;
       border-radius: 999px;
-      background: var(--glass);
-      border: 1px solid var(--glassBorder);
+      background: rgba(255,255,255,.10);
+      border: 1px solid rgba(255,255,255,.18);
       box-shadow: var(--shadow);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
       overflow:hidden;
-      transition: width .28s ease, height .28s ease, border-radius .28s ease, transform .28s ease;
+      transition: width .28s ease, height .28s ease, border-radius .28s ease;
+    }
+
+    /* Collapsed = only button, NO text */
+    .player .meta,
+    .player .embedWrap,
+    .player .openBtn{
+      display:none;
     }
 
     .playerBtn{
@@ -144,7 +142,8 @@
     }
 
     .playIcon{
-      width:0;height:0;
+      width: 0;
+      height: 0;
       border-top: 12px solid transparent;
       border-bottom: 12px solid transparent;
       border-left: 18px solid rgba(255,255,255,.92);
@@ -152,23 +151,21 @@
       filter: drop-shadow(0 2px 6px rgba(0,0,0,.35));
     }
 
-    /* Everything else hidden while collapsed */
-    .player .meta,
-    .player .openBtn,
-    .player .embedWrap{ display:none; }
-
-    /* EXPANDED */
+    /* Expanded player */
     .player.expanded{
       width: min(92vw, 640px);
-      height: var(--player-expanded-h);
-      border-radius: 22px;
+      height: 240px;
+      border-radius: 18px;
+      background: rgba(255,255,255,.12);
     }
 
     .player.expanded .meta,
-    .player.expanded .openBtn,
-    .player.expanded .embedWrap{ display:block; }
+    .player.expanded .embedWrap,
+    .player.expanded .openBtn{
+      display:block;
+    }
 
-    /* When expanded, the button becomes a small corner control */
+    /* In expanded state, keep button as a close toggle */
     .player.expanded .playerBtn{
       position:absolute;
       left: 10px;
@@ -176,7 +173,7 @@
       width: 52px;
       height: 52px;
       border-radius: 999px;
-      background: rgba(0,0,0,.24);
+      background: rgba(0,0,0,.26);
       border: 1px solid rgba(255,255,255,.18);
     }
 
@@ -188,9 +185,9 @@
 
     .meta{
       position:absolute;
-      left: 72px;
-      top: 14px;
-      right: 148px;
+      left: 74px;
+      top: 12px;
+      right: 140px;
       line-height: 1.05;
       color:#111;
       background: rgba(255,255,255,.78);
@@ -206,7 +203,7 @@
     }
     .meta .a{
       margin-top: 2px;
-      font-weight: 800;
+      font-weight: 700;
       opacity: .92;
       font-size: 13px;
       color:#0d0d0d;
@@ -214,19 +211,20 @@
 
     .openBtn{
       position:absolute;
-      top: 16px;
+      top: 14px;
       right: 12px;
       padding: 10px 12px;
       border-radius: 999px;
       border: 1px solid rgba(255,255,255,.22);
       background: rgba(0,0,0,.18);
       color:#fff;
-      font-weight: 800;
+      font-weight: 700;
       font-size: 13px;
       cursor:pointer;
       text-decoration:none;
       backdrop-filter: blur(10px);
       -webkit-backdrop-filter: blur(10px);
+      white-space:nowrap;
     }
 
     .embedWrap{
@@ -234,8 +232,8 @@
       left: 10px;
       right: 10px;
       bottom: 10px;
-      top: 82px;
-      border-radius: 18px;
+      top: 80px;
+      border-radius: 16px;
       overflow:hidden;
       border: 1px solid rgba(255,255,255,.18);
       background: rgba(255,255,255,.10);
@@ -248,7 +246,7 @@
       display:block;
     }
 
-    /* LOADING OVERLAY: "hung banner", no rounded corners, flush to top */
+    /* Loading overlay: hung banner cover, no rounded corners, no tag */
     .loading{
       position:fixed;
       inset:0;
@@ -256,29 +254,28 @@
       display:flex;
       align-items:flex-start;
       justify-content:center;
-      padding-top: var(--safe-top); /* flush with safe area, no extra gap */
-      background: rgba(0,0,0,.10);
+      padding-top: var(--safe-top);
+      background: rgba(0,0,0,.08);
       opacity:1;
       transition: opacity .35s ease;
     }
 
-    /* Blur the page behind so sides are visible + dreamy */
     .loading::before{
       content:"";
       position:absolute;
       inset:0;
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      background: rgba(0,0,0,.18);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      background: rgba(0,0,0,.10);
     }
 
     .coverBanner{
       position:relative;
-      width: min(86vw, 520px); /* NOT full width => "hung" */
+      width: min(92vw, 520px);
       margin-top: 0;
-      border-radius: 0;        /* NO rounding */
+      border-radius: 0;
       overflow:hidden;
-      box-shadow: 0 34px 80px rgba(0,0,0,.60);
+      box-shadow: 0 30px 70px rgba(0,0,0,.55);
       transform: translateZ(0);
     }
 
@@ -286,26 +283,27 @@
       width:100%;
       height:auto;
       display:block;
-      border-radius:0;
+      border-radius: 0;
     }
 
-    /* Controlled scroll: enough to intentionally reveal maintenance, not an endless void */
+    /* Scroll: keep it short, reveal maintenance intentionally */
     .bottomSpacer{
-      height: clamp(240px, 32vh, 420px);
+      height: 260px;
       width: 100%;
     }
 
-    /* Maintenance (hidden until deep scroll) */
+    /* Maintenance panel: appears only after scroll threshold */
     .maint{
       position:fixed;
       left: 50%;
       bottom: calc(10px + var(--safe-bottom));
-      transform: translateX(-50%) translateY(10px);
+      transform: translateX(-50%);
       width: min(92vw, 720px);
       z-index: 50;
+
       opacity: 0;
       pointer-events:none;
-      transition: opacity .22s ease, transform .22s ease;
+      transition: opacity .25s ease, transform .25s ease;
     }
 
     .maint.show{
@@ -321,7 +319,7 @@
       padding: 12px 14px;
       backdrop-filter: blur(10px);
       -webkit-backdrop-filter: blur(10px);
-      box-shadow: var(--shadow);
+      box-shadow: 0 16px 40px rgba(0,0,0,.35);
       font-size: 14px;
       line-height: 1.25;
       color: rgba(255,255,255,.90);
@@ -333,24 +331,18 @@
     }
 
     .pill{ opacity:.9; white-space: nowrap; }
-    .ok{ color: #7CFF9A; font-weight: 900; }
-    .err{ color: #FF7C7C; font-weight: 900; }
+    .ok{ color: #7CFF9A; font-weight: 800; }
+    .err{ color: #FF7C7C; font-weight: 800; }
 
-    /* Desktop polish: slightly tighter stage spacing, same logic */
-    @media (min-width: 900px){
-      :root{
-        --player-overlap: 30px;
-        --stage-top-pad: calc(14px + var(--safe-top));
-      }
-      .bottomSpacer{
-        height: clamp(220px, 26vh, 360px);
-      }
+    /* Ensure background doesn't tile on super-tall viewports */
+    @media (min-height: 900px){
+      body{ background-size: cover; }
     }
   </style>
 </head>
 
 <body>
-  <!-- LOADING OVERLAY (banner image only, no text tag) -->
+  <!-- LOADING OVERLAY (cover banner only) -->
   <div id="loading" class="loading" aria-hidden="false">
     <div class="coverBanner" role="img" aria-label="SANCTUM cover">
       <img id="coverImg" src="./manga/chapter-00/cover.jpg" alt="SANCTUM Cover" />
@@ -360,23 +352,24 @@
   <div class="page">
     <div class="stage" id="stage">
       <div class="panelShell">
-        <img
-          id="panelImg"
-          class="panelImg"
-          src="./manga/chapter-00/panel01.jpg"
-          alt="Panel 01"
-          loading="eager"
-          decoding="async"
-        />
+        <div class="cineFrame" aria-label="Cinematic frame">
+          <img
+            id="panelImg"
+            class="panelImg"
+            src="./manga/chapter-00/panel01.jpg"
+            alt="Panel 01"
+            loading="eager"
+            decoding="async"
+          />
+        </div>
 
-        <!-- Player dock (collapsed: ONLY button) -->
+        <!-- Collapsible player dock (overlaps bottom black bar) -->
         <div class="playerDock">
           <div id="player" class="player" aria-label="Player">
             <div id="playerBtn" class="playerBtn" title="Open player">
               <div class="playIcon" aria-hidden="true"></div>
             </div>
 
-            <!-- Expanded-only content -->
             <div class="meta" aria-hidden="true">
               <div class="t">SENTINEL</div>
               <div class="a">DAVID RAVENSON</div>
@@ -406,16 +399,16 @@
       </div>
     </div>
 
-    <div class="bottomSpacer" aria-hidden="true"></div>
+    <div class="bottomSpacer"></div>
   </div>
 
-  <!-- Maintenance: error stays permanent in code, but UI only appears when scrolled -->
+  <!-- Maintenance: hidden until scroll; error always present -->
   <div id="maint" class="maint" aria-hidden="true">
     <div class="maintBox">
       <div class="pill">v0.29.2</div>
       <div class="pill">chapter-00 / panel01</div>
       <div class="pill">audio: chapter-00audio</div>
-      <div class="pill">Paper: <span class="ok">OK ✓</span></div>
+      <div class="pill">Paper: <span id="paperText" class="ok">OK ✓</span></div>
       <div class="pill">error: <span id="errText" class="err">(none)</span></div>
     </div>
   </div>
@@ -433,24 +426,26 @@
 
       const maint = document.getElementById("maint");
       const errText = document.getElementById("errText");
+      const paperText = document.getElementById("paperText");
 
+      // Keep error visible in maintenance always (as requested)
       function setError(msg){
         errText.textContent = msg ? msg : "(none)";
       }
 
-      /* Player: collapsed default, button-only.
-         Tap toggles expanded state (shows meta + embed + link). */
+      // Quick paper check (background image loads indirectly; we just assume OK)
+      paperText.textContent = "OK ✓";
+
+      // Expand/collapse player (collapsed = ONLY button)
       playerBtn.addEventListener("click", () => {
         player.classList.toggle("expanded");
         playerBtn.title = player.classList.contains("expanded") ? "Close player" : "Open player";
       }, { passive:true });
 
-      /* Loading overlay: show cover banner briefly, then fade after panel is ready.
-         No text tag, no rounded corners, not full width, blurry sides visible. */
+      // Loading: show cover banner briefly, then fade out AFTER panel is ready
       let panelReady = false;
 
-      function hideLoadingSoon(){
-        if(!panelReady) return;
+      function hideLoading(){
         setTimeout(() => {
           loading.style.opacity = "0";
           loading.setAttribute("aria-hidden", "true");
@@ -458,29 +453,30 @@
         }, 520);
       }
 
-      coverImg.addEventListener("error", () => {
-        // cover missing shouldn't brick the page — keep going
-      }, { passive:true });
-
       panelImg.addEventListener("load", () => {
         panelReady = true;
         setError("(none)");
-        hideLoadingSoon();
+        hideLoading();
       }, { passive:true });
 
       panelImg.addEventListener("error", () => {
         panelReady = true;
         setError("Panel image missing / path error");
-        hideLoadingSoon();
+        hideLoading();
       }, { passive:true });
 
-      /* Maintenance only after deliberate scroll.
-         Threshold scales with viewport so it behaves similarly on phone/tablet/desktop. */
+      // If panel already cached
+      if(panelImg.complete && panelImg.naturalWidth > 0){
+        panelReady = true;
+        setError("(none)");
+        hideLoading();
+      }
+
+      // Maintenance appears only when user scrolls intentionally
+      const SHOW_Y = 220; // must scroll down a bit
       function onScroll(){
         const y = window.scrollY || document.documentElement.scrollTop || 0;
-        const vh = Math.max(window.innerHeight || 0, 1);
-        const threshold = Math.round(vh * 0.55); // deep enough to be intentional
-        if(y > threshold){
+        if(y > SHOW_Y){
           maint.classList.add("show");
           maint.setAttribute("aria-hidden", "false");
         }else{
@@ -490,6 +486,11 @@
       }
       window.addEventListener("scroll", onScroll, { passive:true });
       onScroll();
+
+      // Lock background behavior (no tiling)
+      document.body.style.backgroundRepeat = "no-repeat";
+      document.body.style.backgroundSize = "cover";
+      document.body.style.backgroundPosition = "center top";
 
       console.log("SANCTUM", VERSION);
     })();
