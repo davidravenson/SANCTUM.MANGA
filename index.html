@@ -12,6 +12,7 @@
       --safe-bottom: env(safe-area-inset-bottom, 0px);
 
       --bg: url("./media/ui/manga_paper_bg.png");
+      --ink: #0b0b0b;
       --shadow: 0 16px 40px rgba(0,0,0,.35);
     }
 
@@ -25,6 +26,7 @@
       overflow-x:hidden;
     }
 
+    /* Background: no repeat, no seams */
     body{
       background-image: var(--bg);
       background-size: cover;
@@ -46,8 +48,8 @@
       position:relative;
       width:100%;
       max-width: 860px;
-      padding-top: calc(8px + var(--safe-top));
-      padding-bottom: 16px;
+      padding-top: calc(0px + var(--safe-top));
+      padding-bottom: 12px;
       display:flex;
       justify-content:center;
       align-items:center;
@@ -61,16 +63,17 @@
       align-items:center;
     }
 
+    /* Panel image: fill width; no white frame; no rounding */
     .panelImg{
       width: min(100vw, 860px);
       height:auto;
       display:block;
-      border-radius: 0;
-      box-shadow: none;
+      border-radius:0;
+      box-shadow:none;
       background:#000;
     }
 
-    /* Player overlaps the lower black bar */
+    /* Player dock overlaps the lower black bar */
     .playerDock{
       position:absolute;
       left:50%;
@@ -80,19 +83,22 @@
       display:flex;
       align-items:center;
       justify-content:center;
-      transition: transform .28s ease;
+      pointer-events:auto;
+      transition: transform .25s ease;
+      will-change: transform;
     }
-    .playerDock.pushed{
+    .playerDock.shiftDown{
       transform: translateX(-50%) translateY(200px);
     }
 
+    /* Collapsible player container */
     .player{
       position:relative;
       width:78px;
       height:78px;
       border-radius:999px;
       background: rgba(255,255,255,.10);
-      border:1px solid rgba(255,255,255,.18);
+      border: 1px solid rgba(255,255,255,.18);
       box-shadow: var(--shadow);
       backdrop-filter: blur(10px);
       -webkit-backdrop-filter: blur(10px);
@@ -100,17 +106,12 @@
       transition: width .28s ease, height .28s ease, border-radius .28s ease;
     }
 
-    /* Collapsed: only main button visible */
-    .meta, .openBtn, .closeBtn{
-      opacity:0;
-      pointer-events:none;
-      transition: opacity .18s ease;
-    }
-
-    .embedWrap{
-      opacity:0;
-      pointer-events:none;
-      transition: opacity .18s ease;
+    /* Collapsed = ONLY button */
+    .player .meta,
+    .player .embedWrap,
+    .player .openBtn,
+    .player .closeBtn{
+      display:none;
     }
 
     .playerBtn{
@@ -123,40 +124,18 @@
       user-select:none;
     }
 
-    /* PLAY icon (black, as requested) */
+    /* Play icon BLACK (requested) */
     .playIcon{
       width:0;
       height:0;
       border-top: 12px solid transparent;
       border-bottom: 12px solid transparent;
-      border-left: 18px solid rgba(0,0,0,.88);
+      border-left: 18px solid rgba(0,0,0,.92);
       transform: translateX(2px);
       filter: drop-shadow(0 2px 6px rgba(0,0,0,.25));
     }
 
-    /* When playing: show pause bars */
-    .player.isPlaying .playIcon{
-      width:18px;
-      height:18px;
-      border:0;
-      transform:none;
-      filter: drop-shadow(0 2px 6px rgba(0,0,0,.25));
-      position:relative;
-    }
-    .player.isPlaying .playIcon::before,
-    .player.isPlaying .playIcon::after{
-      content:"";
-      position:absolute;
-      top:0;
-      bottom:0;
-      width:5px;
-      background: rgba(0,0,0,.88);
-      border-radius: 2px;
-    }
-    .player.isPlaying .playIcon::before{ left:3px; }
-    .player.isPlaying .playIcon::after{ right:3px; }
-
-    /* Expanded */
+    /* Expanded player */
     .player.expanded{
       width: min(92vw, 640px);
       height: 240px;
@@ -164,37 +143,26 @@
       background: rgba(255,255,255,.12);
     }
 
-    .player.expanded .playerBtn{
-      position:absolute;
-      left:10px;
-      top:10px;
-      width:54px;
-      height:54px;
-      border-radius:999px;
-      background: rgba(255,255,255,.22);
-      border: 1px solid rgba(255,255,255,.18);
-    }
-
     .player.expanded .meta,
+    .player.expanded .embedWrap,
     .player.expanded .openBtn,
     .player.expanded .closeBtn{
-      opacity:1;
-      pointer-events:auto;
+      display:block;
     }
 
-    .player.expanded .embedWrap{
-      opacity:1;
-      pointer-events:auto;
+    /* IMPORTANT: When expanded, HIDE our play button entirely (no double controls) */
+    .player.expanded .playerBtn{
+      display:none !important;
     }
 
     .meta{
       position:absolute;
-      left:78px;
-      top:14px;
-      right: 152px;
-      line-height:1.05;
+      left: 12px;
+      top: 14px;
+      right: 180px;
+      line-height: 1.05;
       color:#111;
-      background: rgba(255,255,255,.78);
+      background: rgba(255,255,255,.75);
       border-radius: 14px;
       padding: 10px 12px;
       box-shadow: 0 10px 18px rgba(0,0,0,.18);
@@ -215,52 +183,51 @@
 
     .openBtn{
       position:absolute;
-      top:16px;
-      right:48px;
+      top: 16px;
+      right: 54px;
       padding: 10px 12px;
       border-radius: 999px;
       border: 1px solid rgba(255,255,255,.22);
       background: rgba(0,0,0,.18);
       color:#fff;
-      font-weight:700;
+      font-weight: 700;
       font-size: 13px;
       cursor:pointer;
       text-decoration:none;
       backdrop-filter: blur(10px);
       -webkit-backdrop-filter: blur(10px);
-      white-space:nowrap;
+      white-space: nowrap;
     }
 
-    /* Close button (only for collapsing; play button never collapses) */
     .closeBtn{
       position:absolute;
-      top:16px;
-      right:12px;
-      width:34px;
-      height:34px;
+      top: 16px;
+      right: 12px;
+      width: 36px;
+      height: 36px;
       border-radius: 999px;
       border: 1px solid rgba(255,255,255,.22);
       background: rgba(0,0,0,.18);
       color:#fff;
-      font-weight:900;
-      display:flex;
-      align-items:center;
-      justify-content:center;
+      font-weight: 900;
+      font-size: 18px;
+      line-height: 34px;
+      text-align:center;
       cursor:pointer;
       backdrop-filter: blur(10px);
       -webkit-backdrop-filter: blur(10px);
-      line-height: 1;
+      user-select:none;
     }
 
     .embedWrap{
       position:absolute;
-      left:10px;
-      right:10px;
-      bottom:10px;
-      top:82px;
-      border-radius:18px;
+      left: 10px;
+      right: 10px;
+      bottom: 10px;
+      top: 82px;
+      border-radius: 18px;
       overflow:hidden;
-      border:1px solid rgba(255,255,255,.18);
+      border: 1px solid rgba(255,255,255,.18);
       background: rgba(255,255,255,.10);
     }
     .embedWrap iframe{
@@ -270,7 +237,7 @@
       display:block;
     }
 
-    /* Loading overlay: cover banner only */
+    /* Loading overlay: hung cover banner ONLY, no rounded corners, no top gap */
     .loading{
       position:fixed;
       inset:0;
@@ -291,6 +258,7 @@
       -webkit-backdrop-filter: blur(14px);
       background: rgba(0,0,0,.10);
     }
+
     .coverBanner{
       position:relative;
       width: min(92vw, 520px);
@@ -307,10 +275,10 @@
       border-radius:0;
     }
 
-    /* Limited scroll: only to reveal maintenance intentionally */
+    /* Short intentional scroll space */
     .bottomSpacer{
-      height: 420px;
-      width:100%;
+      height: 360px;
+      width: 100%;
     }
 
     /* Maintenance (hidden until deep scroll) */
@@ -373,13 +341,16 @@
           decoding="async"
         />
 
+        <!-- Player -->
         <div id="playerDock" class="playerDock">
           <div id="player" class="player" aria-label="Player">
-            <!-- MAIN BUTTON: click = expands (if collapsed) AND plays/pauses -->
+
+            <!-- Collapsed button only -->
             <div id="playerBtn" class="playerBtn" title="Play">
               <div class="playIcon" aria-hidden="true"></div>
             </div>
 
+            <!-- Expanded meta + controls -->
             <div class="meta" aria-hidden="true">
               <div class="t">SENTINEL</div>
               <div class="a">DAVID RAVENSON</div>
@@ -393,7 +364,7 @@
               aria-hidden="true"
             >Open on SoundCloud</a>
 
-            <button id="closeBtn" class="closeBtn" type="button" aria-label="Close player" aria-hidden="true">×</button>
+            <div id="closeBtn" class="closeBtn" aria-hidden="true" title="Close">×</div>
 
             <div class="embedWrap" aria-hidden="true">
               <iframe
@@ -405,15 +376,16 @@
                 title="SoundCloud player"
               ></iframe>
             </div>
+
           </div>
         </div>
-
       </div>
     </div>
 
     <div class="bottomSpacer"></div>
   </div>
 
+  <!-- Maintenance (shows only after deep scroll) -->
   <div id="maint" class="maint" aria-hidden="true">
     <div class="maintBox">
       <div class="pill">v0.29.2</div>
@@ -431,159 +403,130 @@
     (function(){
       const VERSION = "v0.29.2";
 
-      const loading = document.getElementById("loading");
-      const coverImg = document.getElementById("coverImg");
-      const panelImg = document.getElementById("panelImg");
+      const loading   = document.getElementById("loading");
+      const coverImg  = document.getElementById("coverImg");
+      const panelImg  = document.getElementById("panelImg");
 
-      const playerDock = document.getElementById("playerDock");
-      const player = document.getElementById("player");
+      const player    = document.getElementById("player");
       const playerBtn = document.getElementById("playerBtn");
-      const closeBtn = document.getElementById("closeBtn");
+      const closeBtn  = document.getElementById("closeBtn");
+      const playerDock= document.getElementById("playerDock");
 
-      const maint = document.getElementById("maint");
-      const errText = document.getElementById("errText");
+      const maint     = document.getElementById("maint");
+      const errText   = document.getElementById("errText");
 
-      const scFrame = document.getElementById("scFrame");
-      const widget = window.SC ? window.SC.Widget(scFrame) : null;
-
-      let widgetReady = false;
-      let isPlaying = false;
+      const scFrame   = document.getElementById("scFrame");
 
       function setError(msg){
         errText.textContent = msg ? msg : "(none)";
       }
 
-      function expandPlayer(){
-        if(!player.classList.contains("expanded")){
-          player.classList.add("expanded");
-          playerBtn.title = "Play / Pause";
-          // accessibility flags
-          player.querySelector(".meta").setAttribute("aria-hidden","false");
-          player.querySelector(".openBtn").setAttribute("aria-hidden","false");
-          closeBtn.setAttribute("aria-hidden","false");
-          player.querySelector(".embedWrap").setAttribute("aria-hidden","false");
-        }
-      }
-
-      function collapsePlayer(){
-        player.classList.remove("expanded");
-        playerDock.classList.remove("pushed");
-        playerBtn.title = "Play";
-        // accessibility flags
-        player.querySelector(".meta").setAttribute("aria-hidden","true");
-        player.querySelector(".openBtn").setAttribute("aria-hidden","true");
-        closeBtn.setAttribute("aria-hidden","true");
-        player.querySelector(".embedWrap").setAttribute("aria-hidden","true");
-      }
-
-      function setPlayingUI(playing){
-        isPlaying = !!playing;
-        player.classList.toggle("isPlaying", isPlaying);
-      }
-
-      // ---- SoundCloud wiring ----
-      if(widget){
-        widget.bind(window.SC.Widget.Events.READY, function(){
-          widgetReady = true;
-        });
-
-        widget.bind(window.SC.Widget.Events.PLAY, function(){
-          setPlayingUI(true);
-        });
-
-        widget.bind(window.SC.Widget.Events.PAUSE, function(){
-          setPlayingUI(false);
-        });
-
-        widget.bind(window.SC.Widget.Events.FINISH, function(){
-          setPlayingUI(false);
-        });
-
-        widget.bind(window.SC.Widget.Events.ERROR, function(){
-          setError("SoundCloud widget error");
-          setPlayingUI(false);
-        });
-      } else {
-        setError("SoundCloud API missing");
-      }
-
-      // 1) Click on main button:
-      // - if collapsed => expand + PLAY (user gesture)
-      // - if expanded => toggle play/pause (NEVER collapse here)
-      playerBtn.addEventListener("click", function(){
-        expandPlayer();
-
-        // Try to play/pause via widget (must be triggered by user gesture)
-        if(!widget || !widgetReady){
-          // still try, some browsers are fine even before READY
-          try { widget && widget.play(); } catch(e){}
-          return;
-        }
-
-        if(isPlaying){
-          widget.pause();
-        }else{
-          widget.play();
-        }
-      }, { passive:true });
-
-      // 2) Separate close button (only way to collapse)
-      closeBtn.addEventListener("click", function(e){
-        e.preventDefault();
-        e.stopPropagation();
-        collapsePlayer();
-      }, { passive:false });
-
-      // Panel tap: if player is expanded, push it 200px down (toggle)
-      panelImg.addEventListener("click", function(){
-        if(player.classList.contains("expanded")){
-          playerDock.classList.toggle("pushed");
-        }
-      }, { passive:true });
-
-      // ---- Loading overlay: wait for panel, and keep a short cinematic beat ----
+      // ---- Loading banner: hide after panel is ready ----
       let panelReady = false;
 
-      function hideLoading(){
+      function tryHideLoading(){
+        if(!panelReady) return;
         setTimeout(() => {
           loading.style.opacity = "0";
-          loading.setAttribute("aria-hidden", "true");
+          loading.setAttribute("aria-hidden","true");
           setTimeout(() => { loading.style.display = "none"; }, 420);
-        }, 650);
+        }, 550);
       }
 
       panelImg.addEventListener("load", () => {
         panelReady = true;
         setError("(none)");
-        hideLoading();
+        tryHideLoading();
       }, { passive:true });
 
       panelImg.addEventListener("error", () => {
         panelReady = true;
         setError("Panel image missing / path error");
-        hideLoading();
+        tryHideLoading();
       }, { passive:true });
 
-      // If panel was cached and fires instantly, still okay.
-      // (cover load is not required to keep loader visible; loader is image itself)
+      coverImg.addEventListener("error", () => {
+        // cover missing shouldn't block; still fade out when panel is ready
+      }, { passive:true });
 
-      // Maintenance appears only when user scrolls intentionally (deep threshold).
+      // ---- Maintenance only on deep scroll ----
       const SHOW_Y = 560;
       function onScroll(){
         const y = window.scrollY || document.documentElement.scrollTop || 0;
         if(y > SHOW_Y){
           maint.classList.add("show");
-          maint.setAttribute("aria-hidden", "false");
+          maint.setAttribute("aria-hidden","false");
         }else{
           maint.classList.remove("show");
-          maint.setAttribute("aria-hidden", "true");
+          maint.setAttribute("aria-hidden","true");
         }
       }
       window.addEventListener("scroll", onScroll, { passive:true });
       onScroll();
+
+      // ---- SoundCloud control (play on collapsed click) ----
+      const widget = window.SC ? SC.Widget(scFrame) : null;
+      let widgetReady = false;
+
+      function whenWidgetReady(cb){
+        if(!widget) return;
+        if(widgetReady) return cb();
+        widget.bind(SC.Widget.Events.READY, function(){
+          widgetReady = true;
+          cb();
+        });
+      }
+
+      function openAndPlay(){
+        player.classList.add("expanded");
+
+        // Make sure dock shift state is reset unless user taps panel
+        playerDock.classList.remove("shiftDown");
+
+        // Try to play on the SAME user gesture (best chance vs autoplay rules)
+        if(widget){
+          whenWidgetReady(() => {
+            try { widget.play(); } catch(e) {}
+          });
+        }
+      }
+
+      function closePlayer(){
+        player.classList.remove("expanded");
+        playerDock.classList.remove("shiftDown");
+        if(widget){
+          try { widget.pause(); } catch(e) {}
+        }
+      }
+
+      // Click on collapsed button: expand + start track
+      playerBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        openAndPlay();
+      }, { passive:false });
+
+      // Close button (only visible expanded)
+      closeBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        closePlayer();
+      }, { passive:false });
+
+      // Panel tap: if expanded, shift player down 200px (toggle)
+      panelImg.addEventListener("click", (e) => {
+        if(!player.classList.contains("expanded")) return;
+        playerDock.classList.toggle("shiftDown");
+      }, { passive:true });
+
+      // Safety: keep background non-repeating
+      document.body.style.backgroundRepeat = "no-repeat";
+      document.body.style.backgroundSize = "cover";
+      document.body.style.backgroundPosition = "center top";
 
       console.log("SANCTUM", VERSION);
     })();
   </script>
 </body>
 </html>
+```0
