@@ -7,7 +7,7 @@
 
   <style>
     :root{
-      --v: "v0.30.6";
+      --v: "v0.30.7";
       --safe-top: env(safe-area-inset-top, 0px);
       --safe-bottom: env(safe-area-inset-bottom, 0px);
 
@@ -43,6 +43,49 @@
       touch-action: pan-y;
     }
 
+    /* LOADING BANNER (oben, ohne Rundungen, keine Lücke) */
+    .loadingBanner{
+      position: fixed;
+      left:0; right:0; top:0;
+      padding-top: var(--safe-top);
+      height: calc(34px + var(--safe-top));
+      display:flex;
+      align-items:flex-end;
+      justify-content:center;
+      background: rgba(0,0,0,.72);
+      backdrop-filter: blur(8px);
+      z-index: 9999;
+      border-radius: 0;
+      box-shadow: 0 10px 30px rgba(0,0,0,.35);
+      user-select:none;
+    }
+    .loadingBanner .txt{
+      padding: 0 12px 8px;
+      letter-spacing: .22em;
+      font-size: 12px;
+      opacity: .92;
+      text-transform: uppercase;
+    }
+    .loadingBanner .dots::after{
+      content:"";
+      display:inline-block;
+      width: 18px;
+      text-align:left;
+      animation: dots 1.1s steps(4, end) infinite;
+    }
+    @keyframes dots{
+      0%{ content:""; }
+      25%{ content:"."; }
+      50%{ content:".."; }
+      75%{ content:"..."; }
+      100%{ content:""; }
+    }
+    .loadingBanner.hide{
+      opacity:0;
+      pointer-events:none;
+      transition: opacity .25s ease;
+    }
+
     .page{
       min-height:100vh;
       display:flex;
@@ -67,6 +110,7 @@
       display:flex;
       justify-content:center;
       align-items:center;
+      background:#000; /* schwarze “Balken”-Fläche um das Panel herum */
     }
 
     .panelImg{
@@ -106,8 +150,11 @@
       align-items:center;
       justify-content:center;
       cursor:pointer;
-      z-index:5;
       position:relative;
+      z-index: 6; /* IMMER über iframe */
+      touch-action: manipulation;
+      -webkit-user-select:none;
+      user-select:none;
     }
 
     .playIcon{
@@ -146,6 +193,7 @@
       overflow:hidden;
       border:1px solid rgba(255,255,255,.18);
       background: rgba(255,255,255,.10);
+      z-index: 1; /* unter dem Button */
     }
 
     .embedWrap iframe{
@@ -168,20 +216,23 @@
       z-index:4;
       pointer-events:none;
     }
-
   </style>
 </head>
 
 <body>
 
+<div id="loadingBanner" class="loadingBanner" aria-hidden="true">
+  <div class="txt">LOADING<span class="dots"></span></div>
+</div>
+
 <div class="page">
   <div class="stage">
     <div class="panelShell">
-      <img class="panelImg" src="./manga/chapter-00/panel01.jpg" alt="Panel 01">
+      <img id="panelImg" class="panelImg" src="./manga/chapter-00/panel01.jpg" alt="Panel 01">
 
       <div class="playerDock">
-        <div id="player" class="player">
-          <div id="playerBtn" class="playerBtn">
+        <div id="player" class="player" aria-label="Audio Player">
+          <div id="playerBtn" class="playerBtn" role="button" tabindex="0" aria-label="Play / Pause">
             <div class="playIcon"></div>
           </div>
 
@@ -206,9 +257,37 @@
   const player = document.getElementById("player");
   const btn = document.getElementById("playerBtn");
   const frame = document.getElementById("scFrame");
+  const img = document.getElementById("panelImg");
+  const banner = document.getElementById("loadingBanner");
 
   let widget = SC.Widget(frame);
+  let scReady = false;
   let playing = false;
+  let pendingPlay = false;
+  let imgReady = false;
+
+  const hideBannerIfReady = () => {
+    if (imgReady && scReady) banner.classList.add("hide");
+  };
+
+  // Bild geladen?
+  if (img.complete) {
+    imgReady = true;
+    hideBannerIfReady();
+  } else {
+    img.addEventListener("load", () => { imgReady = true; hideBannerIfReady(); }, { once:true });
+    img.addEventListener("error", () => { imgReady = true; hideBannerIfReady(); }, { once:true });
+  }
+
+  // SoundCloud ready?
+  widget.bind(SC.Widget.Events.READY, () => {
+    scReady = true;
+    hideBannerIfReady();
+    if (pendingPlay) {
+      pendingPlay = false;
+      widget.play();
+    }
+  });
 
   widget.bind(SC.Widget.Events.PLAY, () => playing = true);
   widget.bind(SC.Widget.Events.PAUSE, () => playing = false);
@@ -217,14 +296,36 @@
     player.classList.remove("expanded");
   });
 
-  btn.addEventListener("click", () => {
-    if(!player.classList.contains("expanded")){
+  const doPlay = () => {
+    if (scReady) widget.play();
+    else pendingPlay = true;
+  };
+
+  const toggle = (ev) => {
+    ev.preventDefault();
+    ev.stopPropagation();
+
+    if (!player.classList.contains("expanded")) {
       player.classList.add("expanded");
-      widget.play();
-    } else {
-      playing ? widget.pause() : widget.play();
+      doPlay(); // 1. Klick = expand + play (User-Geste)
+      return;
     }
+    playing ? widget.pause() : widget.play(); // im expanded: pause/play
+  };
+
+  btn.addEventListener("click", toggle, { passive:false });
+  btn.addEventListener("touchend", toggle, { passive:false });
+  btn.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") toggle(e);
   });
+
+  // Klick außerhalb klappt zu (optional, aber stabil & praktisch)
+  document.addEventListener("pointerdown", (e) => {
+    if (!player.classList.contains("expanded")) return;
+    if (player.contains(e.target)) return;
+    player.classList.remove("expanded");
+    if (playing) widget.pause();
+  }, { passive:true });
 })();
 </script>
 
