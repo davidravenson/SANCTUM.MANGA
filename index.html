@@ -7,18 +7,22 @@
 
   <style>
     :root{
-      --v: "v0.30.1";
+      --v: "v0.30.2";
       --safe-top: env(safe-area-inset-top, 0px);
       --safe-bottom: env(safe-area-inset-bottom, 0px);
 
       --bg: url("./media/ui/manga_paper_bg.png");
       --shadow: 0 16px 40px rgba(0,0,0,.35);
 
+      /* Cinematic bars (hard + clipped) */
       --mask-top-h: 54px;
       --mask-bottom-h: 84px;
       --mask-black: #000;
 
+      /* SoundCloud left zone mask */
       --sc-left-mask-w: 106px;
+
+      /* Reader */
       --max-w: 860px;
     }
 
@@ -29,7 +33,7 @@
       color:#fff;
       font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
       -webkit-tap-highlight-color: transparent;
-      overflow:hidden;
+      overflow:hidden; /* swipe app feel */
     }
 
     body{
@@ -41,6 +45,7 @@
       overscroll-behavior: none;
     }
 
+    /* ===== LOADING OVERLAY ===== */
     .loading{
       position:fixed;
       inset:0;
@@ -70,8 +75,14 @@
       box-shadow: 0 30px 70px rgba(0,0,0,.55);
       transform: translateZ(0);
     }
-    .coverBanner img{ width:100%; height:auto; display:block; }
+    .coverBanner img{
+      width:100%;
+      height:auto;
+      display:block;
+      border-radius:0;
+    }
 
+    /* ===== SWIPE READER ===== */
     .viewport{
       position:relative;
       height:100%;
@@ -80,17 +91,24 @@
       scroll-snap-type: x mandatory;
       -webkit-overflow-scrolling: touch;
       overscroll-behavior-x: contain;
+      overscroll-behavior-y: none;
       scroll-behavior: smooth;
+
+      /* Manga flow: start on the RIGHT, swipe LEFT to go forward */
+      direction: rtl;
       touch-action: pan-x;
     }
+
     .viewport::-webkit-scrollbar{ display:none; }
     .viewport{ scrollbar-width:none; }
 
-    /* === RTL FLOW: track is reversed === */
     .track{
       height:100%;
       display:flex;
-      flex-direction:row-reverse; /* panel01 sits on the RIGHT, panel02 on the LEFT */
+      flex-direction:row;
+
+      /* keep contents normal even though container is rtl */
+      direction: ltr;
     }
 
     .slide{
@@ -113,6 +131,7 @@
       align-items:center;
     }
 
+    /* Holy border */
     .panelFrame{
       position:relative;
       width:100%;
@@ -122,18 +141,25 @@
       backface-visibility:hidden;
       -webkit-backface-visibility:hidden;
     }
+
     .panelImg{
       width:100%;
       height:auto;
       display:block;
       background:#000;
+      border-radius:0;
+      box-shadow:none;
     }
 
+    /* Cinematic bars (hard, clipped) */
     .cinematicMask{
       position:absolute;
       inset:0;
       pointer-events:none;
       z-index:10;
+      transform: translateZ(0);
+      backface-visibility:hidden;
+      -webkit-backface-visibility:hidden;
     }
     .cinematicMask .top,
     .cinematicMask .bottom{
@@ -141,11 +167,17 @@
       left:0;
       width:100%;
       background: var(--mask-black);
+      opacity:1;
+      filter:none;
+      box-shadow:none;
+      transform: translateZ(0);
+      backface-visibility:hidden;
+      -webkit-backface-visibility:hidden;
     }
     .cinematicMask .top{ top:0; height: var(--mask-top-h); }
     .cinematicMask .bottom{ bottom:0; height: var(--mask-bottom-h); }
 
-    /* Player fixed */
+    /* ===== PLAYER (fixed overlay) ===== */
     .playerDock{
       position:fixed;
       left:50%;
@@ -159,7 +191,9 @@
       transition: transform .25s ease;
       will-change: transform;
     }
-    .playerDock.shiftDown{ transform: translateX(-50%) translateY(200px); }
+    .playerDock.shiftDown{
+      transform: translateX(-50%) translateY(200px);
+    }
 
     .player{
       position:relative;
@@ -174,19 +208,22 @@
       overflow:hidden;
       transition: width .28s ease, height .28s ease, border-radius .28s ease, background .28s ease;
     }
+
     .player .meta,
     .player .embedWrap,
     .player .openBtn,
     .player .closeBtn{ display:none; }
 
     .playerBtn{
-      width:100%; height:100%;
+      width:100%;
+      height:100%;
       display:flex;
       align-items:center;
       justify-content:center;
       cursor:pointer;
       user-select:none;
     }
+
     .playIcon{
       width:0;height:0;
       border-top: 12px solid transparent;
@@ -220,8 +257,19 @@
       padding: 10px 12px;
       box-shadow: 0 10px 18px rgba(0,0,0,.18);
     }
-    .meta .t{ font-weight:900; font-size:18px; color:#0d0d0d; letter-spacing:.03em; }
-    .meta .a{ margin-top:2px; font-weight:700; font-size:13px; color:#0d0d0d; opacity:.92; }
+    .meta .t{
+      font-weight: 900;
+      letter-spacing: .03em;
+      font-size: 18px;
+      color:#0d0d0d;
+    }
+    .meta .a{
+      margin-top: 2px;
+      font-weight: 700;
+      opacity:.92;
+      font-size: 13px;
+      color:#0d0d0d;
+    }
 
     .openBtn{
       position:absolute;
@@ -272,10 +320,17 @@
       border: 1px solid rgba(255,255,255,.18);
       background: rgba(255,255,255,.10);
     }
-    .embedWrap iframe{ width:100%; height:100%; border:0; display:block; }
+    .embedWrap iframe{
+      width:100%;
+      height:100%;
+      border:0;
+      display:block;
+      background: transparent;
+    }
     .scMaskLeft{
       position:absolute;
-      left:0; top:0;
+      left:0;
+      top:0;
       width: var(--sc-left-mask-w);
       height:100%;
       background: rgba(255,255,255,.10);
@@ -283,13 +338,16 @@
       pointer-events:none;
     }
 
+    /* HUD */
     .hud{
       position:fixed;
       left: 12px;
       top: calc(12px + var(--safe-top));
       z-index:40;
       font-weight:800;
+      letter-spacing:.02em;
       opacity:.85;
+      user-select:none;
       pointer-events:none;
       text-shadow: 0 10px 30px rgba(0,0,0,.55);
     }
@@ -297,6 +355,7 @@
 </head>
 
 <body>
+  <!-- LOADING OVERLAY -->
   <div id="loading" class="loading" aria-hidden="false">
     <div class="coverBanner" role="img" aria-label="SANCTUM cover">
       <img id="coverImg" src="./manga/chapter-00/cover.jpg" alt="SANCTUM Cover" />
@@ -308,24 +367,42 @@
   <div class="viewport" id="viewport">
     <div class="track" id="track">
 
-      <!-- NOTE: order in HTML stays same, but row-reverse flips visual order -->
-
-      <section class="slide" data-panel="panel01.jpg">
+      <!-- SLIDE 1 -->
+      <section class="slide">
         <div class="panelShell">
           <div class="panelFrame">
-            <img id="panelImg1" class="panelImg"
-              src="./manga/chapter-00/panel01.jpg" alt="Panel 01" loading="eager" decoding="async" />
-            <div class="cinematicMask" aria-hidden="true"><div class="top"></div><div class="bottom"></div></div>
+            <img
+              id="panelImg1"
+              class="panelImg"
+              src="./manga/chapter-00/panel01.jpg"
+              alt="Panel 01"
+              loading="eager"
+              decoding="async"
+            />
+            <div class="cinematicMask" aria-hidden="true">
+              <div class="top"></div>
+              <div class="bottom"></div>
+            </div>
           </div>
         </div>
       </section>
 
-      <section class="slide" data-panel="panel02.jpg">
+      <!-- SLIDE 2 -->
+      <section class="slide">
         <div class="panelShell">
           <div class="panelFrame">
-            <img id="panelImg2" class="panelImg"
-              src="./manga/chapter-00/panel02.jpg" alt="Panel 02" loading="lazy" decoding="async" />
-            <div class="cinematicMask" aria-hidden="true"><div class="top"></div><div class="bottom"></div></div>
+            <img
+              id="panelImg2"
+              class="panelImg"
+              src="./manga/chapter-00/panel02.jpg"
+              alt="Panel 02"
+              loading="lazy"
+              decoding="async"
+            />
+            <div class="cinematicMask" aria-hidden="true">
+              <div class="top"></div>
+              <div class="bottom"></div>
+            </div>
           </div>
         </div>
       </section>
@@ -333,24 +410,36 @@
     </div>
   </div>
 
+  <!-- PLAYER (fixed overlay) -->
   <div id="playerDock" class="playerDock">
     <div id="player" class="player" aria-label="Player">
-      <div id="playerBtn" class="playerBtn" title="Play"><div class="playIcon" aria-hidden="true"></div></div>
+      <div id="playerBtn" class="playerBtn" title="Play">
+        <div class="playIcon" aria-hidden="true"></div>
+      </div>
 
       <div class="meta" aria-hidden="true">
         <div class="t">SENTINEL</div>
         <div class="a">DAVID RAVENSON</div>
       </div>
 
-      <a class="openBtn" href="https://soundcloud.com/user-543596862/sentinel-2"
-         target="_blank" rel="noopener noreferrer" aria-hidden="true">Open on SoundCloud</a>
+      <a class="openBtn"
+        href="https://soundcloud.com/user-543596862/sentinel-2"
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-hidden="true"
+      >Open on SoundCloud</a>
 
       <div id="closeBtn" class="closeBtn" aria-hidden="true" title="Close">×</div>
 
       <div class="embedWrap" aria-hidden="true">
-        <iframe id="scFrame" allow="autoplay" scrolling="no" frameborder="no"
+        <iframe
+          id="scFrame"
+          allow="autoplay"
+          scrolling="no"
+          frameborder="no"
           src="https://w.soundcloud.com/player/?url=https%3A//soundcloud.com/user-543596862/sentinel-2&color=%23000000&auto_play=false&hide_related=true&show_comments=false&show_user=false&show_reposts=false&show_teaser=false&visual=false"
-          title="SoundCloud player"></iframe>
+          title="SoundCloud player"
+        ></iframe>
         <div class="scMaskLeft" aria-hidden="true"></div>
       </div>
     </div>
@@ -360,13 +449,14 @@
 
   <script>
     (function(){
-      const VERSION = "v0.30.1";
+      const VERSION = "v0.30.2";
 
       const loading   = document.getElementById("loading");
       const panelImg1 = document.getElementById("panelImg1");
       const panelImg2 = document.getElementById("panelImg2");
 
       const viewport  = document.getElementById("viewport");
+      const slides    = Array.from(document.querySelectorAll(".slide"));
       const hud       = document.getElementById("hud");
 
       const player     = document.getElementById("player");
@@ -375,6 +465,7 @@
       const playerDock = document.getElementById("playerDock");
       const scFrame    = document.getElementById("scFrame");
 
+      // Loading banner
       function hideLoading(){
         setTimeout(() => {
           loading.style.opacity = "0";
@@ -385,31 +476,40 @@
       panelImg1.addEventListener("load", hideLoading, { passive:true });
       panelImg1.addEventListener("error", hideLoading, { passive:true });
 
-      // Preload panel 02
+      // Preload panel 02 for seamless swipe
       (function(){
         const img = new Image();
         img.src = panelImg2.getAttribute("src");
       })();
 
-      // IMPORTANT: start on panel01 (RIGHT side) in RTL flow
-      function snapToStart(){
-        // in row-reverse, scrollLeft=0 often shows the RIGHTMOST item on many browsers,
-        // but not all. We force it by scrolling to max.
-        viewport.scrollLeft = viewport.scrollWidth;
-      }
-      window.addEventListener("load", () => { setTimeout(snapToStart, 0); }, { passive:true });
+      // Robust active slide detection (works in RTL/LTR across browsers)
+      function getActiveIndex(){
+        const vpRect = viewport.getBoundingClientRect();
+        const vpCenter = vpRect.left + vpRect.width / 2;
 
-      // HUD: show logical reading order (01 -> 02 when swiping left)
-      const total = 2;
+        let bestIdx = 0;
+        let bestDist = Infinity;
+
+        slides.forEach((s, i) => {
+          const r = s.getBoundingClientRect();
+          const c = r.left + r.width / 2;
+          const d = Math.abs(c - vpCenter);
+          if(d < bestDist){
+            bestDist = d;
+            bestIdx = i;
+          }
+        });
+        return bestIdx;
+      }
+
       function updateHud(){
-        const x = viewport.scrollLeft;
-        const w = viewport.clientWidth || 1;
-        const raw = Math.round(x / w);
-        // In row-reverse, index feels inverted: map to reading order
-        const idx = Math.max(0, Math.min(total-1, (total-1) - raw));
+        const total = slides.length;
+        const idx = getActiveIndex(); // 0-based
         hud.textContent = "panel " + String(idx+1).padStart(2,"0") + " / " + String(total).padStart(2,"0");
       }
+
       viewport.addEventListener("scroll", () => { requestAnimationFrame(updateHud); }, { passive:true });
+      window.addEventListener("resize", () => { requestAnimationFrame(updateHud); }, { passive:true });
       updateHud();
 
       // SoundCloud widget
@@ -432,6 +532,7 @@
           whenWidgetReady(() => { try { widget.play(); } catch(e) {} });
         }
       }
+
       function closePlayer(){
         player.classList.remove("expanded");
         playerDock.classList.remove("shiftDown");
@@ -439,15 +540,18 @@
       }
 
       playerBtn.addEventListener("click", (e) => {
-        e.preventDefault(); e.stopPropagation();
+        e.preventDefault();
+        e.stopPropagation();
         openAndPlay();
       }, { passive:false });
 
       closeBtn.addEventListener("click", (e) => {
-        e.preventDefault(); e.stopPropagation();
+        e.preventDefault();
+        e.stopPropagation();
         closePlayer();
       }, { passive:false });
 
+      // Tap panel toggles shift when expanded
       document.addEventListener("click", (e) => {
         if(!player.classList.contains("expanded")) return;
         if(e.target && e.target.classList && e.target.classList.contains("panelImg")){
