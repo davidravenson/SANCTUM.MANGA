@@ -7,7 +7,7 @@
 
   <style>
     :root{
-      --v: "v0.29.6";
+      --v: "v0.29.7";
       --safe-top: env(safe-area-inset-top, 0px);
       --safe-bottom: env(safe-area-inset-bottom, 0px);
 
@@ -26,15 +26,10 @@
       overflow-x:hidden;
     }
 
-    /* Cross-browser viewport stability (no visual change, prevents odd jumps) */
     body{
       min-height: 100vh;
       min-height: 100svh;
       min-height: 100dvh;
-    }
-
-    /* Background: no repeat, no seams */
-    body{
       background-image: var(--bg);
       background-size: cover;
       background-position: center top;
@@ -44,16 +39,8 @@
       touch-action: pan-y;
     }
 
-    /* iOS Safari often glitches with background-attachment: fixed */
     html.ios body{
       background-attachment: scroll;
-    }
-
-    /* Blur fallback (only affects browsers that don't support blur; layout unchanged) */
-    @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))){
-      .player{ background: rgba(255,255,255,.14) !important; }
-      .loading::before{ background: rgba(0,0,0,.18) !important; }
-      .openBtn, .closeBtn{ background: rgba(0,0,0,.26) !important; }
     }
 
     .page{
@@ -69,7 +56,7 @@
       position:relative;
       width:100%;
       max-width: 860px;
-      padding-top: calc(0px + var(--safe-top));
+      padding-top: var(--safe-top);
       padding-bottom: 12px;
       display:flex;
       justify-content:center;
@@ -84,40 +71,29 @@
       align-items:center;
     }
 
-    /* Panel image: fill width; no white frame; no rounding */
     .panelImg{
       width: min(100vw, 860px);
       height:auto;
       display:block;
-      border-radius:0;
-      box-shadow:none;
       background:#000;
       user-select:none;
       -webkit-user-select:none;
       -webkit-user-drag:none;
     }
 
-    /* Player dock overlaps the lower black bar */
     .playerDock{
       position:absolute;
       left:50%;
       bottom:-26px;
       transform: translateX(-50%);
       z-index:20;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      pointer-events:auto;
       transition: transform .25s ease;
-      will-change: transform;
     }
     .playerDock.shiftDown{
       transform: translateX(-50%) translateY(200px);
     }
 
-    /* Collapsible player container */
     .player{
-      position:relative;
       width:78px;
       height:78px;
       border-radius:999px;
@@ -128,15 +104,13 @@
       -webkit-backdrop-filter: blur(10px);
       overflow:hidden;
       transition: width .28s ease, height .28s ease, border-radius .28s ease;
+      position:relative;
     }
 
-    /* Collapsed = ONLY button */
     .player .meta,
     .player .embedWrap,
     .player .openBtn,
-    .player .closeBtn{
-      display:none;
-    }
+    .player .closeBtn{ display:none; }
 
     .playerBtn{
       width:100%;
@@ -145,140 +119,82 @@
       align-items:center;
       justify-content:center;
       cursor:pointer;
-      user-select:none;
     }
 
-    /* Play icon BLACK */
     .playIcon{
-      width:0;
-      height:0;
-      border-top: 12px solid transparent;
-      border-bottom: 12px solid transparent;
-      border-left: 18px solid rgba(0,0,0,.92);
+      width:0;height:0;
+      border-top:12px solid transparent;
+      border-bottom:12px solid transparent;
+      border-left:18px solid rgba(0,0,0,.92);
       transform: translateX(2px);
-      filter: drop-shadow(0 2px 6px rgba(0,0,0,.25));
     }
 
-    /* Expanded player */
     .player.expanded{
       width: min(92vw, 640px);
       height: 240px;
       border-radius: 22px;
       background: rgba(255,255,255,.12);
     }
-
     .player.expanded .meta,
     .player.expanded .embedWrap,
     .player.expanded .openBtn,
-    .player.expanded .closeBtn{
-      display:block;
-    }
-
-    /* IMPORTANT: When expanded, HIDE our play button entirely (no double controls) */
-    .player.expanded .playerBtn{
-      display:none !important;
-    }
+    .player.expanded .closeBtn{ display:block; }
+    .player.expanded .playerBtn{ display:none !important; }
 
     .meta{
       position:absolute;
-      left: 12px;
-      top: 14px;
-      right: 180px;
-      line-height: 1.05;
-      color:#111;
+      left:12px; top:14px; right:180px;
       background: rgba(255,255,255,.75);
-      border-radius: 14px;
-      padding: 10px 12px;
-      box-shadow: 0 10px 18px rgba(0,0,0,.18);
-    }
-    .meta .t{
-      font-weight: 900;
-      letter-spacing: .03em;
-      font-size: 18px;
+      border-radius:14px;
+      padding:10px 12px;
       color:#0d0d0d;
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
     }
-    .meta .a{
-      margin-top: 2px;
-      font-weight: 700;
-      opacity:.92;
-      font-size: 13px;
-      color:#0d0d0d;
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-    }
+    .meta .t{ font-weight:900;font-size:18px; }
+    .meta .a{ font-weight:700;font-size:13px; }
 
     .openBtn{
       position:absolute;
-      top: 16px;
-      right: 54px;
-      padding: 10px 12px;
-      border-radius: 999px;
-      border: 1px solid rgba(255,255,255,.22);
+      top:16px; right:54px;
+      padding:10px 12px;
+      border-radius:999px;
       background: rgba(0,0,0,.18);
+      border:1px solid rgba(255,255,255,.22);
       color:#fff;
-      font-weight: 700;
-      font-size: 13px;
-      cursor:pointer;
       text-decoration:none;
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-      white-space: nowrap;
-      user-select:none;
+      font-weight:700;
     }
 
     .closeBtn{
       position:absolute;
-      top: 16px;
-      right: 12px;
-      width: 36px;
-      height: 36px;
-      border-radius: 999px;
-      border: 1px solid rgba(255,255,255,.22);
+      top:16px; right:12px;
+      width:36px; height:36px;
+      border-radius:999px;
       background: rgba(0,0,0,.18);
+      border:1px solid rgba(255,255,255,.22);
       color:#fff;
-      font-weight: 900;
-      font-size: 18px;
-      line-height: 34px;
+      font-size:18px;
+      line-height:34px;
       text-align:center;
       cursor:pointer;
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-      user-select:none;
     }
 
     .embedWrap{
       position:absolute;
-      left: 10px;
-      right: 10px;
-      bottom: 10px;
-      top: 82px;
-      border-radius: 18px;
+      left:10px; right:10px; bottom:10px; top:82px;
+      border-radius:18px;
       overflow:hidden;
-      border: 1px solid rgba(255,255,255,.18);
-      background: rgba(255,255,255,.10);
+      border:1px solid rgba(255,255,255,.18);
     }
-    .embedWrap iframe{
-      width:100%;
-      height:100%;
-      border:0;
-      display:block;
-    }
+    .embedWrap iframe{ width:100%; height:100%; border:0; }
 
-    /* Loading overlay: hung cover banner ONLY */
     .loading{
       position:fixed;
       inset:0;
       z-index:9999;
       display:flex;
-      align-items:flex-start;
       justify-content:center;
       padding-top: var(--safe-top);
       background: rgba(0,0,0,.08);
-      opacity:1;
       transition: opacity .35s ease;
     }
     .loading::before{
@@ -287,371 +203,110 @@
       inset:0;
       backdrop-filter: blur(14px);
       -webkit-backdrop-filter: blur(14px);
-      background: rgba(0,0,0,.10);
     }
 
     .coverBanner{
-      position:relative;
-      width: min(92vw, 520px);
-      margin-top: 0;
-      border-radius: 0;
-      overflow:hidden;
-      box-shadow: 0 30px 70px rgba(0,0,0,.55);
-      transform: translateZ(0);
+      width:min(92vw,520px);
+      box-shadow:0 30px 70px rgba(0,0,0,.55);
     }
-    .coverBanner img{
-      width:100%;
-      height:auto;
-      display:block;
-      border-radius:0;
-    }
+    .coverBanner img{ width:100%; display:block; }
 
-    /* Short intentional scroll space */
-    .bottomSpacer{
-      height: 360px;
-      width: 100%;
-    }
+    .bottomSpacer{ height:360px; width:100%; }
 
-    /* Maintenance (hidden until deep scroll) */
     .maint{
       position:fixed;
       left:50%;
       bottom: calc(10px + var(--safe-bottom));
       transform: translateX(-50%);
-      width: min(92vw, 720px);
-      z-index:50;
+      width:min(92vw,720px);
       opacity:0;
       pointer-events:none;
-      transition: opacity .25s ease, transform .25s ease;
+      transition: opacity .25s ease;
+      z-index:50;
     }
     .maint.show{
       opacity:1;
       pointer-events:auto;
-      transform: translateX(-50%) translateY(0);
     }
+
     .maintBox{
-      background: rgba(0,0,0,.40);
-      border: 1px solid rgba(255,255,255,.16);
-      border-radius: 18px;
-      padding: 12px 14px;
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-      box-shadow: 0 16px 40px rgba(0,0,0,.35);
-      font-size: 14px;
-      line-height: 1.25;
-      color: rgba(255,255,255,.90);
+      background: rgba(0,0,0,.4);
+      border:1px solid rgba(255,255,255,.16);
+      border-radius:18px;
+      padding:12px 14px;
       display:flex;
-      gap:10px;
       flex-wrap:wrap;
-      align-items:center;
-      justify-content: space-between;
+      gap:10px;
+      font-size:14px;
     }
-    .pill{ opacity:.9; white-space:nowrap; }
-    .ok{ color:#7CFF9A; font-weight:800; }
-    .warn{ color:#FFD77C; font-weight:800; }
-    .err{ color:#FF7C7C; font-weight:800; }
+    .ok{ color:#7CFF9A;font-weight:800; }
+    .warn{ color:#FFD77C;font-weight:800; }
+    .err{ color:#FF7C7C;font-weight:800; }
   </style>
 </head>
 
 <body>
-  <!-- LOADING OVERLAY -->
-  <div id="loading" class="loading" aria-hidden="false">
-    <div class="coverBanner" role="img" aria-label="SANCTUM cover">
-      <img id="coverImg" src="./manga/chapter-00/cover.jpg" alt="SANCTUM Cover" />
-    </div>
+
+<div id="loading" class="loading">
+  <div class="coverBanner">
+    <img src="./manga/chapter-00/cover.jpg" alt="SANCTUM cover">
   </div>
+</div>
 
-  <div class="page">
-    <div class="stage" id="stage">
-      <div class="panelShell">
-        <img
-          id="panelImg"
-          class="panelImg"
-          src="./manga/chapter-00/panel01.jpg"
-          alt="Panel 01"
-          loading="eager"
-          decoding="async"
-        />
+<div class="page">
+  <div class="stage">
+    <div class="panelShell">
+      <img id="panelImg" class="panelImg"
+        src="./manga/chapter-00/panel01.jpg" alt="Panel 01">
 
-        <!-- Player -->
-        <div id="playerDock" class="playerDock">
-          <div id="player" class="player" aria-label="Player">
-
-            <!-- Collapsed button only -->
-            <div id="playerBtn" class="playerBtn" title="Play">
-              <div class="playIcon" aria-hidden="true"></div>
-            </div>
-
-            <!-- Expanded meta + controls -->
-            <div class="meta" aria-hidden="true">
-              <div class="t">SENTINEL</div>
-              <div class="a">DAVID RAVENSON</div>
-            </div>
-
-            <a
-              class="openBtn"
-              href="https://soundcloud.com/user-543596862/sentinel-2"
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-hidden="true"
-            >Open on SoundCloud</a>
-
-            <div id="closeBtn" class="closeBtn" aria-hidden="true" title="Close">×</div>
-
-            <div class="embedWrap" aria-hidden="true">
-              <iframe
-                id="scFrame"
-                allow="autoplay"
-                scrolling="no"
-                frameborder="no"
-                src="https://w.soundcloud.com/player/?url=https%3A//soundcloud.com/user-543596862/sentinel-2&color=%23000000&auto_play=false&hide_related=true&show_comments=false&show_user=true&show_reposts=false&show_teaser=false&visual=true"
-                title="SoundCloud player"
-              ></iframe>
-            </div>
-
+      <div id="playerDock" class="playerDock">
+        <div id="player" class="player">
+          <div id="playerBtn" class="playerBtn"><div class="playIcon"></div></div>
+          <div class="meta"><div class="t">SENTINEL</div><div class="a">DAVID RAVENSON</div></div>
+          <a class="openBtn" href="https://soundcloud.com/user-543596862/sentinel-2" target="_blank">SoundCloud</a>
+          <div id="closeBtn" class="closeBtn">×</div>
+          <div class="embedWrap">
+            <iframe id="scFrame"
+              src="https://w.soundcloud.com/player/?url=https%3A//soundcloud.com/user-543596862/sentinel-2&auto_play=false&hide_related=true&show_comments=false&show_user=true&show_reposts=false&visual=true"
+              allow="autoplay"></iframe>
           </div>
         </div>
       </div>
-    </div>
 
-    <div class="bottomSpacer"></div>
-  </div>
-
-  <!-- Maintenance (shows only after deep scroll) -->
-  <div id="maint" class="maint" aria-hidden="true">
-    <div class="maintBox">
-      <div class="pill">v0.29.6</div>
-      <div class="pill">chapter-00 / panel01</div>
-      <div class="pill">audio: SoundCloud</div>
-      <div class="pill">Paper: <span class="ok">OK ✓</span></div>
-      <div class="pill">error: <span id="errText" class="err">(none)</span></div>
-
-      <!-- Debug heart (only visible when maintenance is shown) -->
-      <div class="pill">SC: <span id="dbgSc" class="warn">…</span></div>
-      <div class="pill">READY: <span id="dbgReady" class="warn">…</span></div>
-      <div class="pill">PLAY_REQ: <span id="dbgReq" class="warn">…</span></div>
-      <div class="pill">LAST: <span id="dbgLast" class="warn">…</span></div>
     </div>
   </div>
+  <div class="bottomSpacer"></div>
+</div>
 
-  <!-- SoundCloud Widget API -->
-  <script src="https://w.soundcloud.com/player/api.js"></script>
+<div id="maint" class="maint">
+  <div class="maintBox">
+    <div>v0.29.7</div>
+    <div>SC: <span id="dbgSc" class="warn">…</span></div>
+    <div>READY: <span id="dbgReady" class="warn">…</span></div>
+    <div>PLAY_REQ: <span id="dbgReq" class="warn">…</span></div>
+    <div>LAST: <span id="dbgLast" class="warn">…</span></div>
+  </div>
+</div>
 
-  <script>
-    (function(){
-      const VERSION = "v0.29.6";
+<script src="https://w.soundcloud.com/player/api.js"></script>
+<script>
+(function(){
+  const loading=document.getElementById("loading");
+  const panelImg=document.getElementById("panelImg");
+  const maint=document.getElementById("maint");
 
-      // iOS detection (for background-attachment fix)
-      const ua = navigator.userAgent || "";
-      const isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-      if(isIOS) document.documentElement.classList.add("ios");
+  if(panelImg.complete) setTimeout(()=>loading.style.opacity=0,550);
+  panelImg.onload=()=>setTimeout(()=>loading.style.opacity=0,550);
 
-      const loading   = document.getElementById("loading");
-      const coverImg  = document.getElementById("coverImg");
-      const panelImg  = document.getElementById("panelImg");
+  /* >>> SANFTER TRIGGER <<< */
+  const SHOW_Y = 240;   // vorher 560
 
-      const player    = document.getElementById("player");
-      const playerBtn = document.getElementById("playerBtn");
-      const closeBtn  = document.getElementById("closeBtn");
-      const playerDock= document.getElementById("playerDock");
+  window.addEventListener("scroll",()=>{
+    if(window.scrollY>SHOW_Y) maint.classList.add("show");
+    else maint.classList.remove("show");
+  },{passive:true});
+})();
+</script>
 
-      const maint     = document.getElementById("maint");
-      const errText   = document.getElementById("errText");
-
-      const dbgSc     = document.getElementById("dbgSc");
-      const dbgReady  = document.getElementById("dbgReady");
-      const dbgReq    = document.getElementById("dbgReq");
-      const dbgLast   = document.getElementById("dbgLast");
-
-      const scFrame   = document.getElementById("scFrame");
-
-      function setError(msg){
-        errText.textContent = msg ? msg : "(none)";
-      }
-
-      function setDbg(el, text, cls){
-        el.textContent = text;
-        el.className = cls;
-      }
-
-      // Default debug
-      setDbg(dbgSc, "loading", "warn");
-      setDbg(dbgReady, "no", "warn");
-      setDbg(dbgReq, "no", "warn");
-      setDbg(dbgLast, "boot", "warn");
-
-      // ---- Loading banner: hide after panel is ready (more reliable on cached images) ----
-      function hideLoading(){
-        loading.style.opacity = "0";
-        loading.setAttribute("aria-hidden","true");
-        setTimeout(() => { loading.style.display = "none"; }, 420);
-      }
-
-      function panelIsReady(img){
-        return img && img.complete && img.naturalWidth > 0;
-      }
-
-      function tryHideLoading(){
-        // keep your cinematic beat
-        setTimeout(hideLoading, 550);
-      }
-
-      if(panelIsReady(panelImg)){
-        setError("(none)");
-        tryHideLoading();
-      }else{
-        panelImg.addEventListener("load", () => {
-          setError("(none)");
-          tryHideLoading();
-        }, { passive:true });
-
-        panelImg.addEventListener("error", () => {
-          setError("Panel image missing / path error");
-          tryHideLoading();
-        }, { passive:true });
-      }
-
-      coverImg.addEventListener("error", () => {
-        // cover missing shouldn't block
-      }, { passive:true });
-
-      // ---- Maintenance only on deep scroll ----
-      const SHOW_Y = 560;
-      function onScroll(){
-        const y = window.scrollY || document.documentElement.scrollTop || 0;
-        if(y > SHOW_Y){
-          maint.classList.add("show");
-          maint.setAttribute("aria-hidden","false");
-        }else{
-          maint.classList.remove("show");
-          maint.setAttribute("aria-hidden","true");
-        }
-      }
-      window.addEventListener("scroll", onScroll, { passive:true });
-      onScroll();
-
-      // ---- SoundCloud HARDENING (READY timing + retries + debug) ----
-      let widget = null;
-      let widgetReady = false;
-      let pendingPlay = false;
-
-      function bindWidgetEvents(w){
-        widget = w;
-
-        try{
-          widget.bind(SC.Widget.Events.READY, function(){
-            widgetReady = true;
-            setDbg(dbgReady, "yes", "ok");
-            setDbg(dbgLast, "READY", "ok");
-
-            if(pendingPlay){
-              pendingPlay = false;
-              setDbg(dbgReq, "no", "ok");
-              try { widget.play(); setDbg(dbgLast, "play()", "ok"); } catch(e) { setDbg(dbgLast, "play err", "err"); }
-            }
-          });
-
-          widget.bind(SC.Widget.Events.PLAY, function(){
-            setDbg(dbgLast, "PLAY", "ok");
-          });
-
-          widget.bind(SC.Widget.Events.PAUSE, function(){
-            setDbg(dbgLast, "PAUSE", "warn");
-          });
-
-          widget.bind(SC.Widget.Events.ERROR, function(){
-            setDbg(dbgLast, "ERROR", "err");
-          });
-        }catch(e){
-          setDbg(dbgLast, "bind err", "err");
-        }
-      }
-
-      function initWidgetWithRetry(){
-        const started = Date.now();
-        const timer = setInterval(() => {
-          const scOk = !!(window.SC && SC.Widget);
-          setDbg(dbgSc, scOk ? "loaded" : "loading", scOk ? "ok" : "warn");
-
-          if(scOk && scFrame){
-            clearInterval(timer);
-            try{
-              bindWidgetEvents(SC.Widget(scFrame));
-              setDbg(dbgLast, "widget init", "ok");
-            }catch(e){
-              setDbg(dbgLast, "init err", "err");
-            }
-          }
-
-          // stop trying after 5s
-          if(Date.now() - started > 5000){
-            clearInterval(timer);
-            if(!scOk) setDbg(dbgSc, "timeout", "err");
-          }
-        }, 80);
-      }
-      initWidgetWithRetry();
-
-      function openAndPlay(){
-        player.classList.add("expanded");
-        playerDock.classList.remove("shiftDown");
-
-        pendingPlay = true;
-        setDbg(dbgReq, "yes", "warn");
-        setDbg(dbgLast, "tap play", "warn");
-
-        // If ready now, try immediately on the same user gesture
-        if(widget && widgetReady){
-          pendingPlay = false;
-          setDbg(dbgReq, "no", "ok");
-          try { widget.play(); setDbg(dbgLast, "play()", "ok"); } catch(e) { setDbg(dbgLast, "play err", "err"); }
-        }else if(widget){
-          // Try anyway; READY handler will retry if needed
-          try { widget.play(); setDbg(dbgLast, "play try", "warn"); } catch(e) { setDbg(dbgLast, "play try err", "err"); }
-        }else{
-          // Widget not yet initialized; READY will handle later
-          setDbg(dbgLast, "wait widget", "warn");
-        }
-      }
-
-      function closePlayer(){
-        player.classList.remove("expanded");
-        playerDock.classList.remove("shiftDown");
-        pendingPlay = false;
-        setDbg(dbgReq, "no", "ok");
-
-        if(widget){
-          try { widget.pause(); setDbg(dbgLast, "pause()", "warn"); } catch(e) { setDbg(dbgLast, "pause err", "err"); }
-        }
-      }
-
-      // Click on collapsed button: expand + start track
-      playerBtn.addEventListener("click", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        openAndPlay();
-      }, { passive:false });
-
-      // Close button (only visible expanded)
-      closeBtn.addEventListener("click", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        closePlayer();
-      }, { passive:false });
-
-      // Panel tap: if expanded, shift player down 200px (toggle)
-      panelImg.addEventListener("click", () => {
-        if(!player.classList.contains("expanded")) return;
-        playerDock.classList.toggle("shiftDown");
-      }, { passive:true });
-
-      // Safety: keep background non-repeating
-      document.body.style.backgroundRepeat = "no-repeat";
-      document.body.style.backgroundSize = "cover";
-      document.body.style.backgroundPosition = "center top";
-
-      console.log("SANCTUM", VERSION);
-    })();
-  </script>
 </body>
 </html>
