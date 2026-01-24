@@ -7,7 +7,7 @@
 
 <style>
 :root{
-  --v:"v0.29.3";
+  --v:"v0.29.5";
   --safe-top:env(safe-area-inset-top,0px);
   --safe-bottom:env(safe-area-inset-bottom,0px);
   --bg:url("./media/ui/manga_paper_bg.png");
@@ -24,7 +24,11 @@ html,body{
   -webkit-tap-highlight-color:transparent;
 }
 
+/* Cross-browser viewport stability */
 body{
+  min-height:100vh;
+  min-height:100svh;
+  min-height:100dvh;
   background-image:var(--bg);
   background-size:cover;
   background-position:center top;
@@ -34,8 +38,19 @@ body{
   touch-action:pan-y;
 }
 
+/* iOS Safari background-attachment fix */
+html.ios body{ background-attachment:scroll; }
+
+/* Blur fallbacks (no design change, just stability) */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))){
+  .player{ background: rgba(255,255,255,.14) !important; }
+  .loading::before{ background: rgba(0,0,0,.18) !important; }
+}
+
 .page{
   min-height:100vh;
+  min-height:100svh;
+  min-height:100dvh;
   display:flex;
   flex-direction:column;
   align-items:center;
@@ -59,6 +74,9 @@ body{
   width:100%;
   display:block;
   background:#000;
+  user-select:none;
+  -webkit-user-select:none;
+  -webkit-user-drag:none;
 }
 
 /* PLAYER DOCK */
@@ -69,6 +87,7 @@ body{
   transform:translateX(-50%);
   z-index:20;
   transition:transform .25s ease;
+  will-change:transform;
 }
 .playerDock.shiftDown{
   transform:translateX(-50%) translateY(200px);
@@ -84,6 +103,7 @@ body{
   border:1px solid rgba(255,255,255,.18);
   box-shadow:var(--shadow);
   backdrop-filter:blur(10px);
+  -webkit-backdrop-filter:blur(10px);
   overflow:hidden;
   transition:width .28s ease,height .28s ease,border-radius .28s ease;
 }
@@ -126,7 +146,7 @@ body{
 
 .player.expanded .playerBtn{display:none;}
 
-/* ===== META TOPBAR (FIXED) ===== */
+/* META TOPBAR */
 .meta{
   position:absolute;
   left:12px;
@@ -135,12 +155,10 @@ body{
   display:flex;
   align-items:center;
   gap:12px;
-
   background:rgba(255,255,255,.75);
   border-radius:18px;
   padding:10px 14px;
   box-shadow:0 10px 18px rgba(0,0,0,.18);
-
   min-width:0;
 }
 
@@ -204,6 +222,7 @@ body{
   line-height:34px;
   text-align:center;
   cursor:pointer;
+  user-select:none;
 }
 
 /* embed */
@@ -241,6 +260,7 @@ body{
   position:absolute;
   inset:0;
   backdrop-filter:blur(14px);
+  -webkit-backdrop-filter:blur(14px);
   background:rgba(0,0,0,.10);
 }
 .coverBanner{
@@ -255,23 +275,22 @@ body{
 
 <body>
 
-<div id="loading" class="loading">
+<div id="loading" class="loading" aria-hidden="false">
   <div class="coverBanner">
-    <img src="./manga/chapter-00/cover.jpg" alt="SANCTUM cover">
+    <img id="coverImg" src="./manga/chapter-00/cover.jpg" alt="SANCTUM cover">
   </div>
 </div>
 
 <div class="page">
   <div class="stage">
     <div class="panelShell">
-      <img id="panelImg" class="panelImg"
-           src="./manga/chapter-00/panel01.jpg" alt="Panel 01">
+      <img id="panelImg" class="panelImg" src="./manga/chapter-00/panel01.jpg" alt="Panel 01">
 
       <div id="playerDock" class="playerDock">
         <div id="player" class="player">
 
-          <div id="playerBtn" class="playerBtn">
-            <div class="playIcon"></div>
+          <div id="playerBtn" class="playerBtn" aria-label="Play">
+            <div class="playIcon" aria-hidden="true"></div>
           </div>
 
           <div class="meta">
@@ -282,20 +301,22 @@ body{
             <div class="metaActions">
               <a class="openBtn"
                  href="https://soundcloud.com/user-543596862/sentinel-2"
-                 target="_blank">SoundCloud</a>
-              <div id="closeBtn" class="closeBtn">×</div>
+                 target="_blank" rel="noopener noreferrer">SoundCloud</a>
+              <div id="closeBtn" class="closeBtn" aria-label="Close">×</div>
             </div>
           </div>
 
           <div class="embedWrap">
-            <iframe
+            <iframe id="scFrame"
               allow="autoplay"
+              scrolling="no"
               src="https://w.soundcloud.com/player/?url=https%3A//soundcloud.com/user-543596862/sentinel-2&auto_play=false&hide_related=true&show_comments=false&show_user=true&show_reposts=false&show_teaser=false">
             </iframe>
           </div>
 
         </div>
       </div>
+
     </div>
   </div>
 
@@ -305,34 +326,114 @@ body{
 <script src="https://w.soundcloud.com/player/api.js"></script>
 <script>
 (function(){
-  const loading=document.getElementById("loading");
-  const panel=document.getElementById("panelImg");
-  const player=document.getElementById("player");
-  const btn=document.getElementById("playerBtn");
-  const close=document.getElementById("closeBtn");
-  const dock=document.getElementById("playerDock");
-  const iframe=document.querySelector(".embedWrap iframe");
-  const widget=SC.Widget(iframe);
+  const ua = navigator.userAgent || "";
+  const isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  if(isIOS) document.documentElement.classList.add("ios");
 
-  panel.onload=()=>setTimeout(()=>loading.style.opacity="0",600);
+  const loading = document.getElementById("loading");
+  const panel   = document.getElementById("panelImg");
+  const cover   = document.getElementById("coverImg");
 
-  btn.onclick=()=>{
-    player.classList.add("expanded");
-    widget.play();
-  };
+  const player  = document.getElementById("player");
+  const btn     = document.getElementById("playerBtn");
+  const close   = document.getElementById("closeBtn");
+  const dock    = document.getElementById("playerDock");
 
-  close.onclick=(e)=>{
+  const frame   = document.getElementById("scFrame");
+
+  function hideLoader(){
+    if(!loading) return;
+    loading.style.opacity = "0";
+    loading.setAttribute("aria-hidden","true");
+    setTimeout(()=>{ loading.remove(); }, 420);
+  }
+
+  function isImageComplete(img){
+    return img && img.complete && img.naturalWidth > 0;
+  }
+
+  // loader reliability
+  const beat = 600;
+  if(isImageComplete(panel)) setTimeout(hideLoader, beat);
+  else{
+    panel.addEventListener("load", ()=>setTimeout(hideLoader, beat), {passive:true});
+    panel.addEventListener("error", ()=>setTimeout(hideLoader, beat), {passive:true});
+  }
+  if(cover) cover.addEventListener("error", ()=>{}, {passive:true});
+
+  // ---- SOUND CLOUD READY HARDENING ----
+  let widget = null;
+  let widgetReady = false;
+  let pendingPlay = false;
+
+  function bindWidget(w){
+    widget = w;
+    try{
+      widget.bind(SC.Widget.Events.READY, function(){
+        widgetReady = true;
+        if(pendingPlay){
+          pendingPlay = false;
+          try{ widget.play(); }catch(_){}
+        }
+      });
+    }catch(_){}
+  }
+
+  // Try to create widget even if SC loads a bit late
+  function initWidgetWithRetry(){
+    const start = Date.now();
+    const timer = setInterval(()=>{
+      if(window.SC && window.SC.Widget && frame){
+        clearInterval(timer);
+        try{
+          bindWidget(SC.Widget(frame));
+        }catch(_){}
+      }
+      // stop after ~4 seconds
+      if(Date.now() - start > 4000){
+        clearInterval(timer);
+      }
+    }, 80);
+  }
+  initWidgetWithRetry();
+
+  // Player button: expand + guaranteed play as soon as READY exists
+  btn.addEventListener("click",(e)=>{
+    e.preventDefault();
     e.stopPropagation();
-    widget.pause();
+
+    player.classList.add("expanded");
+    dock.classList.remove("shiftDown");
+
+    pendingPlay = true;
+
+    // If already ready, play immediately (same user gesture)
+    if(widget && widgetReady){
+      pendingPlay = false;
+      try{ widget.play(); }catch(_){}
+    }else if(widget){
+      // attempt anyway; if it fails, READY handler will replay
+      try{ widget.play(); }catch(_){}
+    }
+  }, {passive:false});
+
+  close.addEventListener("click",(e)=>{
+    e.preventDefault();
+    e.stopPropagation();
+    pendingPlay = false;
+    if(widget){
+      try{ widget.pause(); }catch(_){}
+    }
     player.classList.remove("expanded");
     dock.classList.remove("shiftDown");
-  };
+  }, {passive:false});
 
-  panel.onclick=()=>{
+  // Panel tap: if expanded, shift down 200px (unchanged)
+  panel.addEventListener("click",()=>{
     if(player.classList.contains("expanded")){
       dock.classList.toggle("shiftDown");
     }
-  };
+  }, {passive:true});
 })();
 </script>
 
