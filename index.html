@@ -7,7 +7,7 @@
 
   <style>
     :root{
-      --v: "v0.40.5";
+      --v: "v0.40.6";
       --safe-top: env(safe-area-inset-top, 0px);
       --safe-bottom: env(safe-area-inset-bottom, 0px);
       --bg: url("./media/ui/manga_paper_bg.png");
@@ -407,34 +407,44 @@
       pointer-events:none;
     }
 
-    /* ===== PULL-UP BUTTON (only when dock is shifted down) ===== */
-    .pullUpBtn{
-      position:fixed;
+    /* When the dock is lowered, we add a "tap-to-raise" catcher over the embed area
+       so any tap on the player (even over the iframe) can pull it back up. */
+    .tapRaiseCatcher{
+      position:absolute;
+      inset:0;
+      z-index:6;
+      display:none;
+      pointer-events:none;
+      background: rgba(0,0,0,.0);
+    }
+    .playerDock.shiftDown .player.expanded .tapRaiseCatcher{
+      display:block;
+      pointer-events:auto;
+      cursor:pointer;
+    }
+
+    /* Tiny visual hint when lowered (subtle, not a button) */
+    .raiseHint{
+      position:absolute;
       left:50%;
-      bottom: calc(12px + var(--safe-bottom));
-      transform: translateX(-50%) translateY(22px);
-      z-index:76;
-      padding: 10px 14px;
+      top: 6px;
+      transform: translateX(-50%);
+      z-index:7;
+      padding: 6px 10px;
       border-radius: 999px;
-      background: rgba(0,0,0,.55);
-      border: 1px solid rgba(255,255,255,.18);
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-      box-shadow: 0 16px 40px rgba(0,0,0,.35);
+      background: rgba(0,0,0,.38);
+      border: 1px solid rgba(255,255,255,.14);
       font-weight: 900;
+      font-size: 11px;
       letter-spacing:.02em;
-      font-size: 13px;
       opacity:0;
       pointer-events:none;
       user-select:none;
-      transition: opacity .18s ease, transform .18s ease;
-      white-space: nowrap;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
     }
-    .pullUpBtn.show{
-      opacity:1;
-      pointer-events:auto;
-      transform: translateX(-50%) translateY(0);
-      user-select:none;
+    .playerDock.shiftDown .player.expanded .raiseHint{
+      opacity:.92;
     }
   </style>
 </head>
@@ -456,7 +466,7 @@
 
   <!-- DIAGNOSTICS -->
   <div class="diag" id="diag">
-    <div class="row"><b>SANCTUM</b> <span class="muted" id="d_ver">v0.40.5</span></div>
+    <div class="row"><b>SANCTUM</b> <span class="muted" id="d_ver">v0.40.6</span></div>
     <div class="row"><span>chapter</span> <b id="d_ch">-</b></div>
     <div class="row"><span>base</span> <span class="muted" id="d_base">-</span></div>
     <div class="row"><span>panels</span> <b id="d_total">0</b></div>
@@ -509,16 +519,17 @@
           title="SoundCloud player"
         ></iframe>
         <div class="scMaskLeft" aria-hidden="true"></div>
+
+        <!-- Catch taps when lowered (brings player back up) -->
+        <div id="tapRaiseCatcher" class="tapRaiseCatcher" aria-hidden="true"></div>
+        <div class="raiseHint" aria-hidden="true">tap player to raise</div>
       </div>
     </div>
   </div>
 
-  <!-- Pull-up affordance (so you can bring the player back) -->
-  <div id="pullUpBtn" class="pullUpBtn" aria-label="Pull player up">▲ Player</div>
-
   <script>
     (function(){
-      const VERSION = "v0.40.5";
+      const VERSION = "v0.40.6";
 
       const READER = {
         chapter: "chapter-00",
@@ -609,8 +620,7 @@
       const closeBtn = $("closeBtn");
       const playerDock = $("playerDock");
       const scFrame = $("scFrame");
-
-      const pullUpBtn = $("pullUpBtn");
+      const tapRaiseCatcher = $("tapRaiseCatcher");
 
       let loadingHidden = false;
       function hideLoading(){
@@ -635,33 +645,33 @@
         setTimeout(() => { location.reload(); }, 220);
       }
 
-      // ===== Player Dock Recovery (NEW) =====
-      function syncPullUp(){
-        const shouldShow = player.classList.contains("expanded") && playerDock.classList.contains("shiftDown");
-        if(shouldShow) pullUpBtn.classList.add("show");
-        else pullUpBtn.classList.remove("show");
+      // ===== Player Dock: sink + tap-to-raise (NO button) =====
+      function sinkToggle(){
+        if(!player.classList.contains("expanded")) return;
+        playerDock.classList.toggle("shiftDown");
       }
-
-      function pullPlayerUp(){
+      function raise(){
         playerDock.classList.remove("shiftDown");
-        syncPullUp();
       }
 
-      pullUpBtn.addEventListener("click", (e) => {
+      // Tap on player (when lowered) raises it again.
+      // 1) Catcher overlay over iframe (works even if user taps embed area)
+      tapRaiseCatcher.addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
-        pullPlayerUp();
+        raise();
       }, { passive:false });
 
-      // Also allow tap anywhere on the lowered dock area (if visible) to pull it up.
-      // (Only triggers when the dock is shifted down AND player is expanded.)
-      playerDock.addEventListener("click", (e) => {
+      // 2) Tapping meta/open/close area while lowered also raises (unless it's close)
+      player.addEventListener("click", (e) => {
         if(!player.classList.contains("expanded")) return;
         if(!playerDock.classList.contains("shiftDown")) return;
-        // ignore clicks inside the player itself (so you can still interact)
-        const withinPlayer = player.contains(e.target);
-        if(withinPlayer) return;
-        pullPlayerUp();
+
+        // Allow close to close, not raise
+        if(e.target === closeBtn) return;
+
+        // For everything else in the player chrome: raise
+        raise();
       }, { passive:true });
 
       // ===== Story order stays normal; DOM reversed for RTL layout =====
@@ -961,7 +971,6 @@
       function openAndPlay(){
         player.classList.add("expanded");
         playerDock.classList.remove("shiftDown");
-        syncPullUp();
 
         if(widget){
           if(widgetReady){
@@ -980,36 +989,33 @@
       function closePlayer(){
         player.classList.remove("expanded");
         playerDock.classList.remove("shiftDown");
-        syncPullUp();
 
         if(widget){
           try{ widget.pause(); }catch(_){}
         }
       }
 
+      // Collapsed play circle starts playback + expands
       playerBtn.addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
         openAndPlay();
       }, { passive:false });
 
+      // Close always closes
       closeBtn.addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
         closePlayer();
       }, { passive:false });
 
-      // Tap panel toggles dock down/up ONLY when expanded
+      // Tap panel toggles sink (expanded only)
       document.addEventListener("click", (e) => {
         if(!player.classList.contains("expanded")) return;
         if(e.target && e.target.classList && e.target.classList.contains("panelImg")){
-          playerDock.classList.toggle("shiftDown");
-          syncPullUp();
+          sinkToggle();
         }
       }, { passive:true });
-
-      // Initial sync
-      syncPullUp();
 
       updateHud();
       diagSet(diag.js, "ok", "ok");
