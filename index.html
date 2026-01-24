@@ -7,35 +7,30 @@
 
   <style>
     :root{
-      --v: "v0.31.0";
-
+      --v: "v0.31.1";
       --safe-top: env(safe-area-inset-top, 0px);
       --safe-bottom: env(safe-area-inset-bottom, 0px);
 
-      /* PAGE */
       --bg: #000;
       --ink: #fff;
 
-      /* PLAYER CARD */
       --card-w: min(96vw, 740px);
       --card-h: 220px;
       --radius: 22px;
       --shadow: 0 18px 60px rgba(0,0,0,.45);
 
-      /* Layout: linke SoundCloud-Zone (Play/Artwork) die wir im Expanded-State abdecken */
-      --sc-left-mask-w: 108px;
-
-      /* Abstände */
       --pad: 14px;
 
-      /* Farben */
-      --glass: rgba(255,255,255,.10);
-      --glass2: rgba(255,255,255,.16);
-      --stroke: rgba(255,255,255,.18);
-      --muted: rgba(255,255,255,.70);
+      /* Wir decken die linke SoundCloud-Zone ab (Play/Artwork), damit es clean wirkt */
+      --sc-left-mask-w: 108px;
 
-      /* Player-Dock Position */
       --dock-gap: 14px;
+
+      --glassA: rgba(255,255,255,.14);
+      --glassB: rgba(255,255,255,.08);
+      --stroke: rgba(255,255,255,.16);
+      --stroke2: rgba(255,255,255,.12);
+      --muted: rgba(255,255,255,.72);
     }
 
     html, body{
@@ -47,42 +42,43 @@
       overflow-x:hidden;
     }
 
-    /* --- DEMO / Platzhalter-Inhalt (ersetze das mit deinem Reader-Layout) --- */
-    .demo-stage{
+    /* --- Platzhalter für DEINEN echten Reader ---
+       Ersetze den Inhalt in <main class="stage"> ... </main> mit deinem Reader.
+       Wichtig: Unten reservieren wir Platz, damit der Dock nichts überdeckt.
+    */
+    .stage{
       min-height:100%;
+      box-sizing:border-box;
+      padding: calc(16px + var(--safe-top)) 14px calc(260px + var(--safe-bottom)) 14px;
       display:flex;
       align-items:center;
       justify-content:center;
-      padding: 24px 14px calc(220px + var(--safe-bottom) + 24px) 14px;
-      box-sizing:border-box;
     }
-    .panel{
-      width:min(92vw, 860px);
+
+    .placeholder{
+      width: min(92vw, 860px);
       aspect-ratio: 3 / 4;
-      background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.04));
-      border: 1px solid rgba(255,255,255,.12);
       border-radius: 18px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: radial-gradient(1200px 700px at 40% 20%, rgba(255,255,255,.10), rgba(255,255,255,.03));
       box-shadow: 0 16px 50px rgba(0,0,0,.35);
       position:relative;
       overflow:hidden;
     }
-    .panel:before{
-      content:"SANCTUM — Panel Preview";
+    .placeholder:before{
+      content:"Hier kommt dein Reader rein.";
       position:absolute;
-      left:16px;
-      top:14px;
-      font-weight:700;
-      letter-spacing:.02em;
+      left:16px; top:14px;
+      font-weight:800;
       opacity:.85;
+      letter-spacing:.02em;
     }
-    .panel:after{
-      content: attr(data-v);
+    .placeholder:after{
+      content: var(--v);
       position:absolute;
-      right:16px;
-      top:14px;
-      font-weight:600;
-      opacity:.6;
-      font-size:.95rem;
+      right:16px; top:14px;
+      font-weight:650;
+      opacity:.55;
     }
 
     /* --- PLAYER DOCK --- */
@@ -93,17 +89,17 @@
       transform: translateX(-50%);
       width: var(--card-w);
       z-index: 9999;
-      pointer-events:none; /* wir schalten pointer-events unten gezielt an */
+      pointer-events:none;
     }
 
-    /* Mini-Tab (collapsed) */
-    .tab{
+    /* Collapsed pill */
+    .pill{
       pointer-events:auto;
       width: 100%;
       height: 62px;
       border-radius: 999px;
-      background: linear-gradient(180deg, rgba(255,255,255,.14), rgba(255,255,255,.08));
-      border: 1px solid rgba(255,255,255,.16);
+      background: linear-gradient(180deg, var(--glassA), var(--glassB));
+      border: 1px solid var(--stroke);
       box-shadow: var(--shadow);
       backdrop-filter: blur(12px);
       -webkit-backdrop-filter: blur(12px);
@@ -116,34 +112,34 @@
       user-select:none;
       transition: transform .22s ease, opacity .22s ease;
     }
-    .tab:hover{ transform: translateY(-1px); }
+    .pill:active{ transform: scale(.995); }
 
-    .tab .pill{
-      width: 42px;
-      height: 42px;
+    .pill .dot{
+      width: 44px; height: 44px;
       border-radius: 999px;
       border: 1px solid rgba(255,255,255,.18);
       background: rgba(0,0,0,.28);
       display:grid;
       place-items:center;
-      flex: 0 0 auto;
+      flex:0 0 auto;
     }
+    .pill .dot svg{ width:18px; height:18px; fill:#fff; opacity:.92; }
 
-    .tab .meta{
+    .pill .meta{
       min-width:0;
       display:flex;
       flex-direction:column;
       line-height:1.05;
     }
-    .tab .meta .t{
-      font-weight:800;
+    .pill .meta .t{
+      font-weight:900;
       letter-spacing:.02em;
-      font-size: 1.05rem;
+      font-size: 1.06rem;
       white-space:nowrap;
       overflow:hidden;
       text-overflow:ellipsis;
     }
-    .tab .meta .a{
+    .pill .meta .a{
       margin-top:4px;
       font-weight:650;
       opacity:.72;
@@ -153,17 +149,17 @@
       text-overflow:ellipsis;
     }
 
-    .tab .right{
+    .pill .right{
       margin-left:auto;
       display:flex;
-      gap:10px;
       align-items:center;
+      gap:10px;
       flex:0 0 auto;
     }
 
     .iconbtn{
-      width: 42px;
-      height: 42px;
+      width: 44px;
+      height: 44px;
       border-radius: 999px;
       border: 1px solid rgba(255,255,255,.18);
       background: rgba(0,0,0,.26);
@@ -176,14 +172,14 @@
     .iconbtn:hover{ background: rgba(0,0,0,.34); }
     .iconbtn svg{ width: 18px; height: 18px; fill: #fff; opacity:.92; }
 
-    /* Expanded Card */
+    /* Expanded card */
     .card{
       pointer-events:auto;
       width: 100%;
       height: var(--card-h);
       border-radius: var(--radius);
-      background: linear-gradient(180deg, rgba(255,255,255,.14), rgba(255,255,255,.08));
-      border: 1px solid rgba(255,255,255,.16);
+      background: linear-gradient(180deg, var(--glassA), var(--glassB));
+      border: 1px solid var(--stroke);
       box-shadow: var(--shadow);
       backdrop-filter: blur(14px);
       -webkit-backdrop-filter: blur(14px);
@@ -194,12 +190,13 @@
       pointer-events:none;
       transition: opacity .22s ease, transform .22s ease;
     }
+
     .dock[data-open="1"] .card{
       opacity:1;
       transform: translateY(0) scale(1);
       pointer-events:auto;
     }
-    .dock[data-open="1"] .tab{
+    .dock[data-open="1"] .pill{
       opacity:0;
       transform: translateY(10px);
       pointer-events:none;
@@ -218,12 +215,12 @@
       gap: 12px;
       padding: 10px 12px;
       box-sizing:border-box;
-      border-bottom: 1px solid rgba(255,255,255,.12);
+      border-bottom: 1px solid var(--stroke2);
       background: linear-gradient(180deg, rgba(0,0,0,.22), rgba(0,0,0,.06));
     }
-    .topbar .badge{
-      width: 44px;
-      height: 44px;
+
+    .badge{
+      width: 44px; height: 44px;
       border-radius: 14px;
       border: 1px solid rgba(255,255,255,.16);
       background: rgba(0,0,0,.30);
@@ -231,23 +228,23 @@
       place-items:center;
       flex: 0 0 auto;
     }
-    .topbar .badge svg{ width: 22px; height: 22px; fill:#fff; opacity:.92; }
+    .badge svg{ width: 22px; height: 22px; fill:#fff; opacity:.92; }
 
-    .topbar .titles{
+    .titles{
       min-width:0;
       display:flex;
       flex-direction:column;
       line-height:1.05;
     }
-    .topbar .titles .t{
-      font-weight:900;
+    .titles .t{
+      font-weight:950;
       letter-spacing:.02em;
       font-size: 1.08rem;
       white-space:nowrap;
       overflow:hidden;
       text-overflow:ellipsis;
     }
-    .topbar .titles .a{
+    .titles .a{
       margin-top:4px;
       font-weight:650;
       opacity:.72;
@@ -257,7 +254,7 @@
       text-overflow:ellipsis;
     }
 
-    .topbar .actions{
+    .actions{
       margin-left:auto;
       display:flex;
       gap:10px;
@@ -266,13 +263,13 @@
     }
 
     .linkbtn{
-      height: 42px;
+      height: 44px;
       padding: 0 14px;
       border-radius: 999px;
       border: 1px solid rgba(255,255,255,.18);
       background: rgba(0,0,0,.22);
       color:#fff;
-      font-weight:800;
+      font-weight:850;
       letter-spacing:.01em;
       cursor:pointer;
       display:flex;
@@ -287,7 +284,7 @@
     .linkbtn:active{ transform: scale(.99); }
     .linkbtn svg{ width: 16px; height: 16px; fill:#fff; opacity:.9; }
 
-    /* Middle: iframe wrapper */
+    /* SoundCloud frame */
     .sc-wrap{
       position:relative;
       padding: var(--pad);
@@ -312,7 +309,6 @@
       background: transparent;
     }
 
-    /* Cover über linker SoundCloud-Zone (damit es nicht nach Chaos aussieht) */
     .sc-left-cover{
       position:absolute;
       left:0;
@@ -321,10 +317,10 @@
       height:100%;
       background: linear-gradient(180deg, rgba(0,0,0,.42), rgba(0,0,0,.34));
       border-right: 1px solid rgba(255,255,255,.10);
-      pointer-events:none; /* nur optisch */
+      pointer-events:none;
     }
 
-    /* Unsere eigenen Controls über dem Embed (Play / Pause + Progress) */
+    /* HUD */
     .hud{
       position:absolute;
       left: 10px;
@@ -333,10 +329,10 @@
       display:flex;
       align-items:center;
       gap: 10px;
-      pointer-events:none; /* Buttons selbst schalten wir wieder an */
+      pointer-events:none;
     }
 
-    .bigplay{
+    .bigbtn{
       pointer-events:auto;
       width: 52px;
       height: 52px;
@@ -350,9 +346,9 @@
       box-shadow: 0 10px 22px rgba(0,0,0,.30);
       transition: transform .12s ease, background .12s ease;
     }
-    .bigplay:hover{ background: rgba(0,0,0,.48); }
-    .bigplay:active{ transform: scale(.99); }
-    .bigplay svg{ width: 22px; height: 22px; fill:#fff; opacity:.92; }
+    .bigbtn:hover{ background: rgba(0,0,0,.48); }
+    .bigbtn:active{ transform: scale(.99); }
+    .bigbtn svg{ width: 22px; height: 22px; fill:#fff; opacity:.92; }
 
     .prog{
       pointer-events:auto;
@@ -382,16 +378,13 @@
     .time{
       display:flex;
       justify-content:space-between;
-      font-weight:700;
+      font-weight:750;
       font-size:.86rem;
       color: rgba(255,255,255,.88);
       text-shadow: 0 2px 10px rgba(0,0,0,.35);
       user-select:none;
     }
-    .time span{ opacity:.88; }
-    .time b{ opacity:.98; }
 
-    /* Footer */
     .footer{
       display:flex;
       align-items:center;
@@ -399,16 +392,9 @@
       padding: 0 14px;
       box-sizing:border-box;
       border-top: 1px solid rgba(255,255,255,.10);
-      font-weight:700;
+      font-weight:750;
       font-size:.88rem;
       color: rgba(255,255,255,.70);
-    }
-    .footer .left{ display:flex; align-items:center; gap:10px; }
-    .dot{
-      width:7px; height:7px; border-radius:999px;
-      background: rgba(255,255,255,.65);
-      box-shadow: 0 0 0 4px rgba(255,255,255,.08);
-      opacity:.9;
     }
     .footer code{
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
@@ -416,47 +402,42 @@
       opacity:.7;
     }
 
-    /* Kleine Geräte */
     @media (max-width: 420px){
       :root{ --card-h: 230px; --sc-left-mask-w: 98px; }
-      .linkbtn{ display:none; } /* Platz sparen */
+      .linkbtn{ display:none; }
     }
   </style>
 </head>
 
 <body>
-  <!-- DEMO: Ersetze .demo-stage + .panel durch deinen echten Reader.
-       Der Player ist unabhängig davon als Dock fixiert und bleibt stabil. -->
-  <div class="demo-stage">
-    <div class="panel" data-v="SANCTUM • UI Demo"></div>
-  </div>
+  <main class="stage">
+    <!-- Ersetze dieses Placeholder-Element mit deinem echten Reader -->
+    <section class="placeholder"></section>
+  </main>
 
-  <!-- PLAYER DOCK -->
   <div class="dock" id="dock" data-open="0">
-
-    <!-- COLLAPSED TAB -->
-    <div class="tab" id="tabOpen" aria-label="Player öffnen">
-      <div class="pill" title="Play/Pause">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+    <!-- Collapsed -->
+    <div class="pill" id="pillOpen" aria-label="Player öffnen">
+      <div class="dot" aria-hidden="true">
+        <svg id="pillIcon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
       </div>
       <div class="meta">
-        <div class="t" id="tabTitle">SENTINEL</div>
-        <div class="a" id="tabArtist">DAVID RAVENSON</div>
+        <div class="t" id="pillTitle">SENTINEL</div>
+        <div class="a" id="pillArtist">DAVID RAVENSON</div>
       </div>
       <div class="right">
-        <div class="iconbtn" id="tabToggle" title="Play/Pause" aria-label="Play/Pause">
-          <svg id="tabToggleIcon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+        <div class="iconbtn" id="pillToggle" title="Play/Pause" aria-label="Play/Pause">
+          <svg id="pillToggleIcon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
         </div>
-        <div class="iconbtn" id="tabExpand" title="Öffnen" aria-label="Öffnen">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5z"/></svg>
+        <div class="iconbtn" id="pillExpand" title="Öffnen" aria-label="Öffnen">
+          <svg viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
         </div>
       </div>
     </div>
 
-    <!-- EXPANDED CARD -->
+    <!-- Expanded -->
     <div class="card" id="card" aria-label="Media Player">
       <div class="card-inner">
-
         <div class="topbar">
           <div class="badge" aria-hidden="true">
             <svg viewBox="0 0 24 24"><path d="M12 2l2.2 6.6H21l-5.3 3.9 2 6.6-5.7-4.1-5.7 4.1 2-6.6L3 8.6h6.8z"/></svg>
@@ -465,92 +446,96 @@
             <div class="t" id="uiTitle">SENTINEL</div>
             <div class="a" id="uiArtist">DAVID RAVENSON</div>
           </div>
-
           <div class="actions">
             <a class="linkbtn" id="openSoundcloud" href="#" target="_blank" rel="noopener">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3h7v7h-2V6.41l-9.29 9.3-1.42-1.42 9.3-9.29H14V3z"/><path d="M5 5h6v2H7v10h10v-4h2v6H5z"/></svg>
+              <svg viewBox="0 0 24 24"><path d="M14 3h7v7h-2V6.41l-9.29 9.3-1.42-1.42 9.3-9.29H14V3z"/><path d="M5 5h6v2H7v10h10v-4h2v6H5z"/></svg>
               Open on SoundCloud
             </a>
             <div class="iconbtn" id="closeBtn" title="Schließen" aria-label="Schließen">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.3 5.7L12 12l6.3 6.3-1.4 1.4L10.6 13.4 4.3 19.7 2.9 18.3 9.2 12 2.9 5.7 4.3 4.3l6.3 6.3 6.3-6.3z"/></svg>
+              <svg viewBox="0 0 24 24"><path d="M18.3 5.7L12 12l6.3 6.3-1.4 1.4L10.6 13.4 4.3 19.7 2.9 18.3 9.2 12 2.9 5.7 4.3 4.3l6.3 6.3 6.3-6.3z"/></svg>
             </div>
           </div>
         </div>
 
         <div class="sc-wrap">
-          <div class="sc-frame" id="scFrame">
-            <!--
-              WICHTIG:
-              1) Ersetze unten im src nur die Track-URL (url=...) durch deinen SoundCloud Track-Link.
-              2) Beispiel Track-Link: https://soundcloud.com/deinname/sentinel
-              3) NICHT den kompletten Embed-Code einfügen, nur hier den iframe lassen.
-            -->
-            <iframe
-              id="sc"
-              allow="autoplay"
-              scrolling="no"
-              src="https://w.soundcloud.com/player/?url=https%3A//soundcloud.com/PUT-YOUR-TRACK-LINK-HERE&color=%23ffffff&auto_play=false&hide_related=true&show_comments=false&show_user=false&show_reposts=false&show_teaser=false&visual=false">
-            </iframe>
-
-            <!-- linke “Chaos-Zone” optisch abdecken -->
+          <div class="sc-frame">
+            <iframe id="sc" allow="autoplay" scrolling="no"></iframe>
             <div class="sc-left-cover" aria-hidden="true"></div>
 
-            <!-- HUD: unser eigenes sauberes UI -->
             <div class="hud">
-              <div class="bigplay" id="bigToggle" title="Play/Pause" aria-label="Play/Pause">
-                <svg id="bigToggleIcon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+              <div class="bigbtn" id="bigToggle" title="Play/Pause" aria-label="Play/Pause">
+                <svg id="bigToggleIcon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
               </div>
-
               <div class="prog">
-                <div class="bar" id="bar" title="Seek">
-                  <i id="barFill"></i>
-                </div>
+                <div class="bar" id="bar" title="Seek"><i id="barFill"></i></div>
                 <div class="time">
                   <span><b id="cur">0:00</b></span>
                   <span id="dur">0:00</span>
                 </div>
               </div>
             </div>
+
           </div>
         </div>
 
         <div class="footer">
-          <div class="left">
-            <span class="dot" id="statusDot" aria-hidden="true"></span>
-            <span id="statusText">ready</span>
-          </div>
+          <div id="statusText">ready</div>
           <code id="ver"></code>
         </div>
-
       </div>
     </div>
-
   </div>
 
-  <!-- SoundCloud Widget API -->
   <script src="https://w.soundcloud.com/player/api.js"></script>
-
   <script>
     (function(){
       const VERSION = getComputedStyle(document.documentElement).getPropertyValue('--v').replace(/["']/g,'').trim();
       document.getElementById('ver').textContent = VERSION;
 
-      const dock = document.getElementById('dock');
-      const tabOpen = document.getElementById('tabOpen');
-      const tabExpand = document.getElementById('tabExpand');
-      const closeBtn = document.getElementById('closeBtn');
+      /* ====== NUR HIER ÄNDERN ======
+         Trage deinen normalen SoundCloud Track-Link ein, z.B.:
+         https://soundcloud.com/davidravenson/sentinel
+      */
+      const TRACK_URL = "https://soundcloud.com/PUT-YOUR-TRACK-LINK-HERE";
+      const TITLE = "SENTINEL";
+      const ARTIST = "DAVID RAVENSON";
+      /* ============================ */
+
+      // UI Text
+      const pillTitle = document.getElementById('pillTitle');
+      const pillArtist = document.getElementById('pillArtist');
+      const uiTitle = document.getElementById('uiTitle');
+      const uiArtist = document.getElementById('uiArtist');
+      pillTitle.textContent = uiTitle.textContent = TITLE;
+      pillArtist.textContent = uiArtist.textContent = ARTIST;
 
       const openSoundcloud = document.getElementById('openSoundcloud');
+      openSoundcloud.href = TRACK_URL;
 
+      // Build SoundCloud iframe src safely (no manual encoding needed)
       const iframe = document.getElementById('sc');
-      const widget = SC.Widget(iframe);
+      const params = new URLSearchParams({
+        url: TRACK_URL,
+        color: "#ffffff",
+        auto_play: "false",
+        hide_related: "true",
+        show_comments: "false",
+        show_user: "false",
+        show_reposts: "false",
+        show_teaser: "false",
+        visual: "false"
+      });
+      iframe.src = "https://w.soundcloud.com/player/?" + params.toString();
+
+      const dock = document.getElementById('dock');
+      const pillOpen = document.getElementById('pillOpen');
+      const pillExpand = document.getElementById('pillExpand');
+      const closeBtn = document.getElementById('closeBtn');
 
       const statusText = document.getElementById('statusText');
-      const statusDot = document.getElementById('statusDot');
 
-      const tabToggle = document.getElementById('tabToggle');
-      const tabToggleIcon = document.getElementById('tabToggleIcon');
-
+      const pillToggle = document.getElementById('pillToggle');
+      const pillToggleIcon = document.getElementById('pillToggleIcon');
       const bigToggle = document.getElementById('bigToggle');
       const bigToggleIcon = document.getElementById('bigToggleIcon');
 
@@ -558,6 +543,8 @@
       const barFill = document.getElementById('barFill');
       const curEl = document.getElementById('cur');
       const durEl = document.getElementById('dur');
+
+      const widget = SC.Widget(iframe);
 
       let isPlaying = false;
       let durationMs = 0;
@@ -574,25 +561,20 @@
         isPlaying = !!p;
         const playPath = '<path d="M8 5v14l11-7z"/>';
         const pausePath = '<path d="M6 5h4v14H6zM14 5h4v14h-4z"/>';
-        tabToggleIcon.innerHTML = isPlaying ? pausePath : playPath;
+        pillToggleIcon.innerHTML = isPlaying ? pausePath : playPath;
         bigToggleIcon.innerHTML = isPlaying ? pausePath : playPath;
-
         statusText.textContent = isPlaying ? "playing" : "paused";
-        statusDot.style.opacity = isPlaying ? "1" : ".6";
       }
 
       function openCard(){ dock.setAttribute('data-open','1'); }
       function closeCard(){ dock.setAttribute('data-open','0'); }
 
-      tabExpand.addEventListener('click', (e)=>{ e.stopPropagation(); openCard(); });
-      tabOpen.addEventListener('click', ()=> openCard() );
+      pillExpand.addEventListener('click', (e)=>{ e.stopPropagation(); openCard(); });
+      pillOpen.addEventListener('click', ()=> openCard() );
       closeBtn.addEventListener('click', ()=> closeCard() );
 
-      function toggle(){
-        widget.toggle();
-      }
-
-      tabToggle.addEventListener('click', (e)=>{ e.stopPropagation(); toggle(); });
+      function toggle(){ widget.toggle(); }
+      pillToggle.addEventListener('click', (e)=>{ e.stopPropagation(); toggle(); });
       bigToggle.addEventListener('click', (e)=>{ e.stopPropagation(); toggle(); });
 
       bar.addEventListener('click', (e)=>{
@@ -603,44 +585,24 @@
         widget.seekTo(Math.floor(durationMs * pct));
       });
 
-      // Track-Link für "Open on SoundCloud" automatisch aus iframe src ziehen (url=...)
-      function updateOpenLink(){
-        try{
-          const u = new URL(iframe.src);
-          const raw = u.searchParams.get('url') || '';
-          const decoded = decodeURIComponent(raw);
-          if(decoded.startsWith('http')){
-            openSoundcloud.href = decoded;
-          }else{
-            openSoundcloud.href = "https://soundcloud.com";
-          }
-        }catch{
-          openSoundcloud.href = "https://soundcloud.com";
-        }
-      }
-      updateOpenLink();
-
-      // Widget Events
       widget.bind(SC.Widget.Events.READY, function(){
         statusText.textContent = "ready";
         widget.getDuration(function(d){
           durationMs = d || 0;
           durEl.textContent = fmt(durationMs);
         });
+        setPlayingUI(false);
       });
 
       widget.bind(SC.Widget.Events.PLAY, function(){
         setPlayingUI(true);
-        // frisch Duration holen, falls noch nicht da
         widget.getDuration(function(d){
           durationMs = d || durationMs;
           durEl.textContent = fmt(durationMs);
         });
       });
 
-      widget.bind(SC.Widget.Events.PAUSE, function(){
-        setPlayingUI(false);
-      });
+      widget.bind(SC.Widget.Events.PAUSE, function(){ setPlayingUI(false); });
 
       widget.bind(SC.Widget.Events.FINISH, function(){
         setPlayingUI(false);
@@ -652,19 +614,12 @@
         if(!e) return;
         const cur = e.currentPosition || 0;
         curEl.textContent = fmt(cur);
-
         const dur = durationMs || e.duration || 0;
         if(dur){
           const pct = Math.max(0, Math.min(1, cur / dur));
           barFill.style.width = (pct * 100).toFixed(2) + "%";
         }
       });
-
-      // Sanfter “geht klar” Startzustand: nicht autoplay (SoundCloud blockt oft), aber UI ist bereit.
-      // Wenn du später Autostart willst: wir können einen “User Gesture”-Kick auf dem ersten Tap machen.
-
-      // Tipp: wenn du Title/Artist dynamisch willst, können wir das aus SoundCloud ziehen – später.
-      setPlayingUI(false);
     })();
   </script>
 </body>
