@@ -7,7 +7,7 @@
 
   <style>
     :root{
-      --v: "v0.30.3";
+      --v: "v0.30.5";
       --safe-top: env(safe-area-inset-top, 0px);
       --safe-bottom: env(safe-area-inset-bottom, 0px);
 
@@ -33,10 +33,7 @@
       color:#fff;
       font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
       -webkit-tap-highlight-color: transparent;
-
-      /* IMPORTANT: allow pull-to-refresh */
-      overflow-x:hidden;
-      overflow-y:auto;
+      overflow:hidden; /* app-like */
     }
 
     body{
@@ -45,11 +42,6 @@
       background-position: center top;
       background-repeat: no-repeat;
       background-attachment: fixed;
-
-      /* IMPORTANT: do not kill overscroll */
-      overscroll-behavior-x: contain;
-      overscroll-behavior-y: auto;
-      touch-action: pan-y;
     }
 
     /* ===== LOADING OVERLAY ===== */
@@ -61,7 +53,7 @@
       align-items:flex-start;
       justify-content:center;
       padding-top: var(--safe-top);
-      background: rgba(0,0,0,.08);
+      background: rgba(0,0,0,.10);
       opacity:1;
       transition: opacity .35s ease;
     }
@@ -77,22 +69,64 @@
       position:relative;
       width: min(92vw, 520px);
       margin-top: 0;
-      border-radius: 0;
       overflow:hidden;
       box-shadow: 0 30px 70px rgba(0,0,0,.55);
       transform: translateZ(0);
+      cursor:pointer;
+      user-select:none;
     }
     .coverBanner img{
       width:100%;
       height:auto;
       display:block;
-      border-radius:0;
+    }
+    .enterHint{
+      position:absolute;
+      left:50%;
+      transform: translateX(-50%);
+      bottom: 14px;
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: rgba(0,0,0,.55);
+      border: 1px solid rgba(255,255,255,.18);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      font-weight: 800;
+      letter-spacing: .02em;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    /* ===== In-app pull to refresh indicator ===== */
+    .refreshBar{
+      position:fixed;
+      top: calc(8px + var(--safe-top));
+      left:50%;
+      transform: translateX(-50%) translateY(-80px);
+      z-index:60;
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: rgba(0,0,0,.55);
+      border: 1px solid rgba(255,255,255,.18);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      font-weight: 800;
+      font-size: 13px;
+      letter-spacing:.02em;
+      opacity:0;
+      transition: transform .2s ease, opacity .2s ease;
+      pointer-events:none;
+      user-select:none;
+    }
+    .refreshBar.show{
+      opacity:1;
+      transform: translateX(-50%) translateY(0);
     }
 
     /* ===== SWIPE READER ===== */
     .viewport{
       position:relative;
-      height:100vh; /* fill screen, but page can still overscroll for refresh */
+      height:100%;
       overflow-x:auto;
       overflow-y:hidden;
 
@@ -100,17 +134,12 @@
       -webkit-overflow-scrolling: touch;
       scroll-behavior: smooth;
 
-      overscroll-behavior-x: contain;
-      overscroll-behavior-y: auto;
-
       /* Manga flow: start on the RIGHT, swipe LEFT to go forward */
       direction: rtl;
 
-      /* horizontal swipe stays here */
+      /* IMPORTANT: keep horizontal paging crisp */
       touch-action: pan-x;
-      background: transparent;
     }
-
     .viewport::-webkit-scrollbar{ display:none; }
     .viewport{ scrollbar-width:none; }
 
@@ -118,7 +147,7 @@
       height:100%;
       display:flex;
       flex-direction:row;
-      direction: ltr; /* keep contents normal inside rtl viewport */
+      direction:ltr; /* keep content normal inside rtl viewport */
     }
 
     .slide{
@@ -144,7 +173,7 @@
     .panelFrame{
       position:relative;
       width:100%;
-      overflow:hidden;
+      overflow:hidden; /* holy border */
       background:#000;
       transform: translateZ(0);
       backface-visibility:hidden;
@@ -156,8 +185,6 @@
       height:auto;
       display:block;
       background:#000;
-      border-radius:0;
-      box-shadow:none;
     }
 
     .cinematicMask{
@@ -175,15 +202,22 @@
       left:0;
       width:100%;
       background: var(--mask-black);
-      opacity:1;
-      filter:none;
-      box-shadow:none;
-      transform: translateZ(0);
-      backface-visibility:hidden;
-      -webkit-backface-visibility:hidden;
     }
     .cinematicMask .top{ top:0; height: var(--mask-top-h); }
     .cinematicMask .bottom{ bottom:0; height: var(--mask-bottom-h); }
+
+    /* HUD */
+    .hud{
+      position:fixed;
+      left: 12px;
+      top: calc(12px + var(--safe-top));
+      z-index:40;
+      font-weight:800;
+      opacity:.85;
+      user-select:none;
+      pointer-events:none;
+      text-shadow: 0 10px 30px rgba(0,0,0,.55);
+    }
 
     /* ===== PLAYER (fixed overlay) ===== */
     .playerDock{
@@ -199,9 +233,7 @@
       transition: transform .25s ease;
       will-change: transform;
     }
-    .playerDock.shiftDown{
-      transform: translateX(-50%) translateY(200px);
-    }
+    .playerDock.shiftDown{ transform: translateX(-50%) translateY(200px); }
 
     .player{
       position:relative;
@@ -265,19 +297,8 @@
       padding: 10px 12px;
       box-shadow: 0 10px 18px rgba(0,0,0,.18);
     }
-    .meta .t{
-      font-weight: 900;
-      letter-spacing: .03em;
-      font-size: 18px;
-      color:#0d0d0d;
-    }
-    .meta .a{
-      margin-top: 2px;
-      font-weight: 700;
-      opacity:.92;
-      font-size: 13px;
-      color:#0d0d0d;
-    }
+    .meta .t{ font-weight:900; letter-spacing:.03em; font-size:18px; color:#0d0d0d; }
+    .meta .a{ margin-top:2px; font-weight:700; opacity:.92; font-size:13px; color:#0d0d0d; }
 
     .openBtn{
       position:absolute;
@@ -328,65 +349,40 @@
       border: 1px solid rgba(255,255,255,.18);
       background: rgba(255,255,255,.10);
     }
-    .embedWrap iframe{
-      width:100%;
-      height:100%;
-      border:0;
-      display:block;
-      background: transparent;
-    }
+    .embedWrap iframe{ width:100%; height:100%; border:0; display:block; background:transparent; }
     .scMaskLeft{
       position:absolute;
-      left:0;
-      top:0;
+      left:0; top:0;
       width: var(--sc-left-mask-w);
       height:100%;
       background: rgba(255,255,255,.10);
       border-right: 1px solid rgba(255,255,255,.12);
       pointer-events:none;
     }
-
-    .hud{
-      position:fixed;
-      left: 12px;
-      top: calc(12px + var(--safe-top));
-      z-index:40;
-      font-weight:800;
-      letter-spacing:.02em;
-      opacity:.85;
-      user-select:none;
-      pointer-events:none;
-      text-shadow: 0 10px 30px rgba(0,0,0,.55);
-    }
   </style>
 </head>
 
 <body>
+  <!-- Loading -->
   <div id="loading" class="loading" aria-hidden="false">
-    <div class="coverBanner" role="img" aria-label="SANCTUM cover">
+    <div id="coverBanner" class="coverBanner" role="button" aria-label="Enter SANCTUM">
       <img id="coverImg" src="./manga/chapter-00/cover.jpg" alt="SANCTUM Cover" />
+      <div class="enterHint">Tap to Enter</div>
     </div>
   </div>
+
+  <!-- In-app refresh -->
+  <div id="refreshBar" class="refreshBar">Refreshing…</div>
 
   <div class="hud" id="hud">panel 01 / 02</div>
 
   <div class="viewport" id="viewport">
-    <div class="track" id="track">
+    <div class="track">
       <section class="slide">
         <div class="panelShell">
           <div class="panelFrame">
-            <img
-              id="panelImg1"
-              class="panelImg"
-              src="./manga/chapter-00/panel01.jpg"
-              alt="Panel 01"
-              loading="eager"
-              decoding="async"
-            />
-            <div class="cinematicMask" aria-hidden="true">
-              <div class="top"></div>
-              <div class="bottom"></div>
-            </div>
+            <img id="panelImg1" class="panelImg" src="./manga/chapter-00/panel01.jpg" alt="Panel 01" loading="eager" decoding="async" />
+            <div class="cinematicMask" aria-hidden="true"><div class="top"></div><div class="bottom"></div></div>
           </div>
         </div>
       </section>
@@ -394,53 +390,31 @@
       <section class="slide">
         <div class="panelShell">
           <div class="panelFrame">
-            <img
-              id="panelImg2"
-              class="panelImg"
-              src="./manga/chapter-00/panel02.jpg"
-              alt="Panel 02"
-              loading="lazy"
-              decoding="async"
-            />
-            <div class="cinematicMask" aria-hidden="true">
-              <div class="top"></div>
-              <div class="bottom"></div>
-            </div>
+            <img id="panelImg2" class="panelImg" src="./manga/chapter-00/panel02.jpg" alt="Panel 02" loading="lazy" decoding="async" />
+            <div class="cinematicMask" aria-hidden="true"><div class="top"></div><div class="bottom"></div></div>
           </div>
         </div>
       </section>
     </div>
   </div>
 
+  <!-- Player -->
   <div id="playerDock" class="playerDock">
     <div id="player" class="player" aria-label="Player">
-      <div id="playerBtn" class="playerBtn" title="Play">
-        <div class="playIcon" aria-hidden="true"></div>
-      </div>
+      <div id="playerBtn" class="playerBtn" title="Play"><div class="playIcon" aria-hidden="true"></div></div>
 
       <div class="meta" aria-hidden="true">
         <div class="t">SENTINEL</div>
         <div class="a">DAVID RAVENSON</div>
       </div>
 
-      <a class="openBtn"
-        href="https://soundcloud.com/user-543596862/sentinel-2"
-        target="_blank"
-        rel="noopener noreferrer"
-        aria-hidden="true"
-      >Open on SoundCloud</a>
-
+      <a class="openBtn" href="https://soundcloud.com/user-543596862/sentinel-2" target="_blank" rel="noopener noreferrer" aria-hidden="true">Open on SoundCloud</a>
       <div id="closeBtn" class="closeBtn" aria-hidden="true" title="Close">×</div>
 
       <div class="embedWrap" aria-hidden="true">
-        <iframe
-          id="scFrame"
-          allow="autoplay"
-          scrolling="no"
-          frameborder="no"
+        <iframe id="scFrame" allow="autoplay" scrolling="no" frameborder="no"
           src="https://w.soundcloud.com/player/?url=https%3A//soundcloud.com/user-543596862/sentinel-2&color=%23000000&auto_play=false&hide_related=true&show_comments=false&show_user=false&show_reposts=false&show_teaser=false&visual=false"
-          title="SoundCloud player"
-        ></iframe>
+          title="SoundCloud player"></iframe>
         <div class="scMaskLeft" aria-hidden="true"></div>
       </div>
     </div>
@@ -450,63 +424,52 @@
 
   <script>
     (function(){
-      const VERSION = "v0.30.3";
+      const VERSION = "v0.30.5";
 
-      const loading   = document.getElementById("loading");
-      const panelImg1 = document.getElementById("panelImg1");
-      const panelImg2 = document.getElementById("panelImg2");
+      const loading     = document.getElementById("loading");
+      const coverBanner = document.getElementById("coverBanner");
+      const refreshBar  = document.getElementById("refreshBar");
 
-      const viewport  = document.getElementById("viewport");
-      const slides    = Array.from(document.querySelectorAll(".slide"));
-      const hud       = document.getElementById("hud");
+      const panelImg1   = document.getElementById("panelImg1");
+      const panelImg2   = document.getElementById("panelImg2");
 
-      const player     = document.getElementById("player");
-      const playerBtn  = document.getElementById("playerBtn");
-      const closeBtn   = document.getElementById("closeBtn");
-      const playerDock = document.getElementById("playerDock");
-      const scFrame    = document.getElementById("scFrame");
+      const viewport    = document.getElementById("viewport");
+      const slides      = Array.from(document.querySelectorAll(".slide"));
+      const hud         = document.getElementById("hud");
 
-      // ---------- Loading overlay (NEVER STICKS) ----------
+      const player      = document.getElementById("player");
+      const playerBtn   = document.getElementById("playerBtn");
+      const closeBtn    = document.getElementById("closeBtn");
+      const playerDock  = document.getElementById("playerDock");
+      const scFrame     = document.getElementById("scFrame");
+
+      // ---------- Loading overlay (guaranteed exit) ----------
       let loadingHidden = false;
-
       function hideLoading(){
         if(loadingHidden) return;
         loadingHidden = true;
-
-        setTimeout(() => {
-          loading.style.opacity = "0";
-          loading.setAttribute("aria-hidden","true");
-          setTimeout(() => { loading.style.display = "none"; }, 420);
-        }, 250); // faster; feels snappy
+        loading.style.opacity = "0";
+        loading.setAttribute("aria-hidden","true");
+        setTimeout(() => { loading.style.display = "none"; }, 380);
       }
 
-      // normal events
+      coverBanner.addEventListener("click", hideLoading, { passive:true });
       panelImg1.addEventListener("load", hideLoading, { passive:true });
       panelImg1.addEventListener("error", hideLoading, { passive:true });
 
-      // cached image fast-path
-      function cachedFastPath(){
-        if(panelImg1 && panelImg1.complete && panelImg1.naturalWidth > 0){
-          hideLoading();
-        }
-      }
-      document.addEventListener("DOMContentLoaded", cachedFastPath, { passive:true });
-      window.addEventListener("load", cachedFastPath, { passive:true });
+      if(panelImg1.complete && panelImg1.naturalWidth > 0) hideLoading();
+      setTimeout(hideLoading, 2000);
 
-      // hard fallback: if anything goes weird, we still proceed
-      setTimeout(hideLoading, 2200);
-
-      // preload panel 02 (seamless swipe)
+      // preload panel 02
       (function(){
         const img = new Image();
         img.src = panelImg2.getAttribute("src");
       })();
 
-      // ---------- Robust HUD ----------
+      // ---------- HUD (robust center detection) ----------
       function getActiveIndex(){
         const vpRect = viewport.getBoundingClientRect();
         const vpCenter = vpRect.left + vpRect.width / 2;
-
         let bestIdx = 0;
         let bestDist = Infinity;
 
@@ -514,10 +477,7 @@
           const r = s.getBoundingClientRect();
           const c = r.left + r.width / 2;
           const d = Math.abs(c - vpCenter);
-          if(d < bestDist){
-            bestDist = d;
-            bestIdx = i;
-          }
+          if(d < bestDist){ bestDist = d; bestIdx = i; }
         });
         return bestIdx;
       }
@@ -531,6 +491,53 @@
       viewport.addEventListener("scroll", () => { requestAnimationFrame(updateHud); }, { passive:true });
       window.addEventListener("resize", () => { requestAnimationFrame(updateHud); }, { passive:true });
       updateHud();
+
+      // ---------- In-app pull-to-refresh (reliable) ----------
+      let startX = 0, startY = 0, tracking = false, fired = false;
+
+      function showRefresh(){
+        refreshBar.classList.add("show");
+      }
+      function hideRefresh(){
+        refreshBar.classList.remove("show");
+      }
+      function doRefresh(){
+        if(fired) return;
+        fired = true;
+        showRefresh();
+        setTimeout(() => { location.reload(); }, 250);
+      }
+
+      // Only trigger if the user starts near the top edge (so it doesn't fight swiping)
+      const TOP_ZONE = 70;
+
+      window.addEventListener("touchstart", (e) => {
+        if(!e.touches || e.touches.length !== 1) return;
+        const t = e.touches[0];
+        startX = t.clientX;
+        startY = t.clientY;
+        tracking = (startY <= TOP_ZONE);
+        fired = false;
+      }, { passive:true });
+
+      window.addEventListener("touchmove", (e) => {
+        if(!tracking || fired) return;
+        const t = e.touches[0];
+        const dx = t.clientX - startX;
+        const dy = t.clientY - startY;
+
+        // We only want a vertical down gesture, not horizontal swipe
+        if(Math.abs(dx) > 18) { tracking = false; hideRefresh(); return; }
+
+        if(dy > 55){
+          doRefresh();
+        }
+      }, { passive:true });
+
+      window.addEventListener("touchend", () => {
+        tracking = false;
+        if(!fired) hideRefresh();
+      }, { passive:true });
 
       // ---------- SoundCloud widget ----------
       const widget = (window.SC && scFrame) ? SC.Widget(scFrame) : null;
@@ -560,14 +567,12 @@
       }
 
       playerBtn.addEventListener("click", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
+        e.preventDefault(); e.stopPropagation();
         openAndPlay();
       }, { passive:false });
 
       closeBtn.addEventListener("click", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
+        e.preventDefault(); e.stopPropagation();
         closePlayer();
       }, { passive:false });
 
