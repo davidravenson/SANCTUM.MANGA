@@ -3,27 +3,33 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>SANCTUM — Reader</title>
+  <title>SANCTUM — Reader Core</title>
 
   <style>
     :root{
-      --v: "v0.30.6";
+      --v: "v0.40.0";
+
       --safe-top: env(safe-area-inset-top, 0px);
       --safe-bottom: env(safe-area-inset-bottom, 0px);
 
       --bg: url("./media/ui/manga_paper_bg.png");
+
+      --ink: #0b0b0b;
       --shadow: 0 16px 40px rgba(0,0,0,.35);
 
-      /* Cinematic bars (hard + clipped) */
+      /* Holy panel border + hard cinematic bars */
       --mask-top-h: 54px;
       --mask-bottom-h: 84px;
       --mask-black: #000;
 
-      /* SoundCloud left zone mask */
+      /* Layout */
+      --max-w: 860px;
+
+      /* Player */
       --sc-left-mask-w: 106px;
 
-      /* Reader */
-      --max-w: 860px;
+      /* Diagnostics */
+      --diag-w: min(56vw, 360px);
     }
 
     html, body{
@@ -33,7 +39,7 @@
       color:#fff;
       font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
       -webkit-tap-highlight-color: transparent;
-      overflow:hidden; /* app feel */
+      overflow:hidden; /* app-like, no accidental browser scroll */
     }
 
     body{
@@ -44,7 +50,7 @@
       background-attachment: fixed;
     }
 
-    /* ===== LOADING OVERLAY (cannot get stuck) ===== */
+    /* ===== LAYER: LOADING ===== */
     .loading{
       position:fixed;
       inset:0;
@@ -63,12 +69,11 @@
       inset:0;
       backdrop-filter: blur(14px);
       -webkit-backdrop-filter: blur(14px);
-      background: rgba(0,0,0,.10);
+      background: rgba(0,0,0,.12);
     }
     .coverBanner{
       position:relative;
       width: min(92vw, 520px);
-      margin-top: 0;
       overflow:hidden;
       box-shadow: 0 30px 70px rgba(0,0,0,.55);
       transform: translateZ(0);
@@ -87,106 +92,46 @@
       bottom: 14px;
       padding: 10px 14px;
       border-radius: 999px;
-      background: rgba(0,0,0,.55);
+      background: rgba(0,0,0,.60);
       border: 1px solid rgba(255,255,255,.18);
       backdrop-filter: blur(10px);
       -webkit-backdrop-filter: blur(10px);
-      font-weight: 800;
+      font-weight: 900;
       letter-spacing: .02em;
       font-size: 13px;
       white-space: nowrap;
     }
 
-    /* ===== In-app pull-to-refresh indicator ===== */
-    .refreshBar{
-      position:fixed;
-      top: calc(8px + var(--safe-top));
-      left:50%;
-      transform: translateX(-50%) translateY(-80px);
-      z-index:60;
-      padding: 10px 14px;
-      border-radius: 999px;
-      background: rgba(0,0,0,.55);
-      border: 1px solid rgba(255,255,255,.18);
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-      font-weight: 800;
-      font-size: 13px;
-      letter-spacing:.02em;
-      opacity:0;
-      transition: transform .2s ease, opacity .2s ease;
-      pointer-events:none;
-      user-select:none;
-    }
-    .refreshBar.show{
-      opacity:1;
-      transform: translateX(-50%) translateY(0);
-    }
-
-    /* ===== HUD ===== */
-    .hud{
-      position:fixed;
-      left: 12px;
-      top: calc(12px + var(--safe-top));
-      z-index:40;
-      font-weight:800;
-      opacity:.85;
-      user-select:none;
-      pointer-events:none;
-      text-shadow: 0 10px 30px rgba(0,0,0,.55);
-    }
-
-    /* ===== SWIPE READER ===== */
-    .viewport{
+    /* ===== STAGE (carousel engine, no browser scroll) ===== */
+    .stage{
       position:relative;
       height:100%;
-      overflow-x:auto;
-      overflow-y:hidden;
-
-      scroll-snap-type: x mandatory;
-      -webkit-overflow-scrolling: touch;
-      scroll-behavior: smooth;
-
-      /* Manga flow: start on RIGHT, swipe LEFT to go forward */
-      direction: rtl;
-
-      /* Keep horizontal paging crisp */
-      touch-action: pan-x;
-    }
-    .viewport::-webkit-scrollbar{ display:none; }
-    .viewport{ scrollbar-width:none; }
-
-    .track{
-      height:100%;
-      display:flex;
-      flex-direction:row;
-      direction:ltr; /* keep content normal inside rtl viewport */
-    }
-
-    .slide{
-      flex:0 0 100%;
-      height:100%;
-      scroll-snap-align: center;
+      width:100%;
       display:flex;
       align-items:center;
       justify-content:center;
       padding-top: var(--safe-top);
       padding-bottom: calc(20px + var(--safe-bottom));
       box-sizing:border-box;
+      touch-action: pan-y; /* allow vertical gestures to exist; we take over horizontal */
+      overscroll-behavior: none;
     }
 
-    .panelShell{
+    .rail{
       position:relative;
       width: min(100vw, var(--max-w));
+      height:100%;
       display:flex;
-      justify-content:center;
       align-items:center;
+      justify-content:center;
     }
 
-    /* Holy border */
+    /* Holy border: nothing may bleed outside */
     .panelFrame{
       position:relative;
       width:100%;
+      height:auto;
+      max-height:100%;
       overflow:hidden;
       background:#000;
       transform: translateZ(0);
@@ -194,22 +139,50 @@
       -webkit-backface-visibility:hidden;
     }
 
+    /* Track = film strip */
+    .track{
+      display:flex;
+      flex-direction:row;
+      height:100%;
+      width:100%;
+      transform: translate3d(0,0,0);
+      transition: transform 280ms ease;
+      will-change: transform;
+    }
+    .track.dragging{ transition:none; }
+
+    .slide{
+      flex:0 0 100%;
+      height:100%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background:#000;
+    }
+
+    .panelShell{
+      position:relative;
+      width:100%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+
+    /* The sacred panel itself */
     .panelImg{
       width:100%;
       height:auto;
       display:block;
       background:#000;
+      image-rendering: auto;
     }
 
-    /* Cinematic bars (hard, clipped) */
+    /* Hard bars inside the holy border */
     .cinematicMask{
       position:absolute;
       inset:0;
       pointer-events:none;
       z-index:10;
-      transform: translateZ(0);
-      backface-visibility:hidden;
-      -webkit-backface-visibility:hidden;
     }
     .cinematicMask .top,
     .cinematicMask .bottom{
@@ -224,13 +197,68 @@
     .cinematicMask .top{ top:0; height: var(--mask-top-h); }
     .cinematicMask .bottom{ bottom:0; height: var(--mask-bottom-h); }
 
+    /* ===== HUD ===== */
+    .hud{
+      position:fixed;
+      left: 12px;
+      top: calc(12px + var(--safe-top));
+      z-index:80;
+      font-weight: 900;
+      letter-spacing:.02em;
+      opacity:.90;
+      user-select:none;
+      pointer-events:none;
+      text-shadow: 0 10px 30px rgba(0,0,0,.55);
+    }
+
+    /* ===== DIAGNOSTICS (pro mode) ===== */
+    .diag{
+      position:fixed;
+      right: 12px;
+      top: calc(12px + var(--safe-top));
+      z-index:80;
+      width: var(--diag-w);
+      background: rgba(0,0,0,.58);
+      border: 1px solid rgba(255,255,255,.18);
+      border-radius: 14px;
+      padding: 10px 12px;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      box-shadow: 0 16px 40px rgba(0,0,0,.35);
+      font-size: 12px;
+      line-height: 1.25;
+      user-select:none;
+    }
+    .diag .row{ display:flex; gap:8px; justify-content:space-between; }
+    .diag b{ font-weight: 900; }
+    .ok{ color:#7CFF9A; font-weight:900; }
+    .bad{ color:#FF7C7C; font-weight:900; }
+    .muted{ opacity:.75; }
+
+    .diagToggle{
+      position:fixed;
+      right: 12px;
+      bottom: calc(12px + var(--safe-bottom));
+      z-index:85;
+      padding: 10px 12px;
+      border-radius: 999px;
+      background: rgba(0,0,0,.45);
+      border: 1px solid rgba(255,255,255,.16);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      font-weight: 900;
+      font-size: 12px;
+      cursor:pointer;
+      user-select:none;
+    }
+
     /* ===== PLAYER (fixed overlay) ===== */
     .playerDock{
       position:fixed;
       left:50%;
       bottom: calc(12px + var(--safe-bottom));
       transform: translateX(-50%);
-      z-index:30;
+      z-index:70;
       display:flex;
       align-items:center;
       justify-content:center;
@@ -238,7 +266,9 @@
       transition: transform .25s ease;
       will-change: transform;
     }
-    .playerDock.shiftDown{ transform: translateX(-50%) translateY(200px); }
+    .playerDock.shiftDown{
+      transform: translateX(-50%) translateY(200px);
+    }
 
     .player{
       position:relative;
@@ -303,19 +333,8 @@
       padding: 10px 12px;
       box-shadow: 0 10px 18px rgba(0,0,0,.18);
     }
-    .meta .t{
-      font-weight: 900;
-      letter-spacing: .03em;
-      font-size: 18px;
-      color:#0d0d0d;
-    }
-    .meta .a{
-      margin-top: 2px;
-      font-weight: 700;
-      opacity:.92;
-      font-size: 13px;
-      color:#0d0d0d;
-    }
+    .meta .t{ font-weight:900; letter-spacing:.03em; font-size:18px; color:#0d0d0d; }
+    .meta .a{ margin-top:2px; font-weight:700; opacity:.92; font-size:13px; color:#0d0d0d; }
 
     .openBtn{
       position:absolute;
@@ -326,7 +345,7 @@
       border: 1px solid rgba(255,255,255,.22);
       background: rgba(0,0,0,.18);
       color:#fff;
-      font-weight: 700;
+      font-weight: 800;
       font-size: 13px;
       cursor:pointer;
       text-decoration:none;
@@ -386,7 +405,7 @@
 </head>
 
 <body>
-  <!-- Loading -->
+  <!-- LOADING -->
   <div id="loading" class="loading" aria-hidden="false">
     <div id="coverBanner" class="coverBanner" role="button" aria-label="Enter SANCTUM">
       <img id="coverImg" src="./manga/chapter-00/cover.jpg" alt="SANCTUM Cover" />
@@ -394,74 +413,48 @@
     </div>
   </div>
 
-  <!-- In-app refresh -->
-  <div id="refreshBar" class="refreshBar">Refreshing…</div>
-
   <!-- HUD -->
-  <div class="hud" id="hud">panel 01 / 02</div>
+  <div class="hud" id="hud">panel 01 / 01</div>
 
-  <!-- Swipe viewport -->
-  <div class="viewport" id="viewport">
-    <div class="track" id="track">
+  <!-- DIAGNOSTICS -->
+  <div class="diag" id="diag">
+    <div class="row"><b>SANCTUM</b> <span class="muted" id="d_ver">v0.40.0</span></div>
+    <div class="row"><span>chapter</span> <b id="d_ch">-</b></div>
+    <div class="row"><span>base</span> <span class="muted" id="d_base">-</span></div>
+    <div class="row"><span>panels</span> <b id="d_total">0</b></div>
+    <div class="row"><span>index</span> <b id="d_idx">0</b></div>
+    <div class="row"><span>first load</span> <b id="d_first" class="bad">pending</b></div>
+    <div class="row"><span>probe</span> <b id="d_probe" class="muted">idle</b></div>
+    <div class="row"><span>js</span> <b id="d_js" class="ok">ok</b></div>
+    <div class="row"><span>last err</span> <span class="muted" id="d_err">(none)</span></div>
+  </div>
+  <div class="diagToggle" id="diagToggle">DIAG</div>
 
-      <!-- Panel 01 -->
-      <section class="slide">
-        <div class="panelShell">
-          <div class="panelFrame">
-            <img
-              id="panelImg1"
-              class="panelImg"
-              src="./manga/chapter-00/panel01.jpg"
-              alt="Panel 01"
-              loading="eager"
-              decoding="async"
-            />
-            <div class="cinematicMask" aria-hidden="true">
-              <div class="top"></div>
-              <div class="bottom"></div>
-            </div>
-          </div>
+  <!-- STAGE -->
+  <div class="stage" id="stage">
+    <div class="rail">
+      <div class="panelFrame" id="panelFrame">
+        <div class="track" id="track">
+          <!-- slides are injected by JS -->
         </div>
-      </section>
-
-      <!-- Panel 02 -->
-      <section class="slide">
-        <div class="panelShell">
-          <div class="panelFrame">
-            <img
-              id="panelImg2"
-              class="panelImg"
-              src="./manga/chapter-00/panel02.jpg"
-              alt="Panel 02"
-              loading="lazy"
-              decoding="async"
-            />
-            <div class="cinematicMask" aria-hidden="true">
-              <div class="top"></div>
-              <div class="bottom"></div>
-            </div>
-          </div>
-        </div>
-      </section>
-
+      </div>
     </div>
   </div>
 
-  <!-- Player -->
+  <!-- PLAYER -->
   <div id="playerDock" class="playerDock">
     <div id="player" class="player" aria-label="Player">
-
       <div id="playerBtn" class="playerBtn" title="Play">
         <div class="playIcon" aria-hidden="true"></div>
       </div>
 
       <div class="meta" aria-hidden="true">
-        <div class="t">SENTINEL</div>
-        <div class="a">DAVID RAVENSON</div>
+        <div class="t" id="trackTitle">SENTINEL</div>
+        <div class="a" id="trackArtist">DAVID RAVENSON</div>
       </div>
 
-      <a
-        class="openBtn"
+      <a class="openBtn"
+        id="scOpen"
         href="https://soundcloud.com/user-543596862/sentinel-2"
         target="_blank"
         rel="noopener noreferrer"
@@ -481,37 +474,123 @@
         ></iframe>
         <div class="scMaskLeft" aria-hidden="true"></div>
       </div>
-
     </div>
   </div>
 
-  <!-- SoundCloud Widget API -->
-  <script src="https://w.soundcloud.com/player/api.js"></script>
-
   <script>
     (function(){
-      const VERSION = "v0.30.6";
+      const VERSION = "v0.40.0";
 
-      const loading     = document.getElementById("loading");
-      const coverBanner = document.getElementById("coverBanner");
-      const refreshBar  = document.getElementById("refreshBar");
+      /* ===========================
+         reader_auto (CONFIG CORE)
+         =========================== */
+      const READER = {
+        chapter: "chapter-00",
+        baseRoot: "./manga/",
+        panelPrefix: "panel",
+        ext: ".jpg",
+        pad: 2,
 
-      const viewport  = document.getElementById("viewport");
-      const slides    = Array.from(document.querySelectorAll(".slide"));
-      const hud       = document.getElementById("hud");
+        // Start with known panels. Auto-probe will extend if more exist.
+        seedPanels: [1,2],
 
-      const panelImg1 = document.getElementById("panelImg1");
-      const panelImg2 = document.getElementById("panelImg2");
+        // Probe behavior: HEAD request panel03..panelNN.
+        probeMax: 80,
+        stopAfterConsecutiveMisses: 3,
 
-      const player     = document.getElementById("player");
-      const playerBtn  = document.getElementById("playerBtn");
-      const closeBtn   = document.getElementById("closeBtn");
-      const playerDock = document.getElementById("playerDock");
-      const scFrame    = document.getElementById("scFrame");
+        // UX + safety
+        loadingMaxMs: 1800,    // overlay hard timeout
+        swipeThresholdPx: 44,
+        axisLockPx: 10,
+        maxVerticalSlope: 0.35,
+        rubberbandPct: 8,
 
-      // ---------- Loading overlay: cannot get stuck ----------
+        // Preload next panels
+        preloadAhead: 2
+      };
+
+      /* ===========================
+         Helpers / Guard Rails
+         =========================== */
+      const $ = (id) => document.getElementById(id);
+      const clamp = (n,a,b) => Math.max(a, Math.min(b,n));
+      const padN = (n, w) => String(n).padStart(w, "0");
+
+      const diag = {
+        box: $("diag"),
+        toggle: $("diagToggle"),
+        ver: $("d_ver"),
+        ch: $("d_ch"),
+        base: $("d_base"),
+        total: $("d_total"),
+        idx: $("d_idx"),
+        first: $("d_first"),
+        probe: $("d_probe"),
+        js: $("d_js"),
+        err: $("d_err")
+      };
+
+      function diagSet(el, text, cls){
+        if(!el) return;
+        el.textContent = text;
+        if(cls){ el.className = cls; }
+      }
+
+      function noteErr(msg){
+        diagSet(diag.err, String(msg || "(unknown)"), "muted");
+        if(diag.js) diag.js.className = "bad";
+      }
+
+      window.addEventListener("error", (e) => noteErr(e.message || e.error || "error"));
+      window.addEventListener("unhandledrejection", (e) => noteErr(e.reason || "promise rejection"));
+
+      diagSet(diag.ver, VERSION, "muted");
+
+      // toggle diag visibility
+      let diagVisible = true;
+      diag.toggle.addEventListener("click", () => {
+        diagVisible = !diagVisible;
+        diag.box.style.display = diagVisible ? "block" : "none";
+      }, { passive:true });
+
+      /* ===========================
+         Paths
+         =========================== */
+      const basePath = READER.baseRoot + READER.chapter + "/";
+      diagSet(diag.ch, READER.chapter, "");
+      diagSet(diag.base, basePath, "muted");
+
+      function panelURL(n){
+        return basePath + READER.panelPrefix + padN(n, READER.pad) + READER.ext;
+      }
+
+      // cache-bust helper for HEAD probes (avoid stale 404 cache)
+      function bust(url){
+        const s = (Date.now() + Math.random()).toString(36);
+        return url + (url.includes("?") ? "&" : "?") + "v=" + encodeURIComponent(s);
+      }
+
+      /* ===========================
+         DOM Nodes
+         =========================== */
+      const loading = $("loading");
+      const coverBanner = $("coverBanner");
+
+      const hud = $("hud");
+      const stage = $("stage");
+      const frame = $("panelFrame");
+      const track = $("track");
+
+      const player = $("player");
+      const playerBtn = $("playerBtn");
+      const closeBtn = $("closeBtn");
+      const playerDock = $("playerDock");
+      const scFrame = $("scFrame");
+
+      /* ===========================
+         Loading Overlay (cannot stick)
+         =========================== */
       let loadingHidden = false;
-
       function hideLoading(){
         if(loadingHidden) return;
         loadingHidden = true;
@@ -519,134 +598,332 @@
         loading.setAttribute("aria-hidden","true");
         setTimeout(() => { loading.style.display = "none"; }, 380);
       }
+      coverBanner.addEventListener("click", hideLoading, { passive:true });
+      setTimeout(hideLoading, READER.loadingMaxMs);
 
-      // Tap-to-enter always works
-      if(coverBanner) coverBanner.addEventListener("click", hideLoading, { passive:true });
-
-      // Normal image events
-      if(panelImg1){
-        panelImg1.addEventListener("load", hideLoading, { passive:true });
-        panelImg1.addEventListener("error", hideLoading, { passive:true });
-
-        // Cache fast-path
-        if(panelImg1.complete && panelImg1.naturalWidth > 0){
-          hideLoading();
-        }
-      }
-
-      // Unstoppable fallback timer
-      setTimeout(hideLoading, 2000);
-
-      // Preload panel 02 for seamless swipe
-      if(panelImg2){
-        const pre = new Image();
-        pre.src = panelImg2.getAttribute("src");
-      }
-
-      // ---------- HUD: robust center detection (works in RTL) ----------
-      function getActiveIndex(){
-        const vpRect = viewport.getBoundingClientRect();
-        const vpCenter = vpRect.left + vpRect.width / 2;
-
-        let bestIdx = 0;
-        let bestDist = Infinity;
-
-        for(let i=0;i<slides.length;i++){
-          const r = slides[i].getBoundingClientRect();
-          const c = r.left + r.width / 2;
-          const d = Math.abs(c - vpCenter);
-          if(d < bestDist){
-            bestDist = d;
-            bestIdx = i;
-          }
-        }
-        return bestIdx;
-      }
+      /* ===========================
+         Panel Engine State
+         =========================== */
+      let panels = []; // array of {n,url, ok:null|true|false, imgEl}
+      let index = 0;
+      let dragging = false;
+      let lockedAxis = null;
+      let startX=0, startY=0, lastX=0;
 
       function updateHud(){
-        const total = slides.length || 1;
-        const idx = getActiveIndex();
-        hud.textContent = "panel " + String(idx+1).padStart(2,"0") + " / " + String(total).padStart(2,"0");
+        const total = Math.max(1, panels.length);
+        hud.textContent = "panel " + padN(index+1,2) + " / " + padN(total,2);
+        diagSet(diag.total, String(panels.length), "");
+        diagSet(diag.idx, String(index), "");
       }
 
-      viewport.addEventListener("scroll", () => { requestAnimationFrame(updateHud); }, { passive:true });
-      window.addEventListener("resize", () => { requestAnimationFrame(updateHud); }, { passive:true });
-      updateHud();
+      function setIndex(next, animate=true){
+        index = clamp(next, 0, Math.max(0, panels.length-1));
+        if(!animate) track.classList.add("dragging");
 
-      // ---------- In-app pull-to-refresh (reliable) ----------
-      let startX = 0, startY = 0;
-      let tracking = false;
-      let fired = false;
+        const pct = index * 100;
+        track.style.transform = "translate3d(" + (-pct) + "%,0,0)";
 
-      const TOP_ZONE = 70;     // only if gesture starts near top
-      const DX_CANCEL = 18;    // horizontal cancels refresh
-      const DY_FIRE = 55;      // pull distance to trigger
+        if(!animate){
+          requestAnimationFrame(() => track.classList.remove("dragging"));
+        }
 
-      function showRefresh(){ refreshBar.classList.add("show"); }
-      function hideRefresh(){ refreshBar.classList.remove("show"); }
-
-      function doRefresh(){
-        if(fired) return;
-        fired = true;
-        showRefresh();
-        setTimeout(() => { location.reload(); }, 250);
+        updateHud();
+        preloadAround(index);
       }
 
-      window.addEventListener("touchstart", (e) => {
-        if(!e.touches || e.touches.length !== 1) return;
-        const t = e.touches[0];
-        startX = t.clientX;
+      function makeSlide(p){
+        const slide = document.createElement("div");
+        slide.className = "slide";
+
+        const shell = document.createElement("div");
+        shell.className = "panelShell";
+
+        const img = document.createElement("img");
+        img.className = "panelImg";
+        img.alt = "Panel " + padN(p.n,2);
+        img.decoding = "async";
+        img.loading = (p.n <= (READER.seedPanels[0] || 1)) ? "eager" : "lazy";
+        img.src = p.url;
+
+        // hard mask inside holy border
+        const mask = document.createElement("div");
+        mask.className = "cinematicMask";
+        mask.setAttribute("aria-hidden","true");
+        mask.innerHTML = '<div class="top"></div><div class="bottom"></div>';
+
+        img.addEventListener("load", () => {
+          p.ok = true;
+          if(p.n === panels[0]?.n){
+            diagSet(diag.first, "ok", "ok");
+            hideLoading();
+          }
+        }, { passive:true });
+
+        img.addEventListener("error", () => {
+          p.ok = false;
+          if(p.n === panels[0]?.n){
+            diagSet(diag.first, "error", "bad");
+            hideLoading();
+          }
+        }, { passive:true });
+
+        p.imgEl = img;
+
+        shell.appendChild(img);
+        shell.appendChild(mask);
+        slide.appendChild(shell);
+
+        return slide;
+      }
+
+      function renderTrack(){
+        // track is 100% * panels count via flex; each slide is 100% width
+        track.innerHTML = "";
+        panels.forEach(p => track.appendChild(makeSlide(p)));
+        // track width auto via flex; transform uses 100% per slide
+        updateHud();
+        setIndex(index, false);
+      }
+
+      function addPanel(n){
+        const url = panelURL(n);
+        if(panels.some(x => x.n === n)) return;
+        panels.push({ n, url, ok: null, imgEl: null });
+      }
+
+      // Seed panels (known)
+      READER.seedPanels.forEach(addPanel);
+      renderTrack();
+
+      // First panel cache fast-path check (prevents overlay hang in cache cases)
+      (function(){
+        const first = panels[0];
+        if(first && first.imgEl && first.imgEl.complete && first.imgEl.naturalWidth > 0){
+          first.ok = true;
+          diagSet(diag.first, "ok", "ok");
+          hideLoading();
+        }
+      })();
+
+      /* ===========================
+         Touch / Swipe (deterministic)
+         Manga flow: swipe LEFT => next panel
+         =========================== */
+      function onStart(t){
+        dragging = true;
+        lockedAxis = null;
+        startX = lastX = t.clientX;
         startY = t.clientY;
-        tracking = (startY <= TOP_ZONE);
-        fired = false;
-        if(tracking) hideRefresh();
-      }, { passive:true });
+        track.classList.add("dragging");
+      }
 
-      window.addEventListener("touchmove", (e) => {
-        if(!tracking || fired) return;
-        const t = e.touches[0];
+      function onMove(t, e){
+        if(!dragging) return;
+
         const dx = t.clientX - startX;
         const dy = t.clientY - startY;
 
-        // If user is swiping horizontally, cancel refresh tracking
-        if(Math.abs(dx) > DX_CANCEL){
-          tracking = false;
-          hideRefresh();
+        if(!lockedAxis){
+          if(Math.abs(dx) > READER.axisLockPx || Math.abs(dy) > READER.axisLockPx){
+            lockedAxis = (Math.abs(dx) >= Math.abs(dy)) ? "x" : "y";
+          }else{
+            return;
+          }
+        }
+
+        if(lockedAxis === "y"){
+          // let vertical gesture pass through (we're not a scroll page, but this avoids fight)
+          track.classList.remove("dragging");
+          dragging = false;
           return;
         }
 
-        // Show hint a bit earlier than firing
-        if(dy > 22) showRefresh();
-        if(dy > DY_FIRE) doRefresh();
+        // horizontal ownership
+        e.preventDefault();
+
+        // If gesture turns too vertical, cancel cleanly
+        if(Math.abs(dy) > Math.abs(dx) * (1/READER.maxVerticalSlope)){
+          track.classList.remove("dragging");
+          dragging = false;
+          setIndex(index, true);
+          return;
+        }
+
+        lastX = t.clientX;
+
+        const w = frame.clientWidth || window.innerWidth || 1;
+        const deltaPct = (dx / w) * 100;
+
+        const basePct = index * 100;
+        const movedPct = basePct - deltaPct;
+
+        const minPct = 0;
+        const maxPct = Math.max(0, (panels.length-1) * 100);
+        const clamped = clamp(movedPct, minPct - READER.rubberbandPct, maxPct + READER.rubberbandPct);
+
+        track.style.transform = "translate3d(" + (-clamped) + "%,0,0)";
+      }
+
+      function onEnd(){
+        if(!dragging) return;
+        dragging = false;
+        track.classList.remove("dragging");
+
+        const dx = lastX - startX;
+
+        if(dx < -READER.swipeThresholdPx) setIndex(index + 1, true);   // swipe left => next
+        else if(dx > READER.swipeThresholdPx) setIndex(index - 1, true); // swipe right => prev
+        else setIndex(index, true);
+      }
+
+      stage.addEventListener("touchstart", (e) => {
+        if(!e.touches || e.touches.length !== 1) return;
+        onStart(e.touches[0]);
       }, { passive:true });
 
-      window.addEventListener("touchend", () => {
-        tracking = false;
-        if(!fired) hideRefresh();
-      }, { passive:true });
+      stage.addEventListener("touchmove", (e) => {
+        if(!e.touches || e.touches.length !== 1) return;
+        onMove(e.touches[0], e);
+      }, { passive:false });
 
-      // ---------- SoundCloud widget ----------
-      const widget = (window.SC && scFrame) ? SC.Widget(scFrame) : null;
+      stage.addEventListener("touchend", onEnd, { passive:true });
+      stage.addEventListener("touchcancel", () => { dragging=false; setIndex(index,true); }, { passive:true });
+
+      /* ===========================
+         Preload (ahead)
+         =========================== */
+      function preloadImage(url){
+        const img = new Image();
+        img.decoding = "async";
+        img.src = url;
+      }
+
+      function preloadAround(i){
+        // preload next panels ahead
+        for(let k=1; k<=READER.preloadAhead; k++){
+          const p = panels[i + k];
+          if(p && p.ok !== false) preloadImage(p.url);
+        }
+      }
+
+      /* ===========================
+         Auto-Discovery via HEAD probe
+         Pros trick: discover panel03.. without directory listing
+         =========================== */
+      async function headOK(url){
+        try{
+          const res = await fetch(bust(url), { method:"HEAD", cache:"no-store" });
+          return res && res.ok;
+        }catch(e){
+          // Some servers disallow HEAD. Fallback: GET with range-ish behavior (still small).
+          try{
+            const res2 = await fetch(bust(url), { method:"GET", cache:"no-store" });
+            return res2 && res2.ok;
+          }catch(_){
+            return false;
+          }
+        }
+      }
+
+      async function probePanels(){
+        diagSet(diag.probe, "probing…", "muted");
+
+        let misses = 0;
+        // Start after current max seeded
+        let startN = panels.length ? (Math.max(...panels.map(p => p.n)) + 1) : 1;
+        startN = Math.max(startN, 1);
+
+        for(let n=startN; n<=READER.probeMax; n++){
+          const url = panelURL(n);
+          const ok = await headOK(url);
+
+          if(ok){
+            misses = 0;
+            addPanel(n);
+            // append only the new slide to avoid full rerender cost
+            const p = panels.find(x => x.n === n);
+            if(p){
+              track.appendChild(makeSlide(p));
+              updateHud();
+            }
+            diagSet(diag.probe, "found panel " + padN(n,2), "ok");
+          }else{
+            misses++;
+            diagSet(diag.probe, "miss " + misses + " (panel " + padN(n,2) + ")", "muted");
+            if(misses >= READER.stopAfterConsecutiveMisses){
+              break;
+            }
+          }
+        }
+
+        diagSet(diag.probe, "done", "muted");
+        // ensure index clamp if total changed
+        setIndex(index, false);
+      }
+
+      // Start probe after first paint (keeps UI snappy)
+      if("requestIdleCallback" in window){
+        requestIdleCallback(probePanels, { timeout: 1200 });
+      }else{
+        setTimeout(probePanels, 650);
+      }
+
+      /* ===========================
+         Player (SoundCloud) with hard guards
+         =========================== */
+      let widget = null;
       let widgetReady = false;
+      let scScriptLoaded = false;
 
-      function whenWidgetReady(cb){
-        if(!widget) return;
-        if(widgetReady) return cb();
-        widget.bind(SC.Widget.Events.READY, function(){
-          widgetReady = true;
-          cb();
+      function loadSoundCloudAPI(){
+        return new Promise((resolve) => {
+          // avoid double injection
+          if(scScriptLoaded || window.SC){
+            scScriptLoaded = true;
+            return resolve();
+          }
+          const s = document.createElement("script");
+          s.src = "https://w.soundcloud.com/player/api.js";
+          s.async = true;
+          s.onload = () => { scScriptLoaded = true; resolve(); };
+          s.onerror = () => { noteErr("SoundCloud API failed to load"); resolve(); };
+          document.head.appendChild(s);
         });
       }
+
+      async function initWidget(){
+        await loadSoundCloudAPI();
+        try{
+          if(window.SC && scFrame){
+            widget = SC.Widget(scFrame);
+            widget.bind(SC.Widget.Events.READY, function(){
+              widgetReady = true;
+            });
+          }
+        }catch(e){
+          noteErr("SC init: " + e);
+        }
+      }
+
+      // init but never block UI
+      initWidget();
 
       function openAndPlay(){
         player.classList.add("expanded");
         playerDock.classList.remove("shiftDown");
 
-        // Best chance on mobile: play in same gesture
         if(widget){
-          whenWidgetReady(() => {
-            try { widget.play(); } catch(e) {}
-          });
+          if(widgetReady){
+            try{ widget.play(); }catch(_){}
+          }else{
+            try{
+              widget.bind(SC.Widget.Events.READY, function(){
+                widgetReady = true;
+                try{ widget.play(); }catch(_){}
+              });
+            }catch(_){}
+          }
         }
       }
 
@@ -654,7 +931,7 @@
         player.classList.remove("expanded");
         playerDock.classList.remove("shiftDown");
         if(widget){
-          try { widget.pause(); } catch(e) {}
+          try{ widget.pause(); }catch(_){}
         }
       }
 
@@ -670,7 +947,7 @@
         closePlayer();
       }, { passive:false });
 
-      // Tap on panel toggles dock shift if expanded
+      // Tap panel toggles dock shift if expanded
       document.addEventListener("click", (e) => {
         if(!player.classList.contains("expanded")) return;
         if(e.target && e.target.classList && e.target.classList.contains("panelImg")){
@@ -678,6 +955,11 @@
         }
       }, { passive:true });
 
+      /* ===========================
+         Final sanity
+         =========================== */
+      updateHud();
+      diagSet(diag.js, "ok", "ok");
       console.log("SANCTUM", VERSION);
     })();
   </script>
