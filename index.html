@@ -7,7 +7,7 @@
 
   <style>
     :root{
-      --v: "v0.30.1";
+      --v: "v0.30.0";
       --safe-top: env(safe-area-inset-top, 0px);
       --safe-bottom: env(safe-area-inset-bottom, 0px);
 
@@ -15,6 +15,7 @@
       --shadow: 0 16px 40px rgba(0,0,0,.35);
     }
 
+    *{ box-sizing:border-box; }
     html, body{
       height:100%;
       margin:0;
@@ -25,15 +26,19 @@
       overflow-x:hidden;
     }
 
+    /* Background: single, no repeat, no seams */
     body{
       background-image: var(--bg);
       background-size: cover;
       background-position: center top;
       background-repeat: no-repeat;
       background-attachment: fixed;
-
       overscroll-behavior: none;
       touch-action: pan-y;
+    }
+    /* iOS Safari tends to glitch with fixed backgrounds */
+    @supports (-webkit-touch-callout: none){
+      body{ background-attachment: scroll; }
     }
 
     .page{
@@ -47,8 +52,8 @@
       position:relative;
       width:100%;
       max-width: 860px;
-      padding-top: calc(0px + var(--safe-top));
-      padding-bottom: 12px;
+      padding-top: var(--safe-top);
+      padding-bottom: 10px;
       display:flex;
       justify-content:center;
       align-items:center;
@@ -69,186 +74,131 @@
       border-radius:0;
       box-shadow:none;
       background:#000;
+      user-select:none;
+      -webkit-user-drag:none;
     }
 
-    /* Player dock overlaps the lower black bar */
+    /* PLAYER: minimal (no blob), overlaps lower black bar */
     .playerDock{
       position:absolute;
       left:50%;
-      bottom:-26px;
+      bottom:-24px;
       transform: translateX(-50%);
       z-index:20;
       display:flex;
       align-items:center;
-      justify-content:center;
+      gap: 10px;
       pointer-events:auto;
-      transition: transform .25s ease;
       will-change: transform;
+      transition: transform .22s ease;
     }
     .playerDock.shiftDown{
       transform: translateX(-50%) translateY(200px);
     }
 
-    /* Player */
-    .player{
-      position:relative;
-      width:78px;
-      height:78px;
+    /* Minimal button */
+    .miniBtn{
+      width:74px;
+      height:74px;
       border-radius:999px;
-      background: rgba(255,255,255,.10);
-      border: 1px solid rgba(255,255,255,.18);
+      background: rgba(255,255,255,.22);
+      border: 1px solid rgba(255,255,255,.22);
       box-shadow: var(--shadow);
       backdrop-filter: blur(10px);
       -webkit-backdrop-filter: blur(10px);
-      overflow:hidden;
-      transition: width .28s ease, height .28s ease, border-radius .28s ease;
-    }
-
-    /* Collapsed = ONLY button */
-    .player .topBar,
-    .player .embedWrap{
-      display:none;
-    }
-
-    .playerBtn{
-      width:100%;
-      height:100%;
       display:flex;
       align-items:center;
       justify-content:center;
       cursor:pointer;
       user-select:none;
-    }
-
-    /* Play icon BLACK */
-    .playIcon{
-      width:0;
-      height:0;
-      border-top: 12px solid transparent;
-      border-bottom: 12px solid transparent;
-      border-left: 18px solid rgba(0,0,0,.92);
-      transform: translateX(2px);
-      filter: drop-shadow(0 2px 6px rgba(0,0,0,.25));
-    }
-
-    /* Expanded */
-    .player.expanded{
-      width: min(92vw, 640px);
-      height: 240px;
-      border-radius: 22px;
-      background: rgba(255,255,255,.12);
-    }
-
-    /* When expanded: our collapsed button disappears (no double controls) */
-    .player.expanded .playerBtn{
-      display:none !important;
-    }
-
-    .player.expanded .topBar,
-    .player.expanded .embedWrap{
-      display:block;
-    }
-
-    /* ========= NEW: compact meta topbar (fix for red box "too much") ========= */
-    .topBar{
-      position:absolute;
-      left: 10px;
-      right: 10px;
-      top: 10px;
-      height: 54px;                 /* compact */
-      border-radius: 16px;
-      background: rgba(255,255,255,.72);
-      box-shadow: 0 10px 18px rgba(0,0,0,.18);
-      display:flex;
-      align-items:center;
-      gap: 10px;
-      padding: 8px 10px;            /* compact */
-      box-sizing: border-box;
-      color:#111;
-      overflow:hidden;
-    }
-
-    .metaText{
-      min-width: 0;
-      display:flex;
-      flex-direction:column;
-      line-height: 1.05;
-      flex: 1 1 auto;
-    }
-    .metaText .t{
-      font-weight: 900;
-      letter-spacing: .03em;
-      font-size: 16px;              /* smaller */
-      color:#0d0d0d;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .metaText .a{
-      margin-top: 2px;
-      font-weight: 800;
-      font-size: 12px;              /* smaller */
-      opacity: .92;
-      color:#0d0d0d;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .topActions{
-      display:flex;
-      align-items:center;
-      gap: 8px;
       flex: 0 0 auto;
     }
 
-    .openBtn{
-      padding: 8px 10px;            /* smaller */
-      border-radius: 999px;
-      border: 1px solid rgba(0,0,0,.18);
-      background: rgba(255,255,255,.45);
-      color:#111;
-      font-weight: 800;
-      font-size: 12px;              /* smaller */
-      text-decoration:none;
-      white-space: nowrap;
+    /* Icon black for visibility */
+    .miniIcon.play{
+      width:0;height:0;
+      border-top: 12px solid transparent;
+      border-bottom: 12px solid transparent;
+      border-left: 18px solid rgba(0,0,0,.95);
+      transform: translateX(2px);
+      filter: drop-shadow(0 2px 6px rgba(0,0,0,.25));
     }
-
-    .closeBtn{
-      width: 34px;
-      height: 34px;
-      border-radius: 999px;
-      border: 1px solid rgba(0,0,0,.18);
-      background: rgba(255,255,255,.45);
-      color:#111;
-      font-weight: 900;
-      font-size: 18px;
-      line-height: 32px;
-      text-align:center;
-      cursor:pointer;
-      user-select:none;
+    .miniIcon.pause{
+      width:18px;height:18px;
+      position:relative;
+      filter: drop-shadow(0 2px 6px rgba(0,0,0,.25));
     }
+    .miniIcon.pause::before,
+    .miniIcon.pause::after{
+      content:"";
+      position:absolute; top:0; bottom:0;
+      width:6px; border-radius:2px;
+      background: rgba(0,0,0,.95);
+    }
+    .miniIcon.pause::before{ left:0; }
+    .miniIcon.pause::after{ right:0; }
 
-    /* Embed area */
-    .embedWrap{
-      position:absolute;
-      left: 10px;
-      right: 10px;
-      bottom: 10px;
-      top: 74px;                    /* topbar is compact => more space */
-      border-radius: 18px;
+    /* Waveform strip (cropped SoundCloud classic player) */
+    .waveWrap{
+      position:relative;
+      width: min(72vw, 620px);
+      height: 76px;
       overflow:hidden;
-      border: 1px solid rgba(255,255,255,.18);
-      background: rgba(255,255,255,.10);
+      border-radius: 18px;
+      background: rgba(255,255,255,.18);
+      border: 1px solid rgba(255,255,255,.20);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
     }
-    .embedWrap iframe{
+
+    /* Crop away SoundCloud topbar: we shift the iframe upward */
+    .waveWrap iframe{
+      position:absolute;
+      left:0;
+      top:-38px;          /* hides the meta/top bar */
       width:100%;
-      height:100%;
+      height: 140px;      /* enough height so the waveform stays visible after cropping */
       border:0;
       display:block;
     }
 
-    /* Loading overlay */
+    /* Hover/Tap info overlay (our own, not the SoundCloud meta bar) */
+    .infoTag{
+      position:absolute;
+      left: 84px;
+      top: -44px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      background: rgba(255,255,255,.88);
+      color:#111;
+      box-shadow: 0 10px 18px rgba(0,0,0,.20);
+      line-height: 1.05;
+      opacity:0;
+      transform: translateY(6px);
+      pointer-events:none;
+      transition: opacity .18s ease, transform .18s ease;
+      white-space: nowrap;
+    }
+    .infoTag.show{
+      opacity:1;
+      transform: translateY(0);
+    }
+    .infoTag .t{
+      font-weight: 900;
+      letter-spacing: .03em;
+      font-size: 16px;
+      color:#0d0d0d;
+    }
+    .infoTag .a{
+      margin-top:2px;
+      font-weight: 700;
+      font-size: 12px;
+      opacity:.92;
+      color:#0d0d0d;
+    }
+
+    /* Loading overlay: hung cover banner ONLY */
     .loading{
       position:fixed;
       inset:0;
@@ -256,7 +206,7 @@
       display:flex;
       align-items:flex-start;
       justify-content:center;
-      padding-top: var(--safe-top);
+      padding-top: var(--safe-top); /* no gap beyond safe area */
       background: rgba(0,0,0,.08);
       opacity:1;
       transition: opacity .35s ease;
@@ -269,7 +219,6 @@
       -webkit-backdrop-filter: blur(14px);
       background: rgba(0,0,0,.10);
     }
-
     .coverBanner{
       position:relative;
       width: min(92vw, 520px);
@@ -278,6 +227,7 @@
       overflow:hidden;
       box-shadow: 0 30px 70px rgba(0,0,0,.55);
       transform: translateZ(0);
+      max-height: calc(92vh - var(--safe-top));
     }
     .coverBanner img{
       width:100%;
@@ -288,11 +238,11 @@
 
     /* Short intentional scroll space */
     .bottomSpacer{
-      height: 360px;
+      height: 320px; /* not endless */
       width: 100%;
     }
 
-    /* Maintenance (hidden until deep scroll) */
+    /* Maintenance: appears only after intentional scroll */
     .maint{
       position:fixed;
       left:50%;
@@ -329,6 +279,19 @@
     .pill{ opacity:.9; white-space:nowrap; }
     .ok{ color:#7CFF9A; font-weight:800; }
     .err{ color:#FF7C7C; font-weight:800; }
+
+    /* a tiny "maintenance heart" (always there, but subtle) */
+    .heart{
+      display:inline-block;
+      font-weight:900;
+      transform: translateY(-1px);
+      margin-right: 6px;
+    }
+
+    /* Respect users who dislike motion */
+    @media (prefers-reduced-motion: reduce){
+      *{ transition:none !important; }
+    }
   </style>
 </head>
 
@@ -352,53 +315,40 @@
           decoding="async"
         />
 
-        <div id="playerDock" class="playerDock">
-          <div id="player" class="player" aria-label="Player">
+        <!-- Minimal Player: play + waveform strip -->
+        <div id="playerDock" class="playerDock" aria-label="Audio">
+          <div id="miniBtn" class="miniBtn" title="Play / Pause" role="button" tabindex="0" aria-label="Play">
+            <div id="miniIcon" class="miniIcon play" aria-hidden="true"></div>
+          </div>
 
-            <!-- Collapsed: button only -->
-            <div id="playerBtn" class="playerBtn" title="Play">
-              <div class="playIcon" aria-hidden="true"></div>
+          <div id="waveWrap" class="waveWrap" aria-label="Waveform">
+            <!-- our own hover/tap info (not the SC topbar) -->
+            <div id="infoTag" class="infoTag" aria-hidden="true">
+              <div class="t">SENTINEL</div>
+              <div class="a">DAVID RAVENSON</div>
             </div>
 
-            <!-- Expanded: compact topbar -->
-            <div class="topBar" aria-hidden="true">
-              <div class="metaText">
-                <div class="t">SENTINEL</div>
-                <div class="a">DAVID RAVENSON</div>
-              </div>
-              <div class="topActions">
-                <a
-                  class="openBtn"
-                  href="https://soundcloud.com/user-543596862/sentinel-2"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >Open on SC</a>
-                <div id="closeBtn" class="closeBtn" title="Close">×</div>
-              </div>
-            </div>
-
-            <div class="embedWrap" aria-hidden="true">
-              <iframe
-                id="scFrame"
-                allow="autoplay"
-                scrolling="no"
-                frameborder="no"
-                src="https://w.soundcloud.com/player/?url=https%3A//soundcloud.com/user-543596862/sentinel-2&color=%23000000&auto_play=false&hide_related=true&show_comments=false&show_user=true&show_reposts=false&show_teaser=false&visual=true"
-                title="SoundCloud player"
-              ></iframe>
-            </div>
-
+            <iframe
+              id="scFrame"
+              allow="autoplay"
+              scrolling="no"
+              frameborder="no"
+              title="SoundCloud waveform"
+              src="https://w.soundcloud.com/player/?url=https%3A//soundcloud.com/user-543596862/sentinel-2&auto_play=false&hide_related=true&show_comments=false&show_user=false&show_reposts=false&show_teaser=false&visual=false&buying=false&sharing=false&download=false&show_playcount=false"
+            ></iframe>
           </div>
         </div>
+
       </div>
     </div>
 
     <div class="bottomSpacer"></div>
   </div>
 
+  <!-- Maintenance (shows only after deep scroll) -->
   <div id="maint" class="maint" aria-hidden="true">
     <div class="maintBox">
-      <div class="pill">v0.30.1</div>
+      <div class="pill"><span class="heart">♥</span><span id="vText">v0.30.0</span></div>
       <div class="pill">chapter-00 / panel01</div>
       <div class="pill">audio: chapter-00audio</div>
       <div class="pill">Paper: <span class="ok">OK ✓</span></div>
@@ -406,60 +356,76 @@
     </div>
   </div>
 
+  <!-- SoundCloud Widget API -->
   <script src="https://w.soundcloud.com/player/api.js"></script>
 
   <script>
     (function(){
-      const VERSION = "v0.30.1";
+      const VERSION = "v0.30.0";
 
       const loading   = document.getElementById("loading");
       const coverImg  = document.getElementById("coverImg");
       const panelImg  = document.getElementById("panelImg");
 
-      const player    = document.getElementById("player");
-      const playerBtn = document.getElementById("playerBtn");
-      const closeBtn  = document.getElementById("closeBtn");
       const playerDock= document.getElementById("playerDock");
+      const miniBtn   = document.getElementById("miniBtn");
+      const miniIcon  = document.getElementById("miniIcon");
+      const infoTag   = document.getElementById("infoTag");
+      const waveWrap  = document.getElementById("waveWrap");
 
       const maint     = document.getElementById("maint");
       const errText   = document.getElementById("errText");
+      const vText     = document.getElementById("vText");
 
       const scFrame   = document.getElementById("scFrame");
+
+      vText.textContent = VERSION;
 
       function setError(msg){
         errText.textContent = msg ? msg : "(none)";
       }
 
-      // Loading banner: hide after panel is ready
+      // ---- Loading banner: hide after panel is ready ----
       let panelReady = false;
-      function tryHideLoading(){
+      function hideLoadingSoon(){
         if(!panelReady) return;
         setTimeout(() => {
           loading.style.opacity = "0";
           loading.setAttribute("aria-hidden","true");
           setTimeout(() => { loading.style.display = "none"; }, 420);
-        }, 420);
+        }, 520);
       }
 
       panelImg.addEventListener("load", () => {
         panelReady = true;
         setError("(none)");
-        tryHideLoading();
+        hideLoadingSoon();
       }, { passive:true });
 
       panelImg.addEventListener("error", () => {
         panelReady = true;
         setError("Panel image missing / path error");
-        tryHideLoading();
+        hideLoadingSoon();
       }, { passive:true });
 
-      coverImg.addEventListener("error", () => {}, { passive:true });
+      coverImg.addEventListener("error", () => {
+        // cover missing shouldn't block reading
+      }, { passive:true });
 
-      // Maintenance shows after deep scroll (soften slightly)
-      const SHOW_Y = 520;
+      // ---- Maintenance trigger: gentle & intentional ----
+      // show after user scrolls a bit AND near bottom (prevents accidental popups)
+      function isNearBottom(){
+        const doc = document.documentElement;
+        const y = window.scrollY || doc.scrollTop || 0;
+        const vh = window.innerHeight || doc.clientHeight || 0;
+        const full = Math.max(doc.scrollHeight, document.body.scrollHeight);
+        return (y + vh) > (full - 220);
+      }
+
       function onScroll(){
         const y = window.scrollY || document.documentElement.scrollTop || 0;
-        if(y > SHOW_Y){
+        const shouldShow = (y > 180) && isNearBottom();
+        if(shouldShow){
           maint.classList.add("show");
           maint.setAttribute("aria-hidden","false");
         }else{
@@ -470,52 +436,105 @@
       window.addEventListener("scroll", onScroll, { passive:true });
       onScroll();
 
-      // SoundCloud Widget
-      const widget = window.SC ? SC.Widget(scFrame) : null;
+      // ---- SoundCloud control (play/pause) ----
+      let widget = null;
       let widgetReady = false;
 
-      function whenWidgetReady(cb){
-        if(!widget) return;
-        if(widgetReady) return cb();
+      function safeBindReady(){
+        if(!window.SC || !SC.Widget) return;
+        widget = SC.Widget(scFrame);
+
         widget.bind(SC.Widget.Events.READY, function(){
           widgetReady = true;
-          cb();
+        });
+
+        // Keep our button icon in sync if SC changes state
+        widget.bind(SC.Widget.Events.PLAY, function(){
+          miniIcon.className = "miniIcon pause";
+        });
+        widget.bind(SC.Widget.Events.PAUSE, function(){
+          miniIcon.className = "miniIcon play";
+        });
+        widget.bind(SC.Widget.Events.FINISH, function(){
+          miniIcon.className = "miniIcon play";
+        });
+        widget.bind(SC.Widget.Events.ERROR, function(){
+          setError("SoundCloud widget error");
         });
       }
+      safeBindReady();
 
-      function openAndPlay(){
-        player.classList.add("expanded");
-        playerDock.classList.remove("shiftDown");
-        if(widget){
-          whenWidgetReady(() => { try { widget.play(); } catch(e) {} });
+      function showInfoTemporarily(){
+        infoTag.classList.add("show");
+        // auto-hide on mobile after a beat
+        clearTimeout(showInfoTemporarily._t);
+        showInfoTemporarily._t = setTimeout(() => infoTag.classList.remove("show"), 1600);
+      }
+
+      // Hover on desktop
+      waveWrap.addEventListener("mouseenter", () => infoTag.classList.add("show"));
+      waveWrap.addEventListener("mouseleave", () => infoTag.classList.remove("show"));
+
+      // Tap on mobile toggles info briefly
+      waveWrap.addEventListener("click", () => showInfoTemporarily(), { passive:true });
+
+      // Click play button: play/pause (must be user gesture)
+      function togglePlay(){
+        showInfoTemporarily();
+
+        if(!widget){
+          setError("Widget not loaded");
+          return;
+        }
+        if(!widgetReady){
+          // Try again after READY (still within “user intent” but browser rules vary)
+          widget.bind(SC.Widget.Events.READY, function(){
+            widgetReady = true;
+            tryToggle();
+          });
+          tryToggle();
+          return;
+        }
+        tryToggle();
+      }
+
+      function tryToggle(){
+        try{
+          widget.isPaused(function(paused){
+            if(paused){
+              widget.play();
+            }else{
+              widget.pause();
+            }
+          });
+        }catch(e){
+          setError("Play toggle failed");
         }
       }
 
-      function closePlayer(){
-        player.classList.remove("expanded");
-        playerDock.classList.remove("shiftDown");
-        if(widget){
-          try { widget.pause(); } catch(e) {}
+      miniBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        togglePlay();
+      }, { passive:false });
+
+      // Keyboard accessibility
+      miniBtn.addEventListener("keydown", (e) => {
+        if(e.key === "Enter" || e.key === " "){
+          e.preventDefault();
+          togglePlay();
         }
-      }
+      });
 
-      playerBtn.addEventListener("click", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        openAndPlay();
-      }, { passive:false });
-
-      closeBtn.addEventListener("click", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        closePlayer();
-      }, { passive:false });
-
-      // Panel tap: if expanded, shift player down 200px
+      // Panel tap: if player is visible, shift down 200px (your reading gesture)
       panelImg.addEventListener("click", () => {
-        if(!player.classList.contains("expanded")) return;
         playerDock.classList.toggle("shiftDown");
       }, { passive:true });
+
+      // Crossbrowser safety: re-assert background rules
+      document.body.style.backgroundRepeat = "no-repeat";
+      document.body.style.backgroundSize = "cover";
+      document.body.style.backgroundPosition = "center top";
 
       console.log("SANCTUM", VERSION);
     })();
