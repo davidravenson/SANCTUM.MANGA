@@ -7,7 +7,7 @@
 
   <style>
     :root{
-      --v: "v0.40.0";
+      --v: "v0.40.1";
 
       --safe-top: env(safe-area-inset-top, 0px);
       --safe-bottom: env(safe-area-inset-bottom, 0px);
@@ -418,7 +418,7 @@
 
   <!-- DIAGNOSTICS -->
   <div class="diag" id="diag">
-    <div class="row"><b>SANCTUM</b> <span class="muted" id="d_ver">v0.40.0</span></div>
+    <div class="row"><b>SANCTUM</b> <span class="muted" id="d_ver">v0.40.1</span></div>
     <div class="row"><span>chapter</span> <b id="d_ch">-</b></div>
     <div class="row"><span>base</span> <span class="muted" id="d_base">-</span></div>
     <div class="row"><span>panels</span> <b id="d_total">0</b></div>
@@ -434,9 +434,7 @@
   <div class="stage" id="stage">
     <div class="rail">
       <div class="panelFrame" id="panelFrame">
-        <div class="track" id="track">
-          <!-- slides are injected by JS -->
-        </div>
+        <div class="track" id="track"></div>
       </div>
     </div>
   </div>
@@ -479,7 +477,7 @@
 
   <script>
     (function(){
-      const VERSION = "v0.40.0";
+      const VERSION = "v0.40.1";
 
       /* ===========================
          reader_auto (CONFIG CORE)
@@ -491,27 +489,21 @@
         ext: ".jpg",
         pad: 2,
 
-        // Start with known panels. Auto-probe will extend if more exist.
         seedPanels: [1,2],
 
-        // Probe behavior: HEAD request panel03..panelNN.
         probeMax: 80,
         stopAfterConsecutiveMisses: 3,
 
-        // UX + safety
-        loadingMaxMs: 1800,    // overlay hard timeout
+        loadingMaxMs: 1800,
         swipeThresholdPx: 44,
         axisLockPx: 10,
         maxVerticalSlope: 0.35,
         rubberbandPct: 8,
 
-        // Preload next panels
         preloadAhead: 2
       };
 
-      /* ===========================
-         Helpers / Guard Rails
-         =========================== */
+      /* Helpers */
       const $ = (id) => document.getElementById(id);
       const clamp = (n,a,b) => Math.max(a, Math.min(b,n));
       const padN = (n, w) => String(n).padStart(w, "0");
@@ -533,29 +525,24 @@
       function diagSet(el, text, cls){
         if(!el) return;
         el.textContent = text;
-        if(cls){ el.className = cls; }
+        if(cls) el.className = cls;
       }
-
       function noteErr(msg){
         diagSet(diag.err, String(msg || "(unknown)"), "muted");
         if(diag.js) diag.js.className = "bad";
       }
-
       window.addEventListener("error", (e) => noteErr(e.message || e.error || "error"));
       window.addEventListener("unhandledrejection", (e) => noteErr(e.reason || "promise rejection"));
 
       diagSet(diag.ver, VERSION, "muted");
 
-      // toggle diag visibility
       let diagVisible = true;
       diag.toggle.addEventListener("click", () => {
         diagVisible = !diagVisible;
         diag.box.style.display = diagVisible ? "block" : "none";
       }, { passive:true });
 
-      /* ===========================
-         Paths
-         =========================== */
+      /* Paths */
       const basePath = READER.baseRoot + READER.chapter + "/";
       diagSet(diag.ch, READER.chapter, "");
       diagSet(diag.base, basePath, "muted");
@@ -563,19 +550,14 @@
       function panelURL(n){
         return basePath + READER.panelPrefix + padN(n, READER.pad) + READER.ext;
       }
-
-      // cache-bust helper for HEAD probes (avoid stale 404 cache)
       function bust(url){
         const s = (Date.now() + Math.random()).toString(36);
         return url + (url.includes("?") ? "&" : "?") + "v=" + encodeURIComponent(s);
       }
 
-      /* ===========================
-         DOM Nodes
-         =========================== */
+      /* DOM */
       const loading = $("loading");
       const coverBanner = $("coverBanner");
-
       const hud = $("hud");
       const stage = $("stage");
       const frame = $("panelFrame");
@@ -587,9 +569,7 @@
       const playerDock = $("playerDock");
       const scFrame = $("scFrame");
 
-      /* ===========================
-         Loading Overlay (cannot stick)
-         =========================== */
+      /* Loading */
       let loadingHidden = false;
       function hideLoading(){
         if(loadingHidden) return;
@@ -601,10 +581,8 @@
       coverBanner.addEventListener("click", hideLoading, { passive:true });
       setTimeout(hideLoading, READER.loadingMaxMs);
 
-      /* ===========================
-         Panel Engine State
-         =========================== */
-      let panels = []; // array of {n,url, ok:null|true|false, imgEl}
+      /* Panel State */
+      let panels = [];
       let index = 0;
       let dragging = false;
       let lockedAxis = null;
@@ -617,17 +595,25 @@
         diagSet(diag.idx, String(index), "");
       }
 
+      function preloadAround(i){
+        for(let k=1; k<=READER.preloadAhead; k++){
+          const p = panels[i + k];
+          if(p && p.ok !== false){
+            const img = new Image();
+            img.decoding = "async";
+            img.src = p.url;
+          }
+        }
+      }
+
       function setIndex(next, animate=true){
         index = clamp(next, 0, Math.max(0, panels.length-1));
         if(!animate) track.classList.add("dragging");
-
         const pct = index * 100;
         track.style.transform = "translate3d(" + (-pct) + "%,0,0)";
-
         if(!animate){
           requestAnimationFrame(() => track.classList.remove("dragging"));
         }
-
         updateHud();
         preloadAround(index);
       }
@@ -643,10 +629,9 @@
         img.className = "panelImg";
         img.alt = "Panel " + padN(p.n,2);
         img.decoding = "async";
-        img.loading = (p.n <= (READER.seedPanels[0] || 1)) ? "eager" : "lazy";
+        img.loading = (p.n === panels[0]?.n) ? "eager" : "lazy";
         img.src = p.url;
 
-        // hard mask inside holy border
         const mask = document.createElement("div");
         mask.className = "cinematicMask";
         mask.setAttribute("aria-hidden","true");
@@ -673,17 +658,7 @@
         shell.appendChild(img);
         shell.appendChild(mask);
         slide.appendChild(shell);
-
         return slide;
-      }
-
-      function renderTrack(){
-        // track is 100% * panels count via flex; each slide is 100% width
-        track.innerHTML = "";
-        panels.forEach(p => track.appendChild(makeSlide(p)));
-        // track width auto via flex; transform uses 100% per slide
-        updateHud();
-        setIndex(index, false);
       }
 
       function addPanel(n){
@@ -692,24 +667,25 @@
         panels.push({ n, url, ok: null, imgEl: null });
       }
 
-      // Seed panels (known)
-      READER.seedPanels.forEach(addPanel);
-      renderTrack();
+      function renderSeed(){
+        track.innerHTML = "";
+        panels.forEach(p => track.appendChild(makeSlide(p)));
+        updateHud();
+        setIndex(index, false);
 
-      // First panel cache fast-path check (prevents overlay hang in cache cases)
-      (function(){
+        // cache fast-path for first image
         const first = panels[0];
         if(first && first.imgEl && first.imgEl.complete && first.imgEl.naturalWidth > 0){
           first.ok = true;
           diagSet(diag.first, "ok", "ok");
           hideLoading();
         }
-      })();
+      }
 
-      /* ===========================
-         Touch / Swipe (deterministic)
-         Manga flow: swipe LEFT => next panel
-         =========================== */
+      READER.seedPanels.forEach(addPanel);
+      renderSeed();
+
+      /* Touch / Swipe (RTL manga flow) */
       function onStart(t){
         dragging = true;
         lockedAxis = null;
@@ -733,16 +709,13 @@
         }
 
         if(lockedAxis === "y"){
-          // let vertical gesture pass through (we're not a scroll page, but this avoids fight)
           track.classList.remove("dragging");
           dragging = false;
           return;
         }
 
-        // horizontal ownership
         e.preventDefault();
 
-        // If gesture turns too vertical, cancel cleanly
         if(Math.abs(dy) > Math.abs(dx) * (1/READER.maxVerticalSlope)){
           track.classList.remove("dragging");
           dragging = false;
@@ -772,8 +745,12 @@
 
         const dx = lastX - startX;
 
-        if(dx < -READER.swipeThresholdPx) setIndex(index + 1, true);   // swipe left => next
-        else if(dx > READER.swipeThresholdPx) setIndex(index - 1, true); // swipe right => prev
+        /* ===== RTL FIX HERE =====
+           Swipe RIGHT (dx positive) => NEXT
+           Swipe LEFT  (dx negative) => PREV
+        */
+        if(dx > READER.swipeThresholdPx) setIndex(index + 1, true);
+        else if(dx < -READER.swipeThresholdPx) setIndex(index - 1, true);
         else setIndex(index, true);
       }
 
@@ -790,33 +767,12 @@
       stage.addEventListener("touchend", onEnd, { passive:true });
       stage.addEventListener("touchcancel", () => { dragging=false; setIndex(index,true); }, { passive:true });
 
-      /* ===========================
-         Preload (ahead)
-         =========================== */
-      function preloadImage(url){
-        const img = new Image();
-        img.decoding = "async";
-        img.src = url;
-      }
-
-      function preloadAround(i){
-        // preload next panels ahead
-        for(let k=1; k<=READER.preloadAhead; k++){
-          const p = panels[i + k];
-          if(p && p.ok !== false) preloadImage(p.url);
-        }
-      }
-
-      /* ===========================
-         Auto-Discovery via HEAD probe
-         Pros trick: discover panel03.. without directory listing
-         =========================== */
+      /* Auto-discovery */
       async function headOK(url){
         try{
           const res = await fetch(bust(url), { method:"HEAD", cache:"no-store" });
           return res && res.ok;
         }catch(e){
-          // Some servers disallow HEAD. Fallback: GET with range-ish behavior (still small).
           try{
             const res2 = await fetch(bust(url), { method:"GET", cache:"no-store" });
             return res2 && res2.ok;
@@ -830,9 +786,7 @@
         diagSet(diag.probe, "probing…", "muted");
 
         let misses = 0;
-        // Start after current max seeded
         let startN = panels.length ? (Math.max(...panels.map(p => p.n)) + 1) : 1;
-        startN = Math.max(startN, 1);
 
         for(let n=startN; n<=READER.probeMax; n++){
           const url = panelURL(n);
@@ -841,7 +795,6 @@
           if(ok){
             misses = 0;
             addPanel(n);
-            // append only the new slide to avoid full rerender cost
             const p = panels.find(x => x.n === n);
             if(p){
               track.appendChild(makeSlide(p));
@@ -851,34 +804,27 @@
           }else{
             misses++;
             diagSet(diag.probe, "miss " + misses + " (panel " + padN(n,2) + ")", "muted");
-            if(misses >= READER.stopAfterConsecutiveMisses){
-              break;
-            }
+            if(misses >= READER.stopAfterConsecutiveMisses) break;
           }
         }
 
         diagSet(diag.probe, "done", "muted");
-        // ensure index clamp if total changed
         setIndex(index, false);
       }
 
-      // Start probe after first paint (keeps UI snappy)
       if("requestIdleCallback" in window){
         requestIdleCallback(probePanels, { timeout: 1200 });
       }else{
         setTimeout(probePanels, 650);
       }
 
-      /* ===========================
-         Player (SoundCloud) with hard guards
-         =========================== */
+      /* Player (SoundCloud) */
       let widget = null;
       let widgetReady = false;
       let scScriptLoaded = false;
 
       function loadSoundCloudAPI(){
         return new Promise((resolve) => {
-          // avoid double injection
           if(scScriptLoaded || window.SC){
             scScriptLoaded = true;
             return resolve();
@@ -897,16 +843,12 @@
         try{
           if(window.SC && scFrame){
             widget = SC.Widget(scFrame);
-            widget.bind(SC.Widget.Events.READY, function(){
-              widgetReady = true;
-            });
+            widget.bind(SC.Widget.Events.READY, function(){ widgetReady = true; });
           }
         }catch(e){
           noteErr("SC init: " + e);
         }
       }
-
-      // init but never block UI
       initWidget();
 
       function openAndPlay(){
@@ -947,7 +889,6 @@
         closePlayer();
       }, { passive:false });
 
-      // Tap panel toggles dock shift if expanded
       document.addEventListener("click", (e) => {
         if(!player.classList.contains("expanded")) return;
         if(e.target && e.target.classList && e.target.classList.contains("panelImg")){
@@ -955,9 +896,6 @@
         }
       }, { passive:true });
 
-      /* ===========================
-         Final sanity
-         =========================== */
       updateHud();
       diagSet(diag.js, "ok", "ok");
       console.log("SANCTUM", VERSION);
