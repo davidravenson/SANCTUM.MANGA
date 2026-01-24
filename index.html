@@ -7,20 +7,22 @@
 
   <style>
     :root{
-      --v: "v0.29.5";
+      --v: "v0.29.6";
       --safe-top: env(safe-area-inset-top, 0px);
       --safe-bottom: env(safe-area-inset-bottom, 0px);
 
       --bg: url("./media/ui/manga_paper_bg.png");
-      --ink: #0b0b0b;
       --shadow: 0 16px 40px rgba(0,0,0,.35);
 
       /* Option B light: we mask SC left zone */
       --sc-left-mask-w: 106px;
 
-      /* Cinematic mask heights (crisp) */
+      /* Cinematic bars (CRISP) */
       --mask-top-h: 54px;
       --mask-bottom-h: 84px;
+
+      /* Pure black, no alpha */
+      --mask-black: #000;
     }
 
     html, body{
@@ -69,8 +71,20 @@
       align-items:center;
     }
 
-    .panelImg{
+    /* === NEW: panelFrame clips ONLY the panel + mask (player stays outside) === */
+    .panelFrame{
+      position:relative;
+      display:inline-block;
       width: min(100vw, 860px);
+      overflow:hidden;           /* holy border: nothing may bleed outside */
+      background:#000;
+      transform: translateZ(0);  /* reduce subpixel blur on edges */
+      backface-visibility:hidden;
+      -webkit-backface-visibility:hidden;
+    }
+
+    .panelImg{
+      width:100%;
       height:auto;
       display:block;
       border-radius:0;
@@ -78,30 +92,42 @@
       background:#000;
     }
 
-    /* === CINEMATIC MASK (HARD EDGES) === */
+    /* === CINEMATIC MASK (HARD EDGES, CLIPPED TO PANEL) === */
     .cinematicMask{
       position:absolute;
       inset:0;
       pointer-events:none;
-      z-index:12; /* above panel, below playerDock (20) */
+      z-index:10;
+      transform: translateZ(0);
+      backface-visibility:hidden;
+      -webkit-backface-visibility:hidden;
     }
+
     .cinematicMask .top,
     .cinematicMask .bottom{
       position:absolute;
       left:0;
       width:100%;
-      background:#000;
+      background: var(--mask-black); /* no alpha, no fade */
+      opacity:1;
+      filter:none;
+      box-shadow:none;
+      transform: translateZ(0);
+      backface-visibility:hidden;
+      -webkit-backface-visibility:hidden;
     }
+
     .cinematicMask .top{
       top:0;
       height: var(--mask-top-h);
     }
+
     .cinematicMask .bottom{
       bottom:0;
       height: var(--mask-bottom-h);
     }
 
-    /* Player dock overlaps the lower black bar */
+    /* Player dock overlaps the lower black bar (but is NOT clipped by panelFrame) */
     .playerDock{
       position:absolute;
       left:50%;
@@ -136,9 +162,7 @@
     .player .meta,
     .player .embedWrap,
     .player .openBtn,
-    .player .closeBtn{
-      display:none;
-    }
+    .player .closeBtn{ display:none; }
 
     .playerBtn{
       width:100%;
@@ -151,8 +175,7 @@
     }
 
     .playIcon{
-      width:0;
-      height:0;
+      width:0;height:0;
       border-top: 12px solid transparent;
       border-bottom: 12px solid transparent;
       border-left: 18px solid rgba(0,0,0,.92);
@@ -170,13 +193,9 @@
     .player.expanded .meta,
     .player.expanded .embedWrap,
     .player.expanded .openBtn,
-    .player.expanded .closeBtn{
-      display:block;
-    }
+    .player.expanded .closeBtn{ display:block; }
 
-    .player.expanded .playerBtn{
-      display:none !important;
-    }
+    .player.expanded .playerBtn{ display:none !important; }
 
     .meta{
       position:absolute;
@@ -363,21 +382,26 @@
   <div class="page">
     <div class="stage" id="stage">
       <div class="panelShell">
-        <img
-          id="panelImg"
-          class="panelImg"
-          src="./manga/chapter-00/panel01.jpg"
-          alt="Panel 01"
-          loading="eager"
-          decoding="async"
-        />
 
-        <!-- Cinematic black bars (hard edges) -->
-        <div class="cinematicMask" aria-hidden="true">
-          <div class="top"></div>
-          <div class="bottom"></div>
+        <!-- NEW: PanelFrame ensures mask never bleeds beyond the panel -->
+        <div class="panelFrame" id="panelFrame">
+          <img
+            id="panelImg"
+            class="panelImg"
+            src="./manga/chapter-00/panel01.jpg"
+            alt="Panel 01"
+            loading="eager"
+            decoding="async"
+          />
+
+          <!-- Cinematic bars (hard edges, clipped) -->
+          <div class="cinematicMask" aria-hidden="true">
+            <div class="top"></div>
+            <div class="bottom"></div>
+          </div>
         </div>
 
+        <!-- Player stays outside the clipped frame -->
         <div id="playerDock" class="playerDock">
           <div id="player" class="player" aria-label="Player">
 
@@ -414,6 +438,7 @@
 
           </div>
         </div>
+
       </div>
     </div>
 
@@ -422,9 +447,8 @@
 
   <div id="maint" class="maint" aria-hidden="true">
     <div class="maintBox">
-      <div class="pill">v0.29.5</div>
-      <div class="pill">chapter-00 / panel01</div>
-      <div class="pill">Mask: <span class="ok">HARD ✓</span></div>
+      <div class="pill">v0.29.6</div>
+      <div class="pill">Mask: <span class="ok">CRISP + CLIPPED ✓</span></div>
       <div class="pill">error: <span id="errText" class="err">(none)</span></div>
     </div>
   </div>
@@ -433,7 +457,7 @@
 
   <script>
     (function(){
-      const VERSION = "v0.29.5";
+      const VERSION = "v0.29.6";
 
       const loading   = document.getElementById("loading");
       const coverImg  = document.getElementById("coverImg");
@@ -476,9 +500,7 @@
         tryHideLoading();
       }, { passive:true });
 
-      coverImg.addEventListener("error", () => {
-        // cover missing shouldn't block
-      }, { passive:true });
+      coverImg.addEventListener("error", () => {}, { passive:true });
 
       const SHOW_Y = 560;
       function onScroll(){
