@@ -7,7 +7,7 @@
 
   <style>
     :root{
-      --v: "v0.40.7";
+      --v: "v0.40.8";
       --safe-top: env(safe-area-inset-top, 0px);
       --safe-bottom: env(safe-area-inset-bottom, 0px);
       --bg: url("./media/ui/manga_paper_bg.png");
@@ -20,6 +20,10 @@
       --max-w: 860px;
       --sc-left-mask-w: 106px;
       --diag-w: min(56vw, 360px);
+
+      /* Player shift limits */
+      --dock-shift-max: 132px;  /* <- was 200px (too deep) */
+      --dock-shift-peek: 0px;   /* runtime updated */
     }
 
     html, body{
@@ -264,18 +268,20 @@
       position:fixed;
       left:50%;
       bottom: calc(12px + var(--safe-bottom));
-      transform: translateX(-50%);
+      transform: translateX(-50%) translateY(var(--dock-shift-peek));
       z-index:70;
       display:flex;
       align-items:center;
       justify-content:center;
       pointer-events:auto;
-      transition: transform .25s ease;
+      transition: transform .22s ease;
       will-change: transform;
+      touch-action: none; /* we handle player drag gestures explicitly */
     }
     .playerDock.shiftDown{
-      transform: translateX(-50%) translateY(200px);
+      transform: translateX(-50%) translateY(var(--dock-shift-max));
     }
+    .playerDock.dragging{ transition:none; }
 
     .player{
       position:relative;
@@ -408,22 +414,34 @@
       pointer-events:none;
     }
 
-    /* ===== LOWERED MODE: keep SoundCloud controls visible, hide meta + SC link until raised ===== */
+    /* ===== LOWERED MODE =====
+       Goal: show SoundCloud controls (play + waveform), hide meta + link until raised */
     .player.lowered{
-      height: 128px;              /* compact but usable */
+      height: 148px;
       border-radius: 18px;
     }
-    .player.lowered .embedWrap{ display:block !important; top: 26px; bottom: 10px; }
-    .player.lowered .scMaskLeft{ display:block !important; }
-
-    /* hide name + open-link while lowered (even though expanded) */
+    .player.lowered .embedWrap{
+      display:block !important;
+      top: 28px;
+      bottom: 10px;
+    }
     .player.lowered .meta{ display:none !important; }
     .player.lowered .openBtn{ display:none !important; }
 
-    /* keep close accessible */
-    .player.lowered .closeBtn{ display:block !important; top: 6px; right: 8px; width: 34px; height: 34px; line-height: 32px; }
+    /* IMPORTANT: when lowered, do NOT hide the left area: show SC play controls */
+    .player.lowered .scMaskLeft{ display:none !important; }
 
-    /* Grab handle: tap OR upswipe to raise (does NOT block iframe below) */
+    /* keep close accessible in lowered */
+    .player.lowered .closeBtn{
+      display:block !important;
+      top: 6px;
+      right: 8px;
+      width: 34px;
+      height: 34px;
+      line-height: 32px;
+    }
+
+    /* Grip / raise zone: tap OR upswipe to raise (never offscreen) */
     .grabHandle{
       position:absolute;
       left: 10px;
@@ -439,7 +457,7 @@
       align-items:center;
       justify-content:center;
       gap:8px;
-      z-index:8;
+      z-index:9;
       user-select:none;
       cursor:pointer;
     }
@@ -456,9 +474,7 @@
       letter-spacing:.02em;
       opacity:.92;
     }
-    .player.lowered .grabHandle{
-      display:flex;
-    }
+    .player.lowered .grabHandle{ display:flex; }
   </style>
 </head>
 
@@ -479,7 +495,7 @@
 
   <!-- DIAGNOSTICS -->
   <div class="diag" id="diag">
-    <div class="row"><b>SANCTUM</b> <span class="muted" id="d_ver">v0.40.7</span></div>
+    <div class="row"><b>SANCTUM</b> <span class="muted" id="d_ver">v0.40.8</span></div>
     <div class="row"><span>chapter</span> <b id="d_ch">-</b></div>
     <div class="row"><span>base</span> <span class="muted" id="d_base">-</span></div>
     <div class="row"><span>panels</span> <b id="d_total">0</b></div>
@@ -528,12 +544,12 @@
           allow="autoplay"
           scrolling="no"
           frameborder="no"
-          src="https://w.soundcloud.com/player/?url=https%3A//soundcloud.com/user-543596862/sentinel-2&color=%23000000&auto_play=false&hide_related=true&show_comments=false&show_user=false&show_reposts=false&show_teaser=false&visual=false"
+          src="https://w.soundcloud.com/player/?url=https%3A//soundcloud.com/user-543596862/sentinel-2&color=%23000000&auto_play=false&hide_related=true&show_comments=false&show_user=false&show_reposts=false&show_teaser=false&visual=true"
           title="SoundCloud player"
         ></iframe>
+
         <div class="scMaskLeft" aria-hidden="true"></div>
 
-        <!-- Tap / upswipe handle to re-appear -->
         <div id="grabHandle" class="grabHandle" aria-label="Raise player">
           <div class="grabDot" aria-hidden="true"></div>
           <div class="grabTxt">tap / swipe up</div>
@@ -544,7 +560,7 @@
 
   <script>
     (function(){
-      const VERSION = "v0.40.7";
+      const VERSION = "v0.40.8";
 
       const READER = {
         chapter: "chapter-00",
@@ -570,8 +586,8 @@
         refreshShowPx: 22,
         refreshFirePx: 58,
 
-        // player reappear gesture
-        playerRaiseSwipePx: 26
+        playerRaiseSwipePx: 26,
+        playerDragSnapPx: 58
       };
 
       const $ = (id) => document.getElementById(id);
@@ -663,41 +679,104 @@
         setTimeout(() => { location.reload(); }, 220);
       }
 
-      // ===== Player: sink + reappear (tap + upswipe on handle) =====
+      /* ===== Player state helpers ===== */
       function setLowered(on){
-        if(on){
-          player.classList.add("lowered");
+        if(on) player.classList.add("lowered");
+        else player.classList.remove("lowered");
+      }
+      function isExpanded(){ return player.classList.contains("expanded"); }
+      function isDown(){ return playerDock.classList.contains("shiftDown"); }
+
+      function sink(){
+        if(!isExpanded()) return;
+        playerDock.classList.add("shiftDown");
+        setLowered(true);
+      }
+      function raise(){
+        playerDock.classList.remove("shiftDown");
+        playerDock.style.transform = ""; // reset any drag transform
+        playerDock.classList.remove("dragging");
+        document.documentElement.style.setProperty("--dock-shift-peek", "0px");
+        setLowered(false);
+      }
+      function toggleSink(){
+        if(!isExpanded()) return;
+        if(isDown()) raise();
+        else sink();
+      }
+
+      /* ===== Player drag (clamped) =====
+         Fixes: "player sinks outside usability when pulling down" */
+      let pDrag = null;
+      function dockShiftMaxPx(){
+        const css = getComputedStyle(document.documentElement).getPropertyValue("--dock-shift-max").trim();
+        const n = parseFloat(css || "132");
+        return isFinite(n) ? n : 132;
+      }
+      function applyDockShift(px){
+        const max = dockShiftMaxPx();
+        const v = clamp(px, 0, max);
+        playerDock.style.transform = "translateX(-50%) translateY(" + v + "px)";
+        document.documentElement.style.setProperty("--dock-shift-peek", v + "px");
+      }
+      function snapDock(){
+        const max = dockShiftMaxPx();
+        const cur = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--dock-shift-peek")) || 0;
+        if(cur > READER.playerDragSnapPx){
+          playerDock.classList.add("shiftDown");
+          playerDock.style.transform = "";
+          document.documentElement.style.setProperty("--dock-shift-peek", max + "px");
+          setLowered(true);
         }else{
-          player.classList.remove("lowered");
+          playerDock.classList.remove("shiftDown");
+          playerDock.style.transform = "";
+          document.documentElement.style.setProperty("--dock-shift-peek", "0px");
+          setLowered(false);
         }
       }
 
-      function sinkToggle(){
-        if(!player.classList.contains("expanded")) return;
-        const nowDown = !playerDock.classList.contains("shiftDown");
-        playerDock.classList.toggle("shiftDown");
-        setLowered(nowDown); // lowered only when shifted down
-      }
+      // Drag only when expanded (so reading gestures stay clean)
+      playerDock.addEventListener("touchstart", (e) => {
+        if(!isExpanded()) return;
+        if(!e.touches || e.touches.length !== 1) return;
+        const t = e.touches[0];
+        pDrag = { y: t.clientY, start: (isDown() ? dockShiftMaxPx() : 0) };
+        playerDock.classList.add("dragging");
+      }, { passive:true });
 
-      function raisePlayer(){
-        playerDock.classList.remove("shiftDown");
-        setLowered(false);
-      }
+      playerDock.addEventListener("touchmove", (e) => {
+        if(!pDrag) return;
+        if(!e.touches || e.touches.length !== 1) return;
+        const t = e.touches[0];
+        const dy = t.clientY - pDrag.y; // down = positive
+        applyDockShift(pDrag.start + dy);
+      }, { passive:true });
 
-      // Tap on handle raises
+      playerDock.addEventListener("touchend", () => {
+        if(!pDrag) return;
+        pDrag = null;
+        playerDock.classList.remove("dragging");
+        snapDock();
+      }, { passive:true });
+
+      playerDock.addEventListener("touchcancel", () => {
+        pDrag = null;
+        playerDock.classList.remove("dragging");
+        snapDock();
+      }, { passive:true });
+
+      /* ===== Reappear: tap + upswipe on grip ===== */
       grabHandle.addEventListener("click", (e) => {
-        if(!player.classList.contains("expanded")) return;
-        if(!playerDock.classList.contains("shiftDown")) return;
+        if(!isExpanded()) return;
+        if(!isDown()) return;
         e.preventDefault();
         e.stopPropagation();
-        raisePlayer();
+        raise();
       }, { passive:false });
 
-      // Upswipe on handle raises (without killing reader gestures elsewhere)
       let hTouch = null;
       grabHandle.addEventListener("touchstart", (e) => {
-        if(!player.classList.contains("expanded")) return;
-        if(!playerDock.classList.contains("shiftDown")) return;
+        if(!isExpanded() || !isDown()) return;
         const t = e.touches && e.touches[0];
         if(!t) return;
         hTouch = { x: t.clientX, y: t.clientY };
@@ -709,27 +788,23 @@
         if(!t) return;
         const dx = t.clientX - hTouch.x;
         const dy = t.clientY - hTouch.y;
-
-        // only react if clearly vertical up
         if(Math.abs(dy) > Math.abs(dx) && dy < -READER.playerRaiseSwipePx){
           e.preventDefault();
           e.stopPropagation();
           hTouch = null;
-          raisePlayer();
+          raise();
         }
       }, { passive:false });
 
       grabHandle.addEventListener("touchend", () => { hTouch = null; }, { passive:true });
       grabHandle.addEventListener("touchcancel", () => { hTouch = null; }, { passive:true });
 
-      // ===== Story order normal; DOM reversed for RTL layout =====
+      /* ===== Reader (RTL track) ===== */
       let panels = [];
       let storyIndex = 0;
       let domCount = 0;
 
-      function domIndexFromStory(i){
-        return (domCount - 1) - i;
-      }
+      function domIndexFromStory(i){ return (domCount - 1) - i; }
 
       function updateHud(){
         const total = Math.max(1, panels.length);
@@ -813,7 +888,6 @@
 
       function renderAll(){
         track.innerHTML = "";
-
         const domPanels = panels.slice().reverse();
         domPanels.forEach(p => track.appendChild(makeSlide(p)));
         domCount = domPanels.length;
@@ -832,7 +906,7 @@
       READER.seedPanels.forEach(addPanel);
       renderAll();
 
-      // ===== Touch / Swipe + Refresh =====
+      /* ===== Reader swipe + refresh ===== */
       let dragging = false;
       let lockedAxis = null;
       let startX=0, startY=0, lastX=0;
@@ -858,9 +932,7 @@
         if(!lockedAxis){
           if(Math.abs(dx) > READER.axisLockPx || Math.abs(dy) > READER.axisLockPx){
             lockedAxis = (Math.abs(dx) >= Math.abs(dy)) ? "x" : "y";
-          }else{
-            return;
-          }
+          }else return;
         }
 
         if(lockedAxis === "y"){
@@ -908,15 +980,9 @@
         }
 
         const dx = lastX - startX;
-
-        // RTL feel: push right => next page comes from left
-        if(dx > READER.swipeThresholdPx){
-          setStoryIndex(storyIndex + 1, true);
-        }else if(dx < -READER.swipeThresholdPx){
-          setStoryIndex(storyIndex - 1, true);
-        }else{
-          setStoryIndex(storyIndex, true);
-        }
+        if(dx > READER.swipeThresholdPx) setStoryIndex(storyIndex + 1, true);
+        else if(dx < -READER.swipeThresholdPx) setStoryIndex(storyIndex - 1, true);
+        else setStoryIndex(storyIndex, true);
       }
 
       stage.addEventListener("touchstart", (e) => {
@@ -936,7 +1002,7 @@
         setStoryIndex(storyIndex,true);
       }, { passive:true });
 
-      // ===== Auto-discovery =====
+      /* ===== Auto-discovery ===== */
       async function headOK(url){
         try{
           const res = await fetch(bust(url), { method:"HEAD", cache:"no-store" });
@@ -945,15 +1011,12 @@
           try{
             const res2 = await fetch(bust(url), { method:"GET", cache:"no-store" });
             return res2 && res2.ok;
-          }catch(_){
-            return false;
-          }
+          }catch(_){ return false; }
         }
       }
 
       async function probePanels(){
         diagSet(diag.probe, "probing…", "muted");
-
         let misses = 0;
         let startN = panels.length ? (Math.max(...panels.map(p => p.n)) + 1) : 1;
 
@@ -983,17 +1046,14 @@
         setTimeout(probePanels, 650);
       }
 
-      // ===== Player (SoundCloud) =====
+      /* ===== SoundCloud (play) ===== */
       let widget = null;
       let widgetReady = false;
       let scScriptLoaded = false;
 
       function loadSoundCloudAPI(){
         return new Promise((resolve) => {
-          if(scScriptLoaded || window.SC){
-            scScriptLoaded = true;
-            return resolve();
-          }
+          if(scScriptLoaded || window.SC){ scScriptLoaded = true; return resolve(); }
           const s = document.createElement("script");
           s.src = "https://w.soundcloud.com/player/api.js";
           s.async = true;
@@ -1010,21 +1070,17 @@
             widget = SC.Widget(scFrame);
             widget.bind(SC.Widget.Events.READY, function(){ widgetReady = true; });
           }
-        }catch(e){
-          noteErr("SC init: " + e);
-        }
+        }catch(e){ noteErr("SC init: " + e); }
       }
       initWidget();
 
       function openAndPlay(){
         player.classList.add("expanded");
-        playerDock.classList.remove("shiftDown");
-        setLowered(false);
+        raise(); // start in raised mode
 
         if(widget){
-          if(widgetReady){
-            try{ widget.play(); }catch(_){}
-          }else{
+          if(widgetReady){ try{ widget.play(); }catch(_){} }
+          else{
             try{
               widget.bind(SC.Widget.Events.READY, function(){
                 widgetReady = true;
@@ -1037,21 +1093,16 @@
 
       function closePlayer(){
         player.classList.remove("expanded");
-        playerDock.classList.remove("shiftDown");
-        setLowered(false);
-        if(widget){
-          try{ widget.pause(); }catch(_){}
-        }
+        raise();
+        if(widget){ try{ widget.pause(); }catch(_){} }
       }
 
-      // Collapsed play circle starts playback + expands
       playerBtn.addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
         openAndPlay();
       }, { passive:false });
 
-      // Close always closes
       closeBtn.addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -1060,9 +1111,9 @@
 
       // Tap panel toggles sink (expanded only)
       document.addEventListener("click", (e) => {
-        if(!player.classList.contains("expanded")) return;
+        if(!isExpanded()) return;
         if(e.target && e.target.classList && e.target.classList.contains("panelImg")){
-          sinkToggle();
+          toggleSink();
         }
       }, { passive:true });
 
