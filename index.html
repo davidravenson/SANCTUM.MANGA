@@ -7,7 +7,7 @@
 
   <style>
     :root{
-      --v: "v0.40.6";
+      --v: "v0.40.7";
       --safe-top: env(safe-area-inset-top, 0px);
       --safe-bottom: env(safe-area-inset-bottom, 0px);
       --bg: url("./media/ui/manga_paper_bg.png");
@@ -143,7 +143,7 @@
       position:relative;
       width:100%;
       max-height:100%;
-      overflow:hidden;
+      overflow:hidden; /* holy border */
       background:#000;
       transform: translateZ(0);
       backface-visibility:hidden;
@@ -314,6 +314,7 @@
       filter: drop-shadow(0 2px 6px rgba(0,0,0,.25));
     }
 
+    /* Expanded player (FULL) */
     .player.expanded{
       width: min(92vw, 640px);
       height: 240px;
@@ -407,44 +408,56 @@
       pointer-events:none;
     }
 
-    /* When the dock is lowered, we add a "tap-to-raise" catcher over the embed area
-       so any tap on the player (even over the iframe) can pull it back up. */
-    .tapRaiseCatcher{
-      position:absolute;
-      inset:0;
-      z-index:6;
-      display:none;
-      pointer-events:none;
-      background: rgba(0,0,0,.0);
+    /* ===== LOWERED MODE: keep SoundCloud controls visible, hide meta + SC link until raised ===== */
+    .player.lowered{
+      height: 128px;              /* compact but usable */
+      border-radius: 18px;
     }
-    .playerDock.shiftDown .player.expanded .tapRaiseCatcher{
-      display:block;
-      pointer-events:auto;
-      cursor:pointer;
-    }
+    .player.lowered .embedWrap{ display:block !important; top: 26px; bottom: 10px; }
+    .player.lowered .scMaskLeft{ display:block !important; }
 
-    /* Tiny visual hint when lowered (subtle, not a button) */
-    .raiseHint{
+    /* hide name + open-link while lowered (even though expanded) */
+    .player.lowered .meta{ display:none !important; }
+    .player.lowered .openBtn{ display:none !important; }
+
+    /* keep close accessible */
+    .player.lowered .closeBtn{ display:block !important; top: 6px; right: 8px; width: 34px; height: 34px; line-height: 32px; }
+
+    /* Grab handle: tap OR upswipe to raise (does NOT block iframe below) */
+    .grabHandle{
       position:absolute;
-      left:50%;
+      left: 10px;
+      right: 10px;
       top: 6px;
-      transform: translateX(-50%);
-      z-index:7;
-      padding: 6px 10px;
+      height: 18px;
       border-radius: 999px;
       background: rgba(0,0,0,.38);
       border: 1px solid rgba(255,255,255,.14);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      gap:8px;
+      z-index:8;
+      user-select:none;
+      cursor:pointer;
+    }
+    .grabDot{
+      width: 22px;
+      height: 4px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.55);
+      opacity:.9;
+    }
+    .grabTxt{
       font-weight: 900;
       font-size: 11px;
       letter-spacing:.02em;
-      opacity:0;
-      pointer-events:none;
-      user-select:none;
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-    }
-    .playerDock.shiftDown .player.expanded .raiseHint{
       opacity:.92;
+    }
+    .player.lowered .grabHandle{
+      display:flex;
     }
   </style>
 </head>
@@ -466,7 +479,7 @@
 
   <!-- DIAGNOSTICS -->
   <div class="diag" id="diag">
-    <div class="row"><b>SANCTUM</b> <span class="muted" id="d_ver">v0.40.6</span></div>
+    <div class="row"><b>SANCTUM</b> <span class="muted" id="d_ver">v0.40.7</span></div>
     <div class="row"><span>chapter</span> <b id="d_ch">-</b></div>
     <div class="row"><span>base</span> <span class="muted" id="d_base">-</span></div>
     <div class="row"><span>panels</span> <b id="d_total">0</b></div>
@@ -520,16 +533,18 @@
         ></iframe>
         <div class="scMaskLeft" aria-hidden="true"></div>
 
-        <!-- Catch taps when lowered (brings player back up) -->
-        <div id="tapRaiseCatcher" class="tapRaiseCatcher" aria-hidden="true"></div>
-        <div class="raiseHint" aria-hidden="true">tap player to raise</div>
+        <!-- Tap / upswipe handle to re-appear -->
+        <div id="grabHandle" class="grabHandle" aria-label="Raise player">
+          <div class="grabDot" aria-hidden="true"></div>
+          <div class="grabTxt">tap / swipe up</div>
+        </div>
       </div>
     </div>
   </div>
 
   <script>
     (function(){
-      const VERSION = "v0.40.6";
+      const VERSION = "v0.40.7";
 
       const READER = {
         chapter: "chapter-00",
@@ -553,7 +568,10 @@
 
         refreshTopZonePx: 70,
         refreshShowPx: 22,
-        refreshFirePx: 58
+        refreshFirePx: 58,
+
+        // player reappear gesture
+        playerRaiseSwipePx: 26
       };
 
       const $ = (id) => document.getElementById(id);
@@ -620,7 +638,7 @@
       const closeBtn = $("closeBtn");
       const playerDock = $("playerDock");
       const scFrame = $("scFrame");
-      const tapRaiseCatcher = $("tapRaiseCatcher");
+      const grabHandle = $("grabHandle");
 
       let loadingHidden = false;
       function hideLoading(){
@@ -645,36 +663,66 @@
         setTimeout(() => { location.reload(); }, 220);
       }
 
-      // ===== Player Dock: sink + tap-to-raise (NO button) =====
+      // ===== Player: sink + reappear (tap + upswipe on handle) =====
+      function setLowered(on){
+        if(on){
+          player.classList.add("lowered");
+        }else{
+          player.classList.remove("lowered");
+        }
+      }
+
       function sinkToggle(){
         if(!player.classList.contains("expanded")) return;
+        const nowDown = !playerDock.classList.contains("shiftDown");
         playerDock.classList.toggle("shiftDown");
+        setLowered(nowDown); // lowered only when shifted down
       }
-      function raise(){
+
+      function raisePlayer(){
         playerDock.classList.remove("shiftDown");
+        setLowered(false);
       }
 
-      // Tap on player (when lowered) raises it again.
-      // 1) Catcher overlay over iframe (works even if user taps embed area)
-      tapRaiseCatcher.addEventListener("click", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        raise();
-      }, { passive:false });
-
-      // 2) Tapping meta/open/close area while lowered also raises (unless it's close)
-      player.addEventListener("click", (e) => {
+      // Tap on handle raises
+      grabHandle.addEventListener("click", (e) => {
         if(!player.classList.contains("expanded")) return;
         if(!playerDock.classList.contains("shiftDown")) return;
+        e.preventDefault();
+        e.stopPropagation();
+        raisePlayer();
+      }, { passive:false });
 
-        // Allow close to close, not raise
-        if(e.target === closeBtn) return;
-
-        // For everything else in the player chrome: raise
-        raise();
+      // Upswipe on handle raises (without killing reader gestures elsewhere)
+      let hTouch = null;
+      grabHandle.addEventListener("touchstart", (e) => {
+        if(!player.classList.contains("expanded")) return;
+        if(!playerDock.classList.contains("shiftDown")) return;
+        const t = e.touches && e.touches[0];
+        if(!t) return;
+        hTouch = { x: t.clientX, y: t.clientY };
       }, { passive:true });
 
-      // ===== Story order stays normal; DOM reversed for RTL layout =====
+      grabHandle.addEventListener("touchmove", (e) => {
+        if(!hTouch) return;
+        const t = e.touches && e.touches[0];
+        if(!t) return;
+        const dx = t.clientX - hTouch.x;
+        const dy = t.clientY - hTouch.y;
+
+        // only react if clearly vertical up
+        if(Math.abs(dy) > Math.abs(dx) && dy < -READER.playerRaiseSwipePx){
+          e.preventDefault();
+          e.stopPropagation();
+          hTouch = null;
+          raisePlayer();
+        }
+      }, { passive:false });
+
+      grabHandle.addEventListener("touchend", () => { hTouch = null; }, { passive:true });
+      grabHandle.addEventListener("touchcancel", () => { hTouch = null; }, { passive:true });
+
+      // ===== Story order normal; DOM reversed for RTL layout =====
       let panels = [];
       let storyIndex = 0;
       let domCount = 0;
@@ -971,6 +1019,7 @@
       function openAndPlay(){
         player.classList.add("expanded");
         playerDock.classList.remove("shiftDown");
+        setLowered(false);
 
         if(widget){
           if(widgetReady){
@@ -989,7 +1038,7 @@
       function closePlayer(){
         player.classList.remove("expanded");
         playerDock.classList.remove("shiftDown");
-
+        setLowered(false);
         if(widget){
           try{ widget.pause(); }catch(_){}
         }
