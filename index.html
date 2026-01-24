@@ -7,15 +7,19 @@
 
   <style>
     :root{
-      --v: "v0.30.0";
+      --v: "v0.31.0";
       --safe-top: env(safe-area-inset-top, 0px);
       --safe-bottom: env(safe-area-inset-bottom, 0px);
 
       --bg: url("./media/ui/manga_paper_bg.png");
       --shadow: 0 16px 40px rgba(0,0,0,.35);
+      --glass: rgba(255,255,255,.12);
+      --glass2: rgba(255,255,255,.18);
+      --ink: #0b0b0b;
     }
 
     *{ box-sizing:border-box; }
+
     html, body{
       height:100%;
       margin:0;
@@ -26,7 +30,7 @@
       overflow-x:hidden;
     }
 
-    /* Background: single, no repeat, no seams */
+    /* Background: no repeat, no seams */
     body{
       background-image: var(--bg);
       background-size: cover;
@@ -36,7 +40,7 @@
       overscroll-behavior: none;
       touch-action: pan-y;
     }
-    /* iOS Safari tends to glitch with fixed backgrounds */
+    /* iOS Safari tends to hate fixed backgrounds */
     @supports (-webkit-touch-callout: none){
       body{ background-attachment: scroll; }
     }
@@ -52,8 +56,8 @@
       position:relative;
       width:100%;
       max-width: 860px;
-      padding-top: var(--safe-top);
-      padding-bottom: 10px;
+      padding-top: calc(0px + var(--safe-top));
+      padding-bottom: 12px;
       display:flex;
       justify-content:center;
       align-items:center;
@@ -67,6 +71,7 @@
       align-items:center;
     }
 
+    /* Panel image: fill width; no frame; no rounding */
     .panelImg{
       width: min(100vw, 860px);
       height:auto;
@@ -74,131 +79,267 @@
       border-radius:0;
       box-shadow:none;
       background:#000;
-      user-select:none;
-      -webkit-user-drag:none;
     }
 
-    /* PLAYER: minimal (no blob), overlaps lower black bar */
+    /* Player dock overlaps the lower black bar */
     .playerDock{
       position:absolute;
       left:50%;
-      bottom:-24px;
+      bottom:-26px;
       transform: translateX(-50%);
       z-index:20;
       display:flex;
       align-items:center;
-      gap: 10px;
+      justify-content:center;
       pointer-events:auto;
+      transition: transform .25s ease;
       will-change: transform;
-      transition: transform .22s ease;
     }
     .playerDock.shiftDown{
       transform: translateX(-50%) translateY(200px);
     }
 
-    /* Minimal button */
-    .miniBtn{
-      width:74px;
-      height:74px;
+    /* ----- CUSTOM PLAYER UI (Option A) ----- */
+    .pUI{
+      position:relative;
+      width:78px;
+      height:78px;
       border-radius:999px;
-      background: rgba(255,255,255,.22);
-      border: 1px solid rgba(255,255,255,.22);
+      background: rgba(255,255,255,.10);
+      border: 1px solid rgba(255,255,255,.18);
       box-shadow: var(--shadow);
-      backdrop-filter: blur(10px);
       -webkit-backdrop-filter: blur(10px);
+      backdrop-filter: blur(10px);
+      overflow:hidden;
+      transition: width .28s ease, height .28s ease, border-radius .28s ease, background .28s ease;
+    }
+
+    /* collapsed: only play button */
+    .pUI .topbar,
+    .pUI .waveArea,
+    .pUI .miniHint{
+      display:none;
+    }
+
+    .pBtn{
+      width:100%;
+      height:100%;
       display:flex;
       align-items:center;
       justify-content:center;
       cursor:pointer;
       user-select:none;
-      flex: 0 0 auto;
+      -webkit-user-select:none;
     }
 
-    /* Icon black for visibility */
-    .miniIcon.play{
-      width:0;height:0;
+    /* Play icon BLACK */
+    .tri{
+      width:0;
+      height:0;
       border-top: 12px solid transparent;
       border-bottom: 12px solid transparent;
-      border-left: 18px solid rgba(0,0,0,.95);
+      border-left: 18px solid rgba(0,0,0,.92);
       transform: translateX(2px);
-      filter: drop-shadow(0 2px 6px rgba(0,0,0,.25));
-    }
-    .miniIcon.pause{
-      width:18px;height:18px;
-      position:relative;
-      filter: drop-shadow(0 2px 6px rgba(0,0,0,.25));
-    }
-    .miniIcon.pause::before,
-    .miniIcon.pause::after{
-      content:"";
-      position:absolute; top:0; bottom:0;
-      width:6px; border-radius:2px;
-      background: rgba(0,0,0,.95);
-    }
-    .miniIcon.pause::before{ left:0; }
-    .miniIcon.pause::after{ right:0; }
-
-    /* Waveform strip (cropped SoundCloud classic player) */
-    .waveWrap{
-      position:relative;
-      width: min(72vw, 620px);
-      height: 76px;
-      overflow:hidden;
-      border-radius: 18px;
-      background: rgba(255,255,255,.18);
-      border: 1px solid rgba(255,255,255,.20);
-      box-shadow: var(--shadow);
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
+      filter: drop-shadow(0 2px 6px rgba(0,0,0,.18));
     }
 
-    /* Crop away SoundCloud topbar: we shift the iframe upward */
-    .waveWrap iframe{
-      position:absolute;
-      left:0;
-      top:-38px;          /* hides the meta/top bar */
-      width:100%;
-      height: 140px;      /* enough height so the waveform stays visible after cropping */
-      border:0;
+    /* expanded state */
+    .pUI.expanded{
+      width: min(92vw, 640px);
+      height: 210px;
+      border-radius: 22px;
+      background: rgba(255,255,255,.12);
+    }
+
+    .pUI.expanded .topbar,
+    .pUI.expanded .waveArea{
       display:block;
     }
 
-    /* Hover/Tap info overlay (our own, not the SoundCloud meta bar) */
-    .infoTag{
+    .pUI.expanded .pBtn{
       position:absolute;
-      left: 84px;
-      top: -44px;
-      padding: 10px 12px;
-      border-radius: 14px;
-      background: rgba(255,255,255,.88);
-      color:#111;
-      box-shadow: 0 10px 18px rgba(0,0,0,.20);
-      line-height: 1.05;
-      opacity:0;
-      transform: translateY(6px);
-      pointer-events:none;
-      transition: opacity .18s ease, transform .18s ease;
-      white-space: nowrap;
-    }
-    .infoTag.show{
-      opacity:1;
-      transform: translateY(0);
-    }
-    .infoTag .t{
-      font-weight: 900;
-      letter-spacing: .03em;
-      font-size: 16px;
-      color:#0d0d0d;
-    }
-    .infoTag .a{
-      margin-top:2px;
-      font-weight: 700;
-      font-size: 12px;
-      opacity:.92;
-      color:#0d0d0d;
+      left: 12px;
+      top: 12px;
+      width: 56px;
+      height: 56px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.55);
+      border: 1px solid rgba(255,255,255,.25);
     }
 
-    /* Loading overlay: hung cover banner ONLY */
+    .pUI.expanded .tri{
+      border-top-width: 10px;
+      border-bottom-width: 10px;
+      border-left-width: 16px;
+    }
+
+    /* Pause icon (custom) */
+    .pauseIcon{
+      width: 18px;
+      height: 18px;
+      display:none;
+      position:relative;
+    }
+    .pauseIcon::before,
+    .pauseIcon::after{
+      content:"";
+      position:absolute;
+      top:0; bottom:0;
+      width:6px;
+      background: rgba(0,0,0,.92);
+      border-radius: 3px;
+    }
+    .pauseIcon::before{ left:0; }
+    .pauseIcon::after{ right:0; }
+
+    /* topbar (no huge blob): compact, clean */
+    .topbar{
+      position:absolute;
+      left: 78px;
+      right: 12px;
+      top: 12px;
+      height: 56px;
+      display:flex;
+      align-items:center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 16px;
+      background: rgba(255,255,255,.72);
+      color:#101010;
+      box-shadow: 0 10px 18px rgba(0,0,0,.18);
+      overflow:hidden;
+    }
+
+    .metaText{
+      min-width: 0;
+      flex: 1 1 auto;
+      line-height:1.05;
+    }
+    .metaText .t{
+      font-weight: 900;
+      letter-spacing:.03em;
+      font-size: 18px;
+      color:#0d0d0d;
+      white-space: nowrap;
+      overflow:hidden;
+      text-overflow: ellipsis;
+    }
+    .metaText .a{
+      margin-top: 2px;
+      font-weight: 700;
+      font-size: 13px;
+      opacity:.92;
+      color:#0d0d0d;
+      white-space: nowrap;
+      overflow:hidden;
+      text-overflow: ellipsis;
+    }
+
+    .pillBtn{
+      flex: 0 0 auto;
+      padding: 10px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(0,0,0,.12);
+      background: rgba(0,0,0,.14);
+      color:#0b0b0b;
+      font-weight: 800;
+      font-size: 12px;
+      text-decoration:none;
+      white-space: nowrap;
+    }
+
+    .xBtn{
+      flex: 0 0 auto;
+      width: 34px;
+      height: 34px;
+      border-radius: 999px;
+      border: 1px solid rgba(0,0,0,.12);
+      background: rgba(0,0,0,.14);
+      color:#0b0b0b;
+      font-weight: 900;
+      font-size: 18px;
+      line-height: 32px;
+      text-align:center;
+      cursor:pointer;
+      user-select:none;
+      -webkit-user-select:none;
+    }
+
+    .waveArea{
+      position:absolute;
+      left: 12px;
+      right: 12px;
+      bottom: 12px;
+      top: 78px;
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,.18);
+      background: rgba(255,255,255,.10);
+      overflow:hidden;
+      -webkit-backdrop-filter: blur(8px);
+      backdrop-filter: blur(8px);
+      box-shadow: inset 0 0 0 1px rgba(0,0,0,.06);
+    }
+
+    .waveInner{
+      position:absolute;
+      inset:0;
+      padding: 14px 14px 14px 14px;
+      display:flex;
+      flex-direction:column;
+      gap: 10px;
+    }
+
+    .waveBars{
+      position:relative;
+      flex: 1 1 auto;
+      display:flex;
+      align-items:flex-end;
+      gap: 3px;
+      width:100%;
+      height:100%;
+      padding: 8px 6px;
+      border-radius: 14px;
+      background: rgba(255,255,255,.65);
+      overflow:hidden;
+    }
+
+    .bar{
+      width: 5px;
+      border-radius: 8px;
+      background: rgba(0,0,0,.45);
+      transform: translateZ(0);
+      opacity:.95;
+    }
+
+    /* progress overlay: dark bars "filled" from left to right */
+    .progressMask{
+      position:absolute;
+      left:0;
+      top:0;
+      bottom:0;
+      width: 0%;
+      pointer-events:none;
+      background: rgba(0,0,0,.0);
+      overflow:hidden;
+    }
+    .progressMask .bar{
+      background: rgba(0,0,0,.85);
+    }
+
+    .timeRow{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      color: rgba(0,0,0,.75);
+      font-weight: 800;
+      font-size: 12px;
+      letter-spacing:.02em;
+      padding: 0 4px;
+      user-select:none;
+      -webkit-user-select:none;
+    }
+
+    /* Loading overlay: hung cover banner ONLY, no rounded corners, no top gap */
     .loading{
       position:fixed;
       inset:0;
@@ -206,7 +347,7 @@
       display:flex;
       align-items:flex-start;
       justify-content:center;
-      padding-top: var(--safe-top); /* no gap beyond safe area */
+      padding-top: var(--safe-top);
       background: rgba(0,0,0,.08);
       opacity:1;
       transition: opacity .35s ease;
@@ -215,10 +356,11 @@
       content:"";
       position:absolute;
       inset:0;
-      backdrop-filter: blur(14px);
       -webkit-backdrop-filter: blur(14px);
+      backdrop-filter: blur(14px);
       background: rgba(0,0,0,.10);
     }
+
     .coverBanner{
       position:relative;
       width: min(92vw, 520px);
@@ -227,7 +369,6 @@
       overflow:hidden;
       box-shadow: 0 30px 70px rgba(0,0,0,.55);
       transform: translateZ(0);
-      max-height: calc(92vh - var(--safe-top));
     }
     .coverBanner img{
       width:100%;
@@ -238,11 +379,11 @@
 
     /* Short intentional scroll space */
     .bottomSpacer{
-      height: 320px; /* not endless */
+      height: 320px;
       width: 100%;
     }
 
-    /* Maintenance: appears only after intentional scroll */
+    /* Maintenance (hidden until deep scroll) */
     .maint{
       position:fixed;
       left:50%;
@@ -252,7 +393,7 @@
       z-index:50;
       opacity:0;
       pointer-events:none;
-      transition: opacity .25s ease, transform .25s ease;
+      transition: opacity .35s ease, transform .35s ease;
     }
     .maint.show{
       opacity:1;
@@ -264,8 +405,8 @@
       border: 1px solid rgba(255,255,255,.16);
       border-radius: 18px;
       padding: 12px 14px;
-      backdrop-filter: blur(10px);
       -webkit-backdrop-filter: blur(10px);
+      backdrop-filter: blur(10px);
       box-shadow: 0 16px 40px rgba(0,0,0,.35);
       font-size: 14px;
       line-height: 1.25;
@@ -279,18 +420,33 @@
     .pill{ opacity:.9; white-space:nowrap; }
     .ok{ color:#7CFF9A; font-weight:800; }
     .err{ color:#FF7C7C; font-weight:800; }
-
-    /* a tiny "maintenance heart" (always there, but subtle) */
     .heart{
-      display:inline-block;
-      font-weight:900;
-      transform: translateY(-1px);
-      margin-right: 6px;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      width: 28px;
+      height: 28px;
+      border-radius: 10px;
+      background: rgba(255,255,255,.10);
+      border: 1px solid rgba(255,255,255,.16);
+      -webkit-backdrop-filter: blur(10px);
+      backdrop-filter: blur(10px);
+      box-shadow: 0 10px 22px rgba(0,0,0,.25);
+      margin-left: 6px;
+      transform: translateY(1px);
     }
+    .heart span{ font-size: 16px; line-height: 1; }
 
-    /* Respect users who dislike motion */
-    @media (prefers-reduced-motion: reduce){
-      *{ transition:none !important; }
+    /* Hidden SoundCloud engine iframe (Option A) */
+    .scEngine{
+      position:fixed;
+      left:-9999px;
+      top:-9999px;
+      width:1px;
+      height:1px;
+      opacity:0;
+      pointer-events:none;
+      border:0;
     }
   </style>
 </head>
@@ -315,29 +471,53 @@
           decoding="async"
         />
 
-        <!-- Minimal Player: play + waveform strip -->
-        <div id="playerDock" class="playerDock" aria-label="Audio">
-          <div id="miniBtn" class="miniBtn" title="Play / Pause" role="button" tabindex="0" aria-label="Play">
-            <div id="miniIcon" class="miniIcon play" aria-hidden="true"></div>
-          </div>
+        <!-- Player (custom UI; SoundCloud hidden engine) -->
+        <div id="playerDock" class="playerDock">
+          <div id="pUI" class="pUI" aria-label="Player">
 
-          <div id="waveWrap" class="waveWrap" aria-label="Waveform">
-            <!-- our own hover/tap info (not the SC topbar) -->
-            <div id="infoTag" class="infoTag" aria-hidden="true">
-              <div class="t">SENTINEL</div>
-              <div class="a">DAVID RAVENSON</div>
+            <!-- Main button (collapsed: play icon; expanded: toggles play/pause) -->
+            <div id="pBtn" class="pBtn" title="Play">
+              <div id="tri" class="tri" aria-hidden="true"></div>
+              <div id="pauseIcon" class="pauseIcon" aria-hidden="true"></div>
             </div>
 
-            <iframe
-              id="scFrame"
-              allow="autoplay"
-              scrolling="no"
-              frameborder="no"
-              title="SoundCloud waveform"
-              src="https://w.soundcloud.com/player/?url=https%3A//soundcloud.com/user-543596862/sentinel-2&auto_play=false&hide_related=true&show_comments=false&show_user=false&show_reposts=false&show_teaser=false&visual=false&buying=false&sharing=false&download=false&show_playcount=false"
-            ></iframe>
+            <!-- Topbar -->
+            <div class="topbar" aria-hidden="true">
+              <div class="metaText">
+                <div class="t">SENTINEL</div>
+                <div class="a">DAVID RAVENSON</div>
+              </div>
+              <a class="pillBtn" href="https://soundcloud.com/user-543596862/sentinel-2" target="_blank" rel="noopener noreferrer">SoundCloud</a>
+              <div id="xBtn" class="xBtn" title="Close">×</div>
+            </div>
+
+            <!-- Waveform area (decorative but synced progress) -->
+            <div class="waveArea" aria-hidden="true">
+              <div class="waveInner">
+                <div class="waveBars" id="waveBars">
+                  <!-- bars injected by JS -->
+                  <div class="progressMask" id="progressMask"></div>
+                </div>
+                <div class="timeRow">
+                  <div id="tCur">0:00</div>
+                  <div id="tDur">0:00</div>
+                </div>
+              </div>
+            </div>
+
           </div>
         </div>
+
+        <!-- Hidden SoundCloud engine -->
+        <iframe
+          id="scEngine"
+          class="scEngine"
+          allow="autoplay"
+          scrolling="no"
+          frameborder="no"
+          title="SoundCloud engine"
+          src="https://w.soundcloud.com/player/?url=https%3A//soundcloud.com/user-543596862/sentinel-2&auto_play=false&hide_related=true&show_comments=false&show_user=false&show_reposts=false&show_teaser=false&visual=false"
+        ></iframe>
 
       </div>
     </div>
@@ -348,9 +528,9 @@
   <!-- Maintenance (shows only after deep scroll) -->
   <div id="maint" class="maint" aria-hidden="true">
     <div class="maintBox">
-      <div class="pill"><span class="heart">♥</span><span id="vText">v0.30.0</span></div>
+      <div class="pill">v0.31.0</div>
       <div class="pill">chapter-00 / panel01</div>
-      <div class="pill">audio: chapter-00audio</div>
+      <div class="pill">audio: chapter-00audio <span class="heart" title="Maintenance Heart"><span>♥</span></span></div>
       <div class="pill">Paper: <span class="ok">OK ✓</span></div>
       <div class="pill">error: <span id="errText" class="err">(none)</span></div>
     </div>
@@ -361,33 +541,37 @@
 
   <script>
     (function(){
-      const VERSION = "v0.30.0";
+      const VERSION = "v0.31.0";
 
       const loading   = document.getElementById("loading");
       const coverImg  = document.getElementById("coverImg");
       const panelImg  = document.getElementById("panelImg");
 
       const playerDock= document.getElementById("playerDock");
-      const miniBtn   = document.getElementById("miniBtn");
-      const miniIcon  = document.getElementById("miniIcon");
-      const infoTag   = document.getElementById("infoTag");
-      const waveWrap  = document.getElementById("waveWrap");
+      const pUI       = document.getElementById("pUI");
+      const pBtn      = document.getElementById("pBtn");
+      const xBtn      = document.getElementById("xBtn");
+
+      const tri       = document.getElementById("tri");
+      const pauseIcon = document.getElementById("pauseIcon");
+
+      const waveBars  = document.getElementById("waveBars");
+      const progressMask = document.getElementById("progressMask");
+      const tCur      = document.getElementById("tCur");
+      const tDur      = document.getElementById("tDur");
 
       const maint     = document.getElementById("maint");
       const errText   = document.getElementById("errText");
-      const vText     = document.getElementById("vText");
 
-      const scFrame   = document.getElementById("scFrame");
-
-      vText.textContent = VERSION;
+      const scEngine  = document.getElementById("scEngine");
 
       function setError(msg){
         errText.textContent = msg ? msg : "(none)";
       }
 
-      // ---- Loading banner: hide after panel is ready ----
+      // ----- Loading banner: fade after panel is ready -----
       let panelReady = false;
-      function hideLoadingSoon(){
+      function tryHideLoading(){
         if(!panelReady) return;
         setTimeout(() => {
           loading.style.opacity = "0";
@@ -399,33 +583,25 @@
       panelImg.addEventListener("load", () => {
         panelReady = true;
         setError("(none)");
-        hideLoadingSoon();
+        tryHideLoading();
       }, { passive:true });
 
       panelImg.addEventListener("error", () => {
         panelReady = true;
         setError("Panel image missing / path error");
-        hideLoadingSoon();
+        tryHideLoading();
       }, { passive:true });
 
       coverImg.addEventListener("error", () => {
-        // cover missing shouldn't block reading
+        // cover missing shouldn't block
       }, { passive:true });
 
-      // ---- Maintenance trigger: gentle & intentional ----
-      // show after user scrolls a bit AND near bottom (prevents accidental popups)
-      function isNearBottom(){
-        const doc = document.documentElement;
-        const y = window.scrollY || doc.scrollTop || 0;
-        const vh = window.innerHeight || doc.clientHeight || 0;
-        const full = Math.max(doc.scrollHeight, document.body.scrollHeight);
-        return (y + vh) > (full - 220);
-      }
-
+      // ----- Maintenance: gentle trigger -----
+      // (shows only after intentional scroll; not too deep, not too early)
+      const SHOW_Y = 420;
       function onScroll(){
         const y = window.scrollY || document.documentElement.scrollTop || 0;
-        const shouldShow = (y > 180) && isNearBottom();
-        if(shouldShow){
+        if(y > SHOW_Y){
           maint.classList.add("show");
           maint.setAttribute("aria-hidden","false");
         }else{
@@ -436,102 +612,186 @@
       window.addEventListener("scroll", onScroll, { passive:true });
       onScroll();
 
-      // ---- SoundCloud control (play/pause) ----
+      // ----- Build decorative waveform (custom) -----
+      function buildBars(count){
+        waveBars.innerHTML = '<div class="progressMask" id="progressMask"></div>';
+        const pm = waveBars.querySelector("#progressMask");
+        for(let i=0;i<count;i++){
+          const h = 18 + Math.round(Math.random()*62); // 18..80
+          const b1 = document.createElement("div");
+          b1.className = "bar";
+          b1.style.height = h + "px";
+          waveBars.appendChild(b1);
+
+          const b2 = document.createElement("div");
+          b2.className = "bar";
+          b2.style.height = h + "px";
+          pm.appendChild(b2);
+        }
+        return pm;
+      }
+      let pmEl = buildBars(54);
+
+      // ----- SoundCloud hidden engine (Option A) -----
       let widget = null;
       let widgetReady = false;
+      let isPlaying = false;
+      let durationMs = 0;
+      let tick = null;
 
-      function safeBindReady(){
-        if(!window.SC || !SC.Widget) return;
-        widget = SC.Widget(scFrame);
+      function fmtTime(ms){
+        if(!ms || ms < 0) return "0:00";
+        const s = Math.floor(ms/1000);
+        const m = Math.floor(s/60);
+        const r = s % 60;
+        return m + ":" + String(r).padStart(2,"0");
+      }
 
-        widget.bind(SC.Widget.Events.READY, function(){
+      function setPlayUI(playing){
+        isPlaying = !!playing;
+        if(isPlaying){
+          tri.style.display = "none";
+          pauseIcon.style.display = "block";
+          pBtn.title = "Pause";
+        }else{
+          tri.style.display = "block";
+          pauseIcon.style.display = "none";
+          pBtn.title = "Play";
+        }
+      }
+
+      function setExpanded(exp){
+        if(exp){
+          pUI.classList.add("expanded");
+        }else{
+          pUI.classList.remove("expanded");
+          playerDock.classList.remove("shiftDown");
+        }
+      }
+
+      function startTick(){
+        if(tick) return;
+        tick = setInterval(() => {
+          if(!widgetReady || !widget) return;
+          widget.getDuration((d) => {
+            durationMs = d || durationMs || 0;
+            tDur.textContent = fmtTime(durationMs);
+          });
+          widget.getPosition((p) => {
+            tCur.textContent = fmtTime(p || 0);
+            const pct = (durationMs > 0) ? Math.max(0, Math.min(1, (p||0)/durationMs)) : 0;
+            pmEl.style.width = (pct*100).toFixed(2) + "%";
+          });
+        }, 220);
+      }
+
+      function stopTick(){
+        if(!tick) return;
+        clearInterval(tick);
+        tick = null;
+      }
+
+      function ensureWidget(){
+        if(widget) return widget;
+        if(!window.SC || !SC.Widget) return null;
+        widget = SC.Widget(scEngine);
+        widget.bind(SC.Widget.Events.READY, () => {
           widgetReady = true;
-        });
-
-        // Keep our button icon in sync if SC changes state
-        widget.bind(SC.Widget.Events.PLAY, function(){
-          miniIcon.className = "miniIcon pause";
-        });
-        widget.bind(SC.Widget.Events.PAUSE, function(){
-          miniIcon.className = "miniIcon play";
-        });
-        widget.bind(SC.Widget.Events.FINISH, function(){
-          miniIcon.className = "miniIcon play";
-        });
-        widget.bind(SC.Widget.Events.ERROR, function(){
-          setError("SoundCloud widget error");
-        });
-      }
-      safeBindReady();
-
-      function showInfoTemporarily(){
-        infoTag.classList.add("show");
-        // auto-hide on mobile after a beat
-        clearTimeout(showInfoTemporarily._t);
-        showInfoTemporarily._t = setTimeout(() => infoTag.classList.remove("show"), 1600);
-      }
-
-      // Hover on desktop
-      waveWrap.addEventListener("mouseenter", () => infoTag.classList.add("show"));
-      waveWrap.addEventListener("mouseleave", () => infoTag.classList.remove("show"));
-
-      // Tap on mobile toggles info briefly
-      waveWrap.addEventListener("click", () => showInfoTemporarily(), { passive:true });
-
-      // Click play button: play/pause (must be user gesture)
-      function togglePlay(){
-        showInfoTemporarily();
-
-        if(!widget){
-          setError("Widget not loaded");
-          return;
-        }
-        if(!widgetReady){
-          // Try again after READY (still within “user intent” but browser rules vary)
-          widget.bind(SC.Widget.Events.READY, function(){
-            widgetReady = true;
-            tryToggle();
+          startTick();
+          widget.getDuration((d) => {
+            durationMs = d || 0;
+            tDur.textContent = fmtTime(durationMs);
           });
-          tryToggle();
-          return;
-        }
-        tryToggle();
+        });
+        widget.bind(SC.Widget.Events.PLAY, () => setPlayUI(true));
+        widget.bind(SC.Widget.Events.PAUSE, () => setPlayUI(false));
+        widget.bind(SC.Widget.Events.FINISH, () => setPlayUI(false));
+        return widget;
       }
+      ensureWidget();
 
-      function tryToggle(){
+      // Core behavior:
+      // 1) First tap (collapsed): expand + play (same user gesture -> best chance on mobile)
+      // 2) While expanded: button toggles play/pause (NOT collapse)
+      // 3) Close only via X
+      function expandAndPlay(){
+        setExpanded(true);
+        playerDock.classList.remove("shiftDown");
+
+        const w = ensureWidget();
+        if(!w) return;
+
+        // Play attempt must be tied to the user gesture
         try{
-          widget.isPaused(function(paused){
-            if(paused){
-              widget.play();
-            }else{
-              widget.pause();
-            }
-          });
-        }catch(e){
-          setError("Play toggle failed");
+          if(widgetReady){
+            w.play();
+          }else{
+            // If not ready yet, play ASAP after ready
+            w.bind(SC.Widget.Events.READY, function onR(){
+              w.unbind(SC.Widget.Events.READY, onR);
+              try{ w.play(); }catch(e){}
+            });
+          }
+        }catch(e){}
+      }
+
+      function togglePlayPause(){
+        const w = ensureWidget();
+        if(!w || !widgetReady) return;
+
+        if(isPlaying){
+          try{ w.pause(); }catch(e){}
+        }else{
+          try{ w.play(); }catch(e){}
         }
       }
 
-      miniBtn.addEventListener("click", (e) => {
+      function closePlayer(){
+        setExpanded(false);
+        const w = ensureWidget();
+        if(w && widgetReady){
+          try{ w.pause(); }catch(e){}
+        }
+        stopTick();
+        // keep tick off when closed to save battery; restart when expanded
+      }
+
+      // Click on main button:
+      pBtn.addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
-        togglePlay();
+
+        // If collapsed: expand + play
+        if(!pUI.classList.contains("expanded")){
+          expandAndPlay();
+          startTick();
+          return;
+        }
+
+        // If expanded: toggle play/pause (do not collapse)
+        togglePlayPause();
       }, { passive:false });
 
-      // Keyboard accessibility
-      miniBtn.addEventListener("keydown", (e) => {
-        if(e.key === "Enter" || e.key === " "){
-          e.preventDefault();
-          togglePlay();
-        }
-      });
+      // Close X (only when expanded)
+      xBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        closePlayer();
+      }, { passive:false });
 
-      // Panel tap: if player is visible, shift down 200px (your reading gesture)
+      // Panel tap: if expanded, shift dock down 200px (toggle)
       panelImg.addEventListener("click", () => {
+        if(!pUI.classList.contains("expanded")) return;
         playerDock.classList.toggle("shiftDown");
       }, { passive:true });
 
-      // Crossbrowser safety: re-assert background rules
+      // Re-start tick when expanded (in case user reopened after long time)
+      const obs = new MutationObserver(() => {
+        if(pUI.classList.contains("expanded")) startTick();
+      });
+      obs.observe(pUI, { attributes:true, attributeFilter:["class"] });
+
+      // Safety: keep background non-repeating (some browsers)
       document.body.style.backgroundRepeat = "no-repeat";
       document.body.style.backgroundSize = "cover";
       document.body.style.backgroundPosition = "center top";
