@@ -7,7 +7,7 @@
 
   <style>
     :root{
-      --v: "v0.29.3";
+      --v: "v0.29.4";
       --safe-top: env(safe-area-inset-top, 0px);
       --safe-bottom: env(safe-area-inset-bottom, 0px);
 
@@ -17,6 +17,10 @@
 
       /* Option B light: we mask SC left zone */
       --sc-left-mask-w: 106px;
+
+      /* Cinematic mask heights */
+      --mask-top-h: 54px;
+      --mask-bottom-h: 84px;
     }
 
     html, body{
@@ -74,6 +78,34 @@
       border-radius:0;
       box-shadow:none;
       background:#000;
+    }
+
+    /* === CINEMATIC MASK (top & bottom bars) === */
+    .cinematicMask{
+      position:absolute;
+      inset:0;
+      pointer-events:none;
+      z-index:12; /* above panel, below playerDock (20) */
+    }
+    .cinematicMask .top,
+    .cinematicMask .bottom{
+      position:absolute;
+      left:0;
+      width:100%;
+      background:#000;
+    }
+    .cinematicMask .top{
+      top:0;
+      height: var(--mask-top-h);
+      /* soft fade into panel */
+      -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 78%, rgba(0,0,0,0));
+              mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 78%, rgba(0,0,0,0));
+    }
+    .cinematicMask .bottom{
+      bottom:0;
+      height: var(--mask-bottom-h);
+      -webkit-mask-image: linear-gradient(to top, rgba(0,0,0,1) 72%, rgba(0,0,0,0));
+              mask-image: linear-gradient(to top, rgba(0,0,0,1) 72%, rgba(0,0,0,0));
     }
 
     /* Player dock overlaps the lower black bar */
@@ -357,6 +389,12 @@
           decoding="async"
         />
 
+        <!-- Cinematic black bars -->
+        <div class="cinematicMask" aria-hidden="true">
+          <div class="top"></div>
+          <div class="bottom"></div>
+        </div>
+
         <!-- Player -->
         <div id="playerDock" class="playerDock">
           <div id="player" class="player" aria-label="Player">
@@ -405,10 +443,10 @@
   <!-- Maintenance (shows only after deep scroll) -->
   <div id="maint" class="maint" aria-hidden="true">
     <div class="maintBox">
-      <div class="pill">v0.29.3</div>
+      <div class="pill">v0.29.4</div>
       <div class="pill">chapter-00 / panel01</div>
       <div class="pill">audio: soundcloud embed</div>
-      <div class="pill">Paper: <span class="ok">OK ✓</span></div>
+      <div class="pill">Mask: <span class="ok">ON ✓</span></div>
       <div class="pill">error: <span id="errText" class="err">(none)</span></div>
     </div>
   </div>
@@ -418,7 +456,7 @@
 
   <script>
     (function(){
-      const VERSION = "v0.29.3";
+      const VERSION = "v0.29.4";
 
       const loading   = document.getElementById("loading");
       const coverImg  = document.getElementById("coverImg");
