@@ -7,7 +7,7 @@
 
   <style>
     :root{
-      --v: "v0.29.4";
+      --v: "v0.29.5";
       --safe-top: env(safe-area-inset-top, 0px);
       --safe-bottom: env(safe-area-inset-bottom, 0px);
 
@@ -18,7 +18,7 @@
       /* Option B light: we mask SC left zone */
       --sc-left-mask-w: 106px;
 
-      /* Cinematic mask heights */
+      /* Cinematic mask heights (crisp) */
       --mask-top-h: 54px;
       --mask-bottom-h: 84px;
     }
@@ -33,7 +33,6 @@
       overflow-x:hidden;
     }
 
-    /* Background: no repeat, no seams */
     body{
       background-image: var(--bg);
       background-size: cover;
@@ -70,7 +69,6 @@
       align-items:center;
     }
 
-    /* Panel image: fill width; no white frame; no rounding */
     .panelImg{
       width: min(100vw, 860px);
       height:auto;
@@ -80,7 +78,7 @@
       background:#000;
     }
 
-    /* === CINEMATIC MASK (top & bottom bars) === */
+    /* === CINEMATIC MASK (HARD EDGES) === */
     .cinematicMask{
       position:absolute;
       inset:0;
@@ -97,15 +95,10 @@
     .cinematicMask .top{
       top:0;
       height: var(--mask-top-h);
-      /* soft fade into panel */
-      -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 78%, rgba(0,0,0,0));
-              mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 78%, rgba(0,0,0,0));
     }
     .cinematicMask .bottom{
       bottom:0;
       height: var(--mask-bottom-h);
-      -webkit-mask-image: linear-gradient(to top, rgba(0,0,0,1) 72%, rgba(0,0,0,0));
-              mask-image: linear-gradient(to top, rgba(0,0,0,1) 72%, rgba(0,0,0,0));
     }
 
     /* Player dock overlaps the lower black bar */
@@ -126,7 +119,6 @@
       transform: translateX(-50%) translateY(200px);
     }
 
-    /* Collapsible player container */
     .player{
       position:relative;
       width:78px;
@@ -141,7 +133,6 @@
       transition: width .28s ease, height .28s ease, border-radius .28s ease, background .28s ease;
     }
 
-    /* Collapsed = ONLY button */
     .player .meta,
     .player .embedWrap,
     .player .openBtn,
@@ -159,7 +150,6 @@
       user-select:none;
     }
 
-    /* Play icon BLACK (requested) */
     .playIcon{
       width:0;
       height:0;
@@ -170,7 +160,6 @@
       filter: drop-shadow(0 2px 6px rgba(0,0,0,.25));
     }
 
-    /* Expanded player */
     .player.expanded{
       width: min(92vw, 640px);
       height: 240px;
@@ -185,7 +174,6 @@
       display:block;
     }
 
-    /* IMPORTANT: When expanded, HIDE our play button entirely (no double controls) */
     .player.expanded .playerBtn{
       display:none !important;
     }
@@ -273,7 +261,6 @@
       background: transparent;
     }
 
-    /* Option B light: mask the left SoundCloud zone for a cleaner look */
     .scMaskLeft{
       position:absolute;
       left:0;
@@ -285,7 +272,6 @@
       pointer-events:none;
     }
 
-    /* Loading overlay: hung cover banner ONLY, no rounded corners, no top gap */
     .loading{
       position:fixed;
       inset:0;
@@ -323,13 +309,11 @@
       border-radius:0;
     }
 
-    /* Short intentional scroll space */
     .bottomSpacer{
       height: 360px;
       width: 100%;
     }
 
-    /* Maintenance (hidden until deep scroll) */
     .maint{
       position:fixed;
       left:50%;
@@ -370,7 +354,6 @@
 </head>
 
 <body>
-  <!-- LOADING OVERLAY -->
   <div id="loading" class="loading" aria-hidden="false">
     <div class="coverBanner" role="img" aria-label="SANCTUM cover">
       <img id="coverImg" src="./manga/chapter-00/cover.jpg" alt="SANCTUM Cover" />
@@ -389,22 +372,19 @@
           decoding="async"
         />
 
-        <!-- Cinematic black bars -->
+        <!-- Cinematic black bars (hard edges) -->
         <div class="cinematicMask" aria-hidden="true">
           <div class="top"></div>
           <div class="bottom"></div>
         </div>
 
-        <!-- Player -->
         <div id="playerDock" class="playerDock">
           <div id="player" class="player" aria-label="Player">
 
-            <!-- Collapsed button only -->
             <div id="playerBtn" class="playerBtn" title="Play">
               <div class="playIcon" aria-hidden="true"></div>
             </div>
 
-            <!-- Expanded meta + controls -->
             <div class="meta" aria-hidden="true">
               <div class="t">SENTINEL</div>
               <div class="a">DAVID RAVENSON</div>
@@ -440,23 +420,20 @@
     <div class="bottomSpacer"></div>
   </div>
 
-  <!-- Maintenance (shows only after deep scroll) -->
   <div id="maint" class="maint" aria-hidden="true">
     <div class="maintBox">
-      <div class="pill">v0.29.4</div>
+      <div class="pill">v0.29.5</div>
       <div class="pill">chapter-00 / panel01</div>
-      <div class="pill">audio: soundcloud embed</div>
-      <div class="pill">Mask: <span class="ok">ON ✓</span></div>
+      <div class="pill">Mask: <span class="ok">HARD ✓</span></div>
       <div class="pill">error: <span id="errText" class="err">(none)</span></div>
     </div>
   </div>
 
-  <!-- SoundCloud Widget API -->
   <script src="https://w.soundcloud.com/player/api.js"></script>
 
   <script>
     (function(){
-      const VERSION = "v0.29.4";
+      const VERSION = "v0.29.5";
 
       const loading   = document.getElementById("loading");
       const coverImg  = document.getElementById("coverImg");
@@ -476,7 +453,6 @@
         errText.textContent = msg ? msg : "(none)";
       }
 
-      // ---- Loading banner: hide after panel is ready ----
       let panelReady = false;
 
       function tryHideLoading(){
@@ -501,10 +477,9 @@
       }, { passive:true });
 
       coverImg.addEventListener("error", () => {
-        // cover missing shouldn't block; still fade out when panel is ready
+        // cover missing shouldn't block
       }, { passive:true });
 
-      // ---- Maintenance only on deep scroll ----
       const SHOW_Y = 560;
       function onScroll(){
         const y = window.scrollY || document.documentElement.scrollTop || 0;
@@ -519,7 +494,6 @@
       window.addEventListener("scroll", onScroll, { passive:true });
       onScroll();
 
-      // ---- SoundCloud control (play on collapsed click) ----
       const widget = window.SC ? SC.Widget(scFrame) : null;
       let widgetReady = false;
 
@@ -535,7 +509,6 @@
       function openAndPlay(){
         player.classList.add("expanded");
         playerDock.classList.remove("shiftDown");
-
         if(widget){
           whenWidgetReady(() => {
             try { widget.play(); } catch(e) {}
