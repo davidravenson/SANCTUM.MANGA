@@ -7,7 +7,7 @@
 
   <style>
     :root{
-      --v: "v0.29.8";
+      --v: "v0.29.9";
       --safe-top: env(safe-area-inset-top, 0px);
       --safe-bottom: env(safe-area-inset-bottom, 0px);
 
@@ -26,15 +26,10 @@
       overflow-x:hidden;
     }
 
-    /* Cross-browser viewport stability (no visual change) */
     body{
       min-height: 100vh;
       min-height: 100svh;
       min-height: 100dvh;
-    }
-
-    /* Background: no repeat, no seams */
-    body{
       background-image: var(--bg);
       background-size: cover;
       background-position: center top;
@@ -44,12 +39,8 @@
       touch-action: pan-y;
     }
 
-    /* iOS Safari often glitches with background-attachment: fixed */
-    html.ios body{
-      background-attachment: scroll;
-    }
+    html.ios body{ background-attachment: scroll; }
 
-    /* Blur fallback (layout unchanged) */
     @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))){
       .player{ background: rgba(255,255,255,.14) !important; }
       .loading::before{ background: rgba(0,0,0,.18) !important; }
@@ -84,7 +75,6 @@
       align-items:center;
     }
 
-    /* Panel image: fill width; no white frame; no rounding */
     .panelImg{
       width: min(100vw, 860px);
       height:auto;
@@ -97,7 +87,6 @@
       -webkit-user-drag:none;
     }
 
-    /* Player dock overlaps the lower black bar */
     .playerDock{
       position:absolute;
       left:50%;
@@ -115,7 +104,6 @@
       transform: translateX(-50%) translateY(200px);
     }
 
-    /* Collapsible player container */
     .player{
       position:relative;
       width:78px;
@@ -130,13 +118,10 @@
       transition: width .28s ease, height .28s ease, border-radius .28s ease;
     }
 
-    /* Collapsed = ONLY button */
     .player .meta,
     .player .embedWrap,
     .player .openBtn,
-    .player .closeBtn{
-      display:none;
-    }
+    .player .closeBtn{ display:none; }
 
     .playerBtn{
       width:100%;
@@ -148,7 +133,6 @@
       user-select:none;
     }
 
-    /* Play icon BLACK */
     .playIcon{
       width:0;
       height:0;
@@ -159,25 +143,17 @@
       filter: drop-shadow(0 2px 6px rgba(0,0,0,.25));
     }
 
-    /* Expanded player */
     .player.expanded{
       width: min(92vw, 640px);
       height: 240px;
       border-radius: 22px;
       background: rgba(255,255,255,.12);
     }
-
     .player.expanded .meta,
     .player.expanded .embedWrap,
     .player.expanded .openBtn,
-    .player.expanded .closeBtn{
-      display:block;
-    }
-
-    /* When expanded, HIDE our play button entirely */
-    .player.expanded .playerBtn{
-      display:none !important;
-    }
+    .player.expanded .closeBtn{ display:block; }
+    .player.expanded .playerBtn{ display:none !important; }
 
     .meta{
       position:absolute;
@@ -268,7 +244,6 @@
       display:block;
     }
 
-    /* Loading overlay: hung cover banner ONLY */
     .loading{
       position:fixed;
       inset:0;
@@ -306,13 +281,12 @@
       border-radius:0;
     }
 
-    /* Short intentional scroll space */
+    /* Give enough scroll room on all screens (still not endless) */
     .bottomSpacer{
-      height: 360px;
+      height: 720px;
       width: 100%;
     }
 
-    /* Maintenance (hidden until scroll) */
     .maint{
       position:fixed;
       left:50%;
@@ -354,7 +328,6 @@
 </head>
 
 <body>
-  <!-- LOADING OVERLAY -->
   <div id="loading" class="loading" aria-hidden="false">
     <div class="coverBanner" role="img" aria-label="SANCTUM cover">
       <img id="coverImg" src="./manga/chapter-00/cover.jpg" alt="SANCTUM Cover" />
@@ -373,16 +346,13 @@
           decoding="async"
         />
 
-        <!-- Player -->
         <div id="playerDock" class="playerDock">
           <div id="player" class="player" aria-label="Player">
 
-            <!-- Collapsed button only -->
             <div id="playerBtn" class="playerBtn" title="Play">
               <div class="playIcon" aria-hidden="true"></div>
             </div>
 
-            <!-- Expanded meta + controls -->
             <div class="meta" aria-hidden="true">
               <div class="t">SENTINEL</div>
               <div class="a">DAVID RAVENSON</div>
@@ -417,16 +387,14 @@
     <div class="bottomSpacer"></div>
   </div>
 
-  <!-- Maintenance (shows after scroll) -->
   <div id="maint" class="maint" aria-hidden="true">
     <div class="maintBox">
-      <div class="pill">v0.29.8</div>
+      <div class="pill">v0.29.9</div>
       <div class="pill">chapter-00 / panel01</div>
       <div class="pill">audio: SoundCloud</div>
       <div class="pill">Paper: <span class="ok">OK ✓</span></div>
       <div class="pill">error: <span id="errText" class="err">(none)</span></div>
 
-      <!-- Debug heart -->
       <div class="pill">SC: <span id="dbgSc" class="warn">…</span></div>
       <div class="pill">READY: <span id="dbgReady" class="warn">…</span></div>
       <div class="pill">PLAY_REQ: <span id="dbgReq" class="warn">…</span></div>
@@ -434,14 +402,12 @@
     </div>
   </div>
 
-  <!-- SoundCloud Widget API -->
   <script src="https://w.soundcloud.com/player/api.js"></script>
 
   <script>
     (function(){
-      const VERSION = "v0.29.8";
+      const VERSION = "v0.29.9";
 
-      // iOS detection (for background-attachment fix)
       const ua = navigator.userAgent || "";
       const isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
       if(isIOS) document.documentElement.classList.add("ios");
@@ -465,58 +431,37 @@
 
       const scFrame   = document.getElementById("scFrame");
 
-      function setError(msg){
-        errText.textContent = msg ? msg : "(none)";
-      }
+      function setError(msg){ errText.textContent = msg ? msg : "(none)"; }
+      function setDbg(el, text, cls){ el.textContent = text; el.className = cls; }
 
-      function setDbg(el, text, cls){
-        el.textContent = text;
-        el.className = cls;
-      }
-
-      // Default debug
       setDbg(dbgSc, "loading", "warn");
       setDbg(dbgReady, "no", "warn");
       setDbg(dbgReq, "no", "warn");
       setDbg(dbgLast, "boot", "warn");
 
-      // ---- Loading banner: hide after panel is ready (works even with cache) ----
+      // Loader: hide after panel is ready (works even if cached)
       function hideLoading(){
         loading.style.opacity = "0";
         loading.setAttribute("aria-hidden","true");
         setTimeout(() => { loading.style.display = "none"; }, 420);
       }
-
-      function panelIsReady(img){
-        return img && img.complete && img.naturalWidth > 0;
-      }
-
-      function tryHideLoading(){
-        setTimeout(hideLoading, 550);
-      }
+      function panelIsReady(img){ return img && img.complete && img.naturalWidth > 0; }
+      function tryHideLoading(){ setTimeout(hideLoading, 550); }
 
       if(panelIsReady(panelImg)){
         setError("(none)");
         tryHideLoading();
       }else{
-        panelImg.addEventListener("load", () => {
-          setError("(none)");
-          tryHideLoading();
-        }, { passive:true });
-
-        panelImg.addEventListener("error", () => {
-          setError("Panel image missing / path error");
-          tryHideLoading();
-        }, { passive:true });
+        panelImg.addEventListener("load", () => { setError("(none)"); tryHideLoading(); }, { passive:true });
+        panelImg.addEventListener("error", () => { setError("Panel image missing / path error"); tryHideLoading(); }, { passive:true });
       }
-
       coverImg.addEventListener("error", () => {}, { passive:true });
 
-      // ---- Maintenance trigger (SANFTER) ----
-      const SHOW_Y = 240; // was 560
-      function onScroll(){
-        const y = window.scrollY || document.documentElement.scrollTop || 0;
-        if(y > SHOW_Y){
+      // Maintenance visibility: scroll OR "not scrollable" fallback OR 2-finger toggle
+      const SHOW_Y = 240;
+
+      function setMaintVisible(on){
+        if(on){
           maint.classList.add("show");
           maint.setAttribute("aria-hidden","false");
         }else{
@@ -524,23 +469,48 @@
           maint.setAttribute("aria-hidden","true");
         }
       }
+
+      function isScrollable(){
+        const doc = document.documentElement;
+        return (doc.scrollHeight - window.innerHeight) > 8;
+      }
+
+      function onScroll(){
+        const y = window.scrollY || document.documentElement.scrollTop || 0;
+        if(!isScrollable()){
+          // If the page can't scroll, ALWAYS show debug so you aren't blind
+          setMaintVisible(true);
+          setDbg(dbgLast, "no-scroll => maint ON", "warn");
+          return;
+        }
+        setMaintVisible(y > SHOW_Y);
+      }
+
       window.addEventListener("scroll", onScroll, { passive:true });
+      window.addEventListener("resize", onScroll, { passive:true });
       onScroll();
 
-      // ---- SoundCloud HARDENING ----
+      // 2-finger tap on panel toggles maintenance (reliable on mobile)
+      panelImg.addEventListener("touchstart", (e) => {
+        if(e.touches && e.touches.length === 2){
+          e.preventDefault();
+          setMaintVisible(!maint.classList.contains("show"));
+          setDbg(dbgLast, "2-finger toggle", "ok");
+        }
+      }, { passive:false });
+
+      // SoundCloud hardening
       let widget = null;
       let widgetReady = false;
       let pendingPlay = false;
 
       function bindWidgetEvents(w){
         widget = w;
-
         try{
           widget.bind(SC.Widget.Events.READY, function(){
             widgetReady = true;
             setDbg(dbgReady, "yes", "ok");
             setDbg(dbgLast, "READY", "ok");
-
             if(pendingPlay){
               pendingPlay = false;
               setDbg(dbgReq, "no", "ok");
@@ -548,7 +518,6 @@
               catch(e){ setDbg(dbgLast, "play err", "err"); }
             }
           });
-
           widget.bind(SC.Widget.Events.PLAY,  function(){ setDbg(dbgLast, "PLAY",  "ok"); });
           widget.bind(SC.Widget.Events.PAUSE, function(){ setDbg(dbgLast, "PAUSE", "warn"); });
           widget.bind(SC.Widget.Events.ERROR, function(){ setDbg(dbgLast, "ERROR", "err"); });
@@ -607,7 +576,6 @@
         playerDock.classList.remove("shiftDown");
         pendingPlay = false;
         setDbg(dbgReq, "no", "ok");
-
         if(widget){
           try { widget.pause(); setDbg(dbgLast, "pause()", "warn"); }
           catch(e){ setDbg(dbgLast, "pause err", "err"); }
@@ -631,7 +599,6 @@
         playerDock.classList.toggle("shiftDown");
       }, { passive:true });
 
-      // Safety: keep background non-repeating
       document.body.style.backgroundRepeat = "no-repeat";
       document.body.style.backgroundSize = "cover";
       document.body.style.backgroundPosition = "center top";
