@@ -7,7 +7,7 @@
 
   <style>
     :root{
-      --v: "v0.29.8";
+      --v: "v0.30.0";
       --safe-top: env(safe-area-inset-top, 0px);
       --safe-bottom: env(safe-area-inset-bottom, 0px);
 
@@ -19,20 +19,21 @@
       --mask-bottom-h: 84px;
       --mask-black: #000;
 
-      /* Panels */
-      --panel-gap: 120px;
-
       /* SoundCloud left zone mask */
       --sc-left-mask-w: 106px;
+
+      /* Reader */
+      --max-w: 860px;
     }
 
     html, body{
       margin:0;
+      height:100%;
       background:#000;
       color:#fff;
       font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
       -webkit-tap-highlight-color: transparent;
-      overflow-x:hidden;
+      overflow:hidden; /* important: no vertical page scroll, we swipe horizontally */
     }
 
     body{
@@ -42,7 +43,7 @@
       background-repeat: no-repeat;
       background-attachment: fixed;
       overscroll-behavior: none;
-      touch-action: pan-y;
+      touch-action: pan-y; /* allow small vertical, but main is x */
     }
 
     /* ===== LOADING OVERLAY ===== */
@@ -82,27 +83,52 @@
       border-radius:0;
     }
 
-    /* ===== PAGE / READER ===== */
-    .page{
-      min-height:100vh;
-      display:flex;
-      justify-content:center;
-    }
-    .reader{
-      width:100%;
-      max-width: 860px;
+    /* ===== SWIPE READER ===== */
+    .app{
+      height:100%;
       display:flex;
       flex-direction:column;
+    }
+
+    .viewport{
+      position:relative;
+      flex:1 1 auto;
+      height:100%;
+      overflow-x:auto;
+      overflow-y:hidden;
+      scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior-x: contain;
+      overscroll-behavior-y: none;
+      scroll-behavior: smooth;
+      touch-action: pan-x; /* make horizontal swipe feel native */
+    }
+
+    /* hide scrollbar */
+    .viewport::-webkit-scrollbar{ display:none; }
+    .viewport{ scrollbar-width:none; }
+
+    .track{
+      height:100%;
+      display:flex;
+      flex-direction:row;
+    }
+
+    .slide{
+      flex:0 0 100%;
+      height:100%;
+      scroll-snap-align: center;
+      display:flex;
       align-items:center;
-      gap: var(--panel-gap);
+      justify-content:center;
       padding-top: var(--safe-top);
-      padding-bottom: 360px;
+      padding-bottom: calc(20px + var(--safe-bottom));
       box-sizing:border-box;
     }
 
     .panelShell{
       position:relative;
-      width:100%;
+      width: min(100vw, var(--max-w));
       display:flex;
       justify-content:center;
       align-items:center;
@@ -111,7 +137,7 @@
     /* Holy border: nothing may bleed outside */
     .panelFrame{
       position:relative;
-      width: min(100vw, 860px);
+      width:100%;
       overflow:hidden;
       background:#000;
       transform: translateZ(0);
@@ -154,13 +180,13 @@
     .cinematicMask .top{ top:0; height: var(--mask-top-h); }
     .cinematicMask .bottom{ bottom:0; height: var(--mask-bottom-h); }
 
-    /* ===== PLAYER (attached to first panel) ===== */
+    /* ===== PLAYER (fixed: stays consistent while swiping) ===== */
     .playerDock{
-      position:absolute;
+      position:fixed;
       left:50%;
-      bottom:-26px;
+      bottom: calc(12px + var(--safe-bottom));
       transform: translateX(-50%);
-      z-index:20;
+      z-index:30;
       display:flex;
       align-items:center;
       justify-content:center;
@@ -190,9 +216,7 @@
     .player .meta,
     .player .embedWrap,
     .player .openBtn,
-    .player .closeBtn{
-      display:none;
-    }
+    .player .closeBtn{ display:none; }
 
     .playerBtn{
       width:100%;
@@ -221,18 +245,11 @@
       border-radius: 22px;
       background: rgba(255,255,255,.12);
     }
-
     .player.expanded .meta,
     .player.expanded .embedWrap,
     .player.expanded .openBtn,
-    .player.expanded .closeBtn{
-      display:block;
-    }
-
-    /* Hide our button entirely when expanded (no double controls) */
-    .player.expanded .playerBtn{
-      display:none !important;
-    }
+    .player.expanded .closeBtn{ display:block; }
+    .player.expanded .playerBtn{ display:none !important; }
 
     .meta{
       position:absolute;
@@ -327,43 +344,19 @@
       pointer-events:none;
     }
 
-    /* ===== Maintenance (optional debug, deep scroll) ===== */
-    .maint{
+    /* ===== Minimal HUD (optional) ===== */
+    .hud{
       position:fixed;
-      left:50%;
-      bottom: calc(10px + var(--safe-bottom));
-      transform: translateX(-50%);
-      width: min(92vw, 720px);
-      z-index:50;
-      opacity:0;
+      left: 12px;
+      top: calc(12px + var(--safe-top));
+      z-index:40;
+      font-weight:800;
+      letter-spacing:.02em;
+      opacity:.85;
+      user-select:none;
       pointer-events:none;
-      transition: opacity .25s ease, transform .25s ease;
+      text-shadow: 0 10px 30px rgba(0,0,0,.55);
     }
-    .maint.show{
-      opacity:1;
-      pointer-events:auto;
-      transform: translateX(-50%) translateY(0);
-    }
-    .maintBox{
-      background: rgba(0,0,0,.40);
-      border: 1px solid rgba(255,255,255,.16);
-      border-radius: 18px;
-      padding: 12px 14px;
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-      box-shadow: 0 16px 40px rgba(0,0,0,.35);
-      font-size: 14px;
-      line-height: 1.25;
-      color: rgba(255,255,255,.90);
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-      align-items:center;
-      justify-content: space-between;
-    }
-    .pill{ opacity:.9; white-space:nowrap; }
-    .ok{ color:#7CFF9A; font-weight:800; }
-    .err{ color:#FF7C7C; font-weight:800; }
   </style>
 </head>
 
@@ -375,92 +368,91 @@
     </div>
   </div>
 
-  <div class="page">
-    <div class="reader">
+  <div class="app">
+    <div class="hud" id="hud">panel 01 / 02</div>
 
-      <!-- PANEL 01 (player attached here) -->
-      <div class="panelShell" id="panelShell1">
-        <div class="panelFrame">
-          <img
-            id="panelImg1"
-            class="panelImg"
-            src="./manga/chapter-00/panel01.jpg"
-            alt="Panel 01"
-            loading="eager"
-            decoding="async"
-          />
-          <div class="cinematicMask" aria-hidden="true">
-            <div class="top"></div>
-            <div class="bottom"></div>
+    <div class="viewport" id="viewport">
+      <div class="track" id="track">
+
+        <!-- SLIDE 1 -->
+        <section class="slide" data-panel="panel01.jpg">
+          <div class="panelShell">
+            <div class="panelFrame">
+              <img
+                id="panelImg1"
+                class="panelImg"
+                src="./manga/chapter-00/panel01.jpg"
+                alt="Panel 01"
+                loading="eager"
+                decoding="async"
+              />
+              <div class="cinematicMask" aria-hidden="true">
+                <div class="top"></div>
+                <div class="bottom"></div>
+              </div>
+            </div>
           </div>
-        </div>
+        </section>
 
-        <!-- Player -->
-        <div id="playerDock" class="playerDock">
-          <div id="player" class="player" aria-label="Player">
-
-            <div id="playerBtn" class="playerBtn" title="Play">
-              <div class="playIcon" aria-hidden="true"></div>
+        <!-- SLIDE 2 -->
+        <section class="slide" data-panel="panel02.jpg">
+          <div class="panelShell">
+            <div class="panelFrame">
+              <img
+                id="panelImg2"
+                class="panelImg"
+                src="./manga/chapter-00/panel02.jpg"
+                alt="Panel 02"
+                loading="lazy"
+                decoding="async"
+              />
+              <div class="cinematicMask" aria-hidden="true">
+                <div class="top"></div>
+                <div class="bottom"></div>
+              </div>
             </div>
-
-            <div class="meta" aria-hidden="true">
-              <div class="t">SENTINEL</div>
-              <div class="a">DAVID RAVENSON</div>
-            </div>
-
-            <a
-              class="openBtn"
-              href="https://soundcloud.com/user-543596862/sentinel-2"
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-hidden="true"
-            >Open on SoundCloud</a>
-
-            <div id="closeBtn" class="closeBtn" aria-hidden="true" title="Close">×</div>
-
-            <div class="embedWrap" aria-hidden="true">
-              <iframe
-                id="scFrame"
-                allow="autoplay"
-                scrolling="no"
-                frameborder="no"
-                src="https://w.soundcloud.com/player/?url=https%3A//soundcloud.com/user-543596862/sentinel-2&color=%23000000&auto_play=false&hide_related=true&show_comments=false&show_user=false&show_reposts=false&show_teaser=false&visual=false"
-                title="SoundCloud player"
-              ></iframe>
-              <div class="scMaskLeft" aria-hidden="true"></div>
-            </div>
-
           </div>
-        </div>
+        </section>
+
       </div>
-
-      <!-- PANEL 02 -->
-      <div class="panelShell">
-        <div class="panelFrame">
-          <img
-            class="panelImg"
-            src="./manga/chapter-00/panel02.jpg"
-            alt="Panel 02"
-            loading="lazy"
-            decoding="async"
-          />
-          <div class="cinematicMask" aria-hidden="true">
-            <div class="top"></div>
-            <div class="bottom"></div>
-          </div>
-        </div>
-      </div>
-
     </div>
   </div>
 
-  <!-- Maintenance -->
-  <div id="maint" class="maint" aria-hidden="true">
-    <div class="maintBox">
-      <div class="pill">v0.29.8</div>
-      <div class="pill">Mask: <span class="ok">HARD ✓</span></div>
-      <div class="pill">Load: <span id="loadState" class="ok">WAIT…</span></div>
-      <div class="pill">error: <span id="errText" class="err">(none)</span></div>
+  <!-- PLAYER (fixed overlay) -->
+  <div id="playerDock" class="playerDock">
+    <div id="player" class="player" aria-label="Player">
+
+      <div id="playerBtn" class="playerBtn" title="Play">
+        <div class="playIcon" aria-hidden="true"></div>
+      </div>
+
+      <div class="meta" aria-hidden="true">
+        <div class="t">SENTINEL</div>
+        <div class="a">DAVID RAVENSON</div>
+      </div>
+
+      <a
+        class="openBtn"
+        href="https://soundcloud.com/user-543596862/sentinel-2"
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-hidden="true"
+      >Open on SoundCloud</a>
+
+      <div id="closeBtn" class="closeBtn" aria-hidden="true" title="Close">×</div>
+
+      <div class="embedWrap" aria-hidden="true">
+        <iframe
+          id="scFrame"
+          allow="autoplay"
+          scrolling="no"
+          frameborder="no"
+          src="https://w.soundcloud.com/player/?url=https%3A//soundcloud.com/user-543596862/sentinel-2&color=%23000000&auto_play=false&hide_related=true&show_comments=false&show_user=false&show_reposts=false&show_teaser=false&visual=false"
+          title="SoundCloud player"
+        ></iframe>
+        <div class="scMaskLeft" aria-hidden="true"></div>
+      </div>
+
     </div>
   </div>
 
@@ -469,72 +461,50 @@
 
   <script>
     (function(){
-      const VERSION = "v0.29.8";
+      const VERSION = "v0.30.0";
 
       const loading   = document.getElementById("loading");
-      const coverImg  = document.getElementById("coverImg");
       const panelImg1 = document.getElementById("panelImg1");
+      const panelImg2 = document.getElementById("panelImg2");
+
+      const viewport  = document.getElementById("viewport");
+      const hud       = document.getElementById("hud");
 
       const player     = document.getElementById("player");
       const playerBtn  = document.getElementById("playerBtn");
       const closeBtn   = document.getElementById("closeBtn");
       const playerDock = document.getElementById("playerDock");
+      const scFrame    = document.getElementById("scFrame");
 
-      const maint     = document.getElementById("maint");
-      const errText   = document.getElementById("errText");
-      const loadState = document.getElementById("loadState");
-
-      const scFrame   = document.getElementById("scFrame");
-
-      function setError(msg){
-        errText.textContent = msg ? msg : "(none)";
-      }
-
-      /* ===== Load banner logic (returns!) ===== */
-      let panelReady = false;
-
+      /* ===== Load banner ===== */
       function hideLoading(){
-        loadState.textContent = "OK ✓";
         setTimeout(() => {
           loading.style.opacity = "0";
           loading.setAttribute("aria-hidden","true");
           setTimeout(() => { loading.style.display = "none"; }, 420);
         }, 550);
       }
+      panelImg1.addEventListener("load", hideLoading, { passive:true });
+      panelImg1.addEventListener("error", hideLoading, { passive:true });
 
-      panelImg1.addEventListener("load", () => {
-        panelReady = true;
-        setError("(none)");
-        hideLoading();
-      }, { passive:true });
+      /* Preload panel 02 early for “film strip” feel */
+      (function preloadSecond(){
+        const img = new Image();
+        img.src = panelImg2.getAttribute("src");
+      })();
 
-      panelImg1.addEventListener("error", () => {
-        panelReady = true;
-        setError("Panel 01 missing / path error");
-        loadState.textContent = "FAIL";
-        hideLoading();
-      }, { passive:true });
-
-      coverImg.addEventListener("error", () => {
-        // cover missing should not block
-      }, { passive:true });
-
-      /* ===== Maintenance only on deep scroll ===== */
-      const SHOW_Y = 560;
-      function onScroll(){
-        const y = window.scrollY || document.documentElement.scrollTop || 0;
-        if(y > SHOW_Y){
-          maint.classList.add("show");
-          maint.setAttribute("aria-hidden","false");
-        }else{
-          maint.classList.remove("show");
-          maint.setAttribute("aria-hidden","true");
-        }
+      /* ===== Swipe HUD (panel counter) ===== */
+      const total = 2;
+      function updateHud(){
+        const x = viewport.scrollLeft;
+        const w = viewport.clientWidth || 1;
+        const idx = Math.max(0, Math.min(total-1, Math.round(x / w)));
+        hud.textContent = "panel " + String(idx+1).padStart(2,"0") + " / " + String(total).padStart(2,"0");
       }
-      window.addEventListener("scroll", onScroll, { passive:true });
-      onScroll();
+      viewport.addEventListener("scroll", () => { requestAnimationFrame(updateHud); }, { passive:true });
+      updateHud();
 
-      /* ===== SoundCloud widget hookup (play button works again) ===== */
+      /* ===== SoundCloud widget hookup ===== */
       const widget = (window.SC && scFrame) ? SC.Widget(scFrame) : null;
       let widgetReady = false;
 
@@ -550,8 +520,6 @@
       function openAndPlay(){
         player.classList.add("expanded");
         playerDock.classList.remove("shiftDown");
-
-        // MUST happen on same user gesture for mobile autoplay rules
         if(widget){
           whenWidgetReady(() => {
             try { widget.play(); } catch(e) {}
@@ -579,10 +547,15 @@
         closePlayer();
       }, { passive:false });
 
-      // Tap panel 01 toggles dock shift IF expanded
-      panelImg1.addEventListener("click", () => {
+      /* Tap anywhere on current panel toggles dock shift IF expanded (like your earlier mechanic) */
+      document.addEventListener("click", (e) => {
         if(!player.classList.contains("expanded")) return;
-        playerDock.classList.toggle("shiftDown");
+        const tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : "";
+        if(tag === "a" || tag === "button") return;
+        // if user taps on an image area, toggle shift
+        if(e.target && e.target.classList && e.target.classList.contains("panelImg")){
+          playerDock.classList.toggle("shiftDown");
+        }
       }, { passive:true });
 
       console.log("SANCTUM", VERSION);
