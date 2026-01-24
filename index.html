@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="de">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
@@ -7,229 +7,304 @@
 
   <style>
     :root{
-      --v: "v0.30.3";
+      --v: "v0.31.0";
+
       --safe-top: env(safe-area-inset-top, 0px);
       --safe-bottom: env(safe-area-inset-bottom, 0px);
 
-      --bg: url("./media/ui/manga_paper_bg.png");
-      --shadow: 0 16px 40px rgba(0,0,0,.35);
+      /* PAGE */
+      --bg: #000;
+      --ink: #fff;
+
+      /* PLAYER CARD */
+      --card-w: min(96vw, 740px);
+      --card-h: 220px;
+      --radius: 22px;
+      --shadow: 0 18px 60px rgba(0,0,0,.45);
+
+      /* Layout: linke SoundCloud-Zone (Play/Artwork) die wir im Expanded-State abdecken */
+      --sc-left-mask-w: 108px;
+
+      /* Abstände */
+      --pad: 14px;
+
+      /* Farben */
+      --glass: rgba(255,255,255,.10);
+      --glass2: rgba(255,255,255,.16);
+      --stroke: rgba(255,255,255,.18);
+      --muted: rgba(255,255,255,.70);
+
+      /* Player-Dock Position */
+      --dock-gap: 14px;
     }
 
     html, body{
       height:100%;
       margin:0;
-      background:#000;
-      color:#fff;
+      background: var(--bg);
+      color: var(--ink);
       font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-      -webkit-tap-highlight-color: transparent;
       overflow-x:hidden;
     }
 
-    body{
-      background-image: var(--bg);
-      background-size: cover;
-      background-position: center top;
-      background-repeat: no-repeat;
-      background-attachment: fixed;
-      overscroll-behavior: none;
-      touch-action: pan-y;
+    /* --- DEMO / Platzhalter-Inhalt (ersetze das mit deinem Reader-Layout) --- */
+    .demo-stage{
+      min-height:100%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding: 24px 14px calc(220px + var(--safe-bottom) + 24px) 14px;
+      box-sizing:border-box;
+    }
+    .panel{
+      width:min(92vw, 860px);
+      aspect-ratio: 3 / 4;
+      background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.04));
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 18px;
+      box-shadow: 0 16px 50px rgba(0,0,0,.35);
+      position:relative;
+      overflow:hidden;
+    }
+    .panel:before{
+      content:"SANCTUM — Panel Preview";
+      position:absolute;
+      left:16px;
+      top:14px;
+      font-weight:700;
+      letter-spacing:.02em;
+      opacity:.85;
+    }
+    .panel:after{
+      content: attr(data-v);
+      position:absolute;
+      right:16px;
+      top:14px;
+      font-weight:600;
+      opacity:.6;
+      font-size:.95rem;
     }
 
-    .page{
-      min-height:100vh;
+    /* --- PLAYER DOCK --- */
+    .dock{
+      position: fixed;
+      left: 50%;
+      bottom: calc(var(--dock-gap) + var(--safe-bottom));
+      transform: translateX(-50%);
+      width: var(--card-w);
+      z-index: 9999;
+      pointer-events:none; /* wir schalten pointer-events unten gezielt an */
+    }
+
+    /* Mini-Tab (collapsed) */
+    .tab{
+      pointer-events:auto;
+      width: 100%;
+      height: 62px;
+      border-radius: 999px;
+      background: linear-gradient(180deg, rgba(255,255,255,.14), rgba(255,255,255,.08));
+      border: 1px solid rgba(255,255,255,.16);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      display:flex;
+      align-items:center;
+      gap: 12px;
+      padding: 10px 12px;
+      box-sizing:border-box;
+      cursor:pointer;
+      user-select:none;
+      transition: transform .22s ease, opacity .22s ease;
+    }
+    .tab:hover{ transform: translateY(-1px); }
+
+    .tab .pill{
+      width: 42px;
+      height: 42px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.18);
+      background: rgba(0,0,0,.28);
+      display:grid;
+      place-items:center;
+      flex: 0 0 auto;
+    }
+
+    .tab .meta{
+      min-width:0;
       display:flex;
       flex-direction:column;
-      align-items:center;
+      line-height:1.05;
     }
-
-    .stage{
-      position:relative;
-      width:100%;
-      max-width: 860px;
-      padding-top: calc(0px + var(--safe-top));
-      padding-bottom: 12px;
-      display:flex;
-      justify-content:center;
-      align-items:center;
-    }
-
-    .panelShell{
-      position:relative;
-      width:100%;
-      display:flex;
-      justify-content:center;
-      align-items:center;
-    }
-
-    .panelImg{
-      width: min(100vw, 860px);
-      height:auto;
-      display:block;
-      border-radius:0;
-      box-shadow:none;
-      background:#000;
-    }
-
-    /* Player dock overlaps lower black bar */
-    .playerDock{
-      position:absolute;
-      left:50%;
-      bottom:-26px;
-      transform: translateX(-50%);
-      z-index:20;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      pointer-events:auto;
-      transition: transform .25s ease;
-      will-change: transform;
-    }
-    .playerDock.shiftDown{
-      transform: translateX(-50%) translateY(200px);
-    }
-
-    /* Collapsible player container */
-    .player{
-      position:relative;
-      width:78px;
-      height:78px;
-      border-radius:999px;
-      background: rgba(255,255,255,.10);
-      border: 1px solid rgba(255,255,255,.18);
-      box-shadow: var(--shadow);
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
+    .tab .meta .t{
+      font-weight:800;
+      letter-spacing:.02em;
+      font-size: 1.05rem;
+      white-space:nowrap;
       overflow:hidden;
-      transition: width .28s ease, height .28s ease, border-radius .28s ease;
+      text-overflow:ellipsis;
+    }
+    .tab .meta .a{
+      margin-top:4px;
+      font-weight:650;
+      opacity:.72;
+      font-size:.92rem;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
     }
 
-    /* Collapsed = ONLY button */
-    .player .meta,
-    .player .embedWrap,
-    .player .openBtn,
-    .player .closeBtn{
-      display:none;
+    .tab .right{
+      margin-left:auto;
+      display:flex;
+      gap:10px;
+      align-items:center;
+      flex:0 0 auto;
     }
 
-    .playerBtn{
+    .iconbtn{
+      width: 42px;
+      height: 42px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.18);
+      background: rgba(0,0,0,.26);
+      display:grid;
+      place-items:center;
+      cursor:pointer;
+      transition: transform .12s ease, background .12s ease;
+    }
+    .iconbtn:active{ transform: scale(.98); }
+    .iconbtn:hover{ background: rgba(0,0,0,.34); }
+    .iconbtn svg{ width: 18px; height: 18px; fill: #fff; opacity:.92; }
+
+    /* Expanded Card */
+    .card{
+      pointer-events:auto;
+      width: 100%;
+      height: var(--card-h);
+      border-radius: var(--radius);
+      background: linear-gradient(180deg, rgba(255,255,255,.14), rgba(255,255,255,.08));
+      border: 1px solid rgba(255,255,255,.16);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      overflow:hidden;
+      transform-origin: 50% 100%;
+      transform: translateY(18px) scale(.985);
+      opacity:0;
+      pointer-events:none;
+      transition: opacity .22s ease, transform .22s ease;
+    }
+    .dock[data-open="1"] .card{
+      opacity:1;
+      transform: translateY(0) scale(1);
+      pointer-events:auto;
+    }
+    .dock[data-open="1"] .tab{
+      opacity:0;
+      transform: translateY(10px);
+      pointer-events:none;
+    }
+
+    .card-inner{
+      height:100%;
+      display:grid;
+      grid-template-rows: 62px 1fr 34px;
+    }
+
+    /* Topbar */
+    .topbar{
+      display:flex;
+      align-items:center;
+      gap: 12px;
+      padding: 10px 12px;
+      box-sizing:border-box;
+      border-bottom: 1px solid rgba(255,255,255,.12);
+      background: linear-gradient(180deg, rgba(0,0,0,.22), rgba(0,0,0,.06));
+    }
+    .topbar .badge{
+      width: 44px;
+      height: 44px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,.16);
+      background: rgba(0,0,0,.30);
+      display:grid;
+      place-items:center;
+      flex: 0 0 auto;
+    }
+    .topbar .badge svg{ width: 22px; height: 22px; fill:#fff; opacity:.92; }
+
+    .topbar .titles{
+      min-width:0;
+      display:flex;
+      flex-direction:column;
+      line-height:1.05;
+    }
+    .topbar .titles .t{
+      font-weight:900;
+      letter-spacing:.02em;
+      font-size: 1.08rem;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .topbar .titles .a{
+      margin-top:4px;
+      font-weight:650;
+      opacity:.72;
+      font-size:.93rem;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+
+    .topbar .actions{
+      margin-left:auto;
+      display:flex;
+      gap:10px;
+      align-items:center;
+      flex:0 0 auto;
+    }
+
+    .linkbtn{
+      height: 42px;
+      padding: 0 14px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.18);
+      background: rgba(0,0,0,.22);
+      color:#fff;
+      font-weight:800;
+      letter-spacing:.01em;
+      cursor:pointer;
+      display:flex;
+      align-items:center;
+      gap:10px;
+      user-select:none;
+      transition: background .12s ease, transform .12s ease;
+      text-decoration:none;
+      white-space:nowrap;
+    }
+    .linkbtn:hover{ background: rgba(0,0,0,.32); }
+    .linkbtn:active{ transform: scale(.99); }
+    .linkbtn svg{ width: 16px; height: 16px; fill:#fff; opacity:.9; }
+
+    /* Middle: iframe wrapper */
+    .sc-wrap{
+      position:relative;
+      padding: var(--pad);
+      box-sizing:border-box;
+    }
+
+    .sc-frame{
       width:100%;
       height:100%;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      cursor:pointer;
-      user-select:none;
-    }
-
-    /* Play icon BLACK */
-    .playIcon{
-      width:0;
-      height:0;
-      border-top: 12px solid transparent;
-      border-bottom: 12px solid transparent;
-      border-left: 18px solid rgba(0,0,0,.92);
-      transform: translateX(2px);
-      filter: drop-shadow(0 2px 6px rgba(0,0,0,.25));
-    }
-
-    /* Expanded player */
-    .player.expanded{
-      width: min(92vw, 640px);
-      height: 210px; /* slightly tighter for classic player */
-      border-radius: 22px;
-      background: rgba(255,255,255,.12);
-    }
-
-    .player.expanded .meta,
-    .player.expanded .embedWrap,
-    .player.expanded .openBtn,
-    .player.expanded .closeBtn{
-      display:block;
-    }
-
-    /* When expanded, hide our play button entirely */
-    .player.expanded .playerBtn{
-      display:none !important;
-    }
-
-    /* Meta bar (your UI) */
-    .meta{
-      position:absolute;
-      left: 12px;
-      top: 14px;
-      right: 180px;
-      line-height: 1.05;
-      color:#111;
-      background: rgba(255,255,255,.78);
-      border-radius: 14px;
-      padding: 10px 12px;
-      box-shadow: 0 10px 18px rgba(0,0,0,.18);
-    }
-    .meta .t{
-      font-weight: 900;
-      letter-spacing: .03em;
-      font-size: 18px;
-      color:#0d0d0d;
-    }
-    .meta .a{
-      margin-top: 2px;
-      font-weight: 700;
-      opacity:.92;
-      font-size: 13px;
-      color:#0d0d0d;
-    }
-
-    .openBtn{
-      position:absolute;
-      top: 16px;
-      right: 54px;
-      padding: 10px 12px;
-      border-radius: 999px;
-      border: 1px solid rgba(255,255,255,.22);
-      background: rgba(0,0,0,.18);
-      color:#fff;
-      font-weight: 700;
-      font-size: 13px;
-      cursor:pointer;
-      text-decoration:none;
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-      white-space: nowrap;
-    }
-
-    .closeBtn{
-      position:absolute;
-      top: 16px;
-      right: 12px;
-      width: 36px;
-      height: 36px;
-      border-radius: 999px;
-      border: 1px solid rgba(255,255,255,.22);
-      background: rgba(0,0,0,.18);
-      color:#fff;
-      font-weight: 900;
-      font-size: 18px;
-      line-height: 34px;
-      text-align:center;
-      cursor:pointer;
-      user-select:none;
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-    }
-
-    /* Embed area */
-    .embedWrap{
-      position:absolute;
-      left: 12px;
-      right: 12px;
-      bottom: 12px;
-      top: 78px;
       border-radius: 18px;
       overflow:hidden;
-      border: 1px solid rgba(255,255,255,.18);
-      background: rgba(255,255,255,.10);
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.28);
+      position:relative;
     }
-    .embedWrap iframe{
+
+    iframe{
       width:100%;
       height:100%;
       border:0;
@@ -237,300 +312,359 @@
       background: transparent;
     }
 
-    /* Progress overlay (guaranteed) */
-    .scOverlay{
+    /* Cover über linker SoundCloud-Zone (damit es nicht nach Chaos aussieht) */
+    .sc-left-cover{
       position:absolute;
-      inset:0;
-      pointer-events:none;
-      z-index: 5;
+      left:0;
+      top:0;
+      width: var(--sc-left-mask-w);
+      height:100%;
+      background: linear-gradient(180deg, rgba(0,0,0,.42), rgba(0,0,0,.34));
+      border-right: 1px solid rgba(255,255,255,.10);
+      pointer-events:none; /* nur optisch */
     }
-    .scLine{
-      position:absolute;
-      top:10px;
-      bottom:10px;
-      width:2px;
-      left:0%;
-      transform: translateX(-1px);
-      background: rgba(0,0,0,.38);
-      box-shadow: 0 0 0 1px rgba(255,255,255,.16);
-      opacity: 0;
-      transition: opacity .12s ease;
-      will-change: left;
-    }
-    .scOverlay.playing .scLine{ opacity: 1; }
 
-    /* Loading overlay: hung cover banner */
-    .loading{
-      position:fixed;
-      inset:0;
-      z-index:9999;
+    /* Unsere eigenen Controls über dem Embed (Play / Pause + Progress) */
+    .hud{
+      position:absolute;
+      left: 10px;
+      right: 10px;
+      bottom: 10px;
       display:flex;
-      align-items:flex-start;
-      justify-content:center;
-      padding-top: var(--safe-top);
-      background: rgba(0,0,0,.08);
-      opacity:1;
-      transition: opacity .35s ease;
-    }
-    .loading::before{
-      content:"";
-      position:absolute;
-      inset:0;
-      backdrop-filter: blur(14px);
-      -webkit-backdrop-filter: blur(14px);
-      background: rgba(0,0,0,.10);
-    }
-    .coverBanner{
-      position:relative;
-      width: min(92vw, 520px);
-      margin-top: 0;
-      border-radius: 0;
-      overflow:hidden;
-      box-shadow: 0 30px 70px rgba(0,0,0,.55);
-    }
-    .coverBanner img{
-      width:100%;
-      height:auto;
-      display:block;
-      border-radius:0;
-    }
-
-    .bottomSpacer{ height: 360px; width:100%; }
-
-    /* Maintenance panel */
-    .maint{
-      position:fixed;
-      left:50%;
-      bottom: calc(10px + var(--safe-bottom));
-      transform: translateX(-50%);
-      width: min(92vw, 720px);
-      z-index:50;
-      opacity:0;
-      pointer-events:none;
-      transition: opacity .25s ease, transform .25s ease;
-    }
-    .maint.show{
-      opacity:1;
-      pointer-events:auto;
-      transform: translateX(-50%) translateY(0);
-    }
-    .maintBox{
-      background: rgba(0,0,0,.40);
-      border: 1px solid rgba(255,255,255,.16);
-      border-radius: 18px;
-      padding: 12px 14px;
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-      box-shadow: 0 16px 40px rgba(0,0,0,.35);
-      font-size: 14px;
-      line-height: 1.25;
-      color: rgba(255,255,255,.90);
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
       align-items:center;
-      justify-content: space-between;
+      gap: 10px;
+      pointer-events:none; /* Buttons selbst schalten wir wieder an */
     }
-    .pill{ opacity:.9; white-space:nowrap; }
-    .ok{ color:#7CFF9A; font-weight:800; }
-    .err{ color:#FF7C7C; font-weight:800; }
+
+    .bigplay{
+      pointer-events:auto;
+      width: 52px;
+      height: 52px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,.18);
+      background: rgba(0,0,0,.38);
+      display:grid;
+      place-items:center;
+      cursor:pointer;
+      flex: 0 0 auto;
+      box-shadow: 0 10px 22px rgba(0,0,0,.30);
+      transition: transform .12s ease, background .12s ease;
+    }
+    .bigplay:hover{ background: rgba(0,0,0,.48); }
+    .bigplay:active{ transform: scale(.99); }
+    .bigplay svg{ width: 22px; height: 22px; fill:#fff; opacity:.92; }
+
+    .prog{
+      pointer-events:auto;
+      flex: 1 1 auto;
+      display:flex;
+      flex-direction:column;
+      gap: 7px;
+      min-width:0;
+    }
+    .bar{
+      height: 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.12);
+      border: 1px solid rgba(255,255,255,.12);
+      overflow:hidden;
+      position:relative;
+      cursor:pointer;
+    }
+    .bar > i{
+      position:absolute;
+      left:0;
+      top:0;
+      height:100%;
+      width:0%;
+      background: rgba(255,255,255,.70);
+    }
+    .time{
+      display:flex;
+      justify-content:space-between;
+      font-weight:700;
+      font-size:.86rem;
+      color: rgba(255,255,255,.88);
+      text-shadow: 0 2px 10px rgba(0,0,0,.35);
+      user-select:none;
+    }
+    .time span{ opacity:.88; }
+    .time b{ opacity:.98; }
+
+    /* Footer */
+    .footer{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding: 0 14px;
+      box-sizing:border-box;
+      border-top: 1px solid rgba(255,255,255,.10);
+      font-weight:700;
+      font-size:.88rem;
+      color: rgba(255,255,255,.70);
+    }
+    .footer .left{ display:flex; align-items:center; gap:10px; }
+    .dot{
+      width:7px; height:7px; border-radius:999px;
+      background: rgba(255,255,255,.65);
+      box-shadow: 0 0 0 4px rgba(255,255,255,.08);
+      opacity:.9;
+    }
+    .footer code{
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: .86rem;
+      opacity:.7;
+    }
+
+    /* Kleine Geräte */
+    @media (max-width: 420px){
+      :root{ --card-h: 230px; --sc-left-mask-w: 98px; }
+      .linkbtn{ display:none; } /* Platz sparen */
+    }
   </style>
 </head>
 
 <body>
-  <!-- LOADING -->
-  <div id="loading" class="loading" aria-hidden="false">
-    <div class="coverBanner" role="img" aria-label="SANCTUM cover">
-      <img id="coverImg" src="./manga/chapter-00/cover.jpg" alt="SANCTUM Cover" />
-    </div>
+  <!-- DEMO: Ersetze .demo-stage + .panel durch deinen echten Reader.
+       Der Player ist unabhängig davon als Dock fixiert und bleibt stabil. -->
+  <div class="demo-stage">
+    <div class="panel" data-v="SANCTUM • UI Demo"></div>
   </div>
 
-  <div class="page">
-    <div class="stage" id="stage">
-      <div class="panelShell">
-        <img id="panelImg" class="panelImg"
-          src="./manga/chapter-00/panel01.jpg"
-          alt="Panel 01"
-          loading="eager"
-          decoding="async"
-        />
+  <!-- PLAYER DOCK -->
+  <div class="dock" id="dock" data-open="0">
 
-        <!-- Player -->
-        <div id="playerDock" class="playerDock">
-          <div id="player" class="player" aria-label="Player">
-
-            <!-- Collapsed -->
-            <div id="playerBtn" class="playerBtn" title="Play">
-              <div class="playIcon" aria-hidden="true"></div>
-            </div>
-
-            <!-- Expanded UI -->
-            <div class="meta" aria-hidden="true">
-              <div class="t">SENTINEL</div>
-              <div class="a">DAVID RAVENSON</div>
-            </div>
-
-            <a class="openBtn"
-               href="https://soundcloud.com/user-543596862/sentinel-2"
-               target="_blank" rel="noopener noreferrer"
-               aria-hidden="true">Open on SoundCloud</a>
-
-            <div id="closeBtn" class="closeBtn" aria-hidden="true" title="Close">×</div>
-
-            <div class="embedWrap" aria-hidden="true">
-              <div id="scOverlay" class="scOverlay" aria-hidden="true">
-                <div id="scLine" class="scLine"></div>
-              </div>
-
-              <!-- IMPORTANT: classic player (stable), NOT visual -->
-              <iframe id="scFrame"
-                allow="autoplay"
-                scrolling="no"
-                frameborder="no"
-                src="https://w.soundcloud.com/player/?url=https%3A//soundcloud.com/user-543596862/sentinel-2&auto_play=false&hide_related=true&show_comments=false&show_user=false&show_reposts=false&show_teaser=false&visual=false"
-                title="SoundCloud player">
-              </iframe>
-            </div>
-
-          </div>
+    <!-- COLLAPSED TAB -->
+    <div class="tab" id="tabOpen" aria-label="Player öffnen">
+      <div class="pill" title="Play/Pause">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+      </div>
+      <div class="meta">
+        <div class="t" id="tabTitle">SENTINEL</div>
+        <div class="a" id="tabArtist">DAVID RAVENSON</div>
+      </div>
+      <div class="right">
+        <div class="iconbtn" id="tabToggle" title="Play/Pause" aria-label="Play/Pause">
+          <svg id="tabToggleIcon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+        </div>
+        <div class="iconbtn" id="tabExpand" title="Öffnen" aria-label="Öffnen">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5z"/></svg>
         </div>
       </div>
     </div>
 
-    <div class="bottomSpacer"></div>
-  </div>
+    <!-- EXPANDED CARD -->
+    <div class="card" id="card" aria-label="Media Player">
+      <div class="card-inner">
 
-  <!-- Maintenance -->
-  <div id="maint" class="maint" aria-hidden="true">
-    <div class="maintBox">
-      <div class="pill">v0.30.3</div>
-      <div class="pill">chapter-00 / panel01</div>
-      <div class="pill">audio: chapter-00audio</div>
-      <div class="pill">Paper: <span class="ok">OK ✓</span></div>
-      <div class="pill">error: <span id="errText" class="err">(none)</span></div>
+        <div class="topbar">
+          <div class="badge" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M12 2l2.2 6.6H21l-5.3 3.9 2 6.6-5.7-4.1-5.7 4.1 2-6.6L3 8.6h6.8z"/></svg>
+          </div>
+          <div class="titles">
+            <div class="t" id="uiTitle">SENTINEL</div>
+            <div class="a" id="uiArtist">DAVID RAVENSON</div>
+          </div>
+
+          <div class="actions">
+            <a class="linkbtn" id="openSoundcloud" href="#" target="_blank" rel="noopener">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3h7v7h-2V6.41l-9.29 9.3-1.42-1.42 9.3-9.29H14V3z"/><path d="M5 5h6v2H7v10h10v-4h2v6H5z"/></svg>
+              Open on SoundCloud
+            </a>
+            <div class="iconbtn" id="closeBtn" title="Schließen" aria-label="Schließen">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.3 5.7L12 12l6.3 6.3-1.4 1.4L10.6 13.4 4.3 19.7 2.9 18.3 9.2 12 2.9 5.7 4.3 4.3l6.3 6.3 6.3-6.3z"/></svg>
+            </div>
+          </div>
+        </div>
+
+        <div class="sc-wrap">
+          <div class="sc-frame" id="scFrame">
+            <!--
+              WICHTIG:
+              1) Ersetze unten im src nur die Track-URL (url=...) durch deinen SoundCloud Track-Link.
+              2) Beispiel Track-Link: https://soundcloud.com/deinname/sentinel
+              3) NICHT den kompletten Embed-Code einfügen, nur hier den iframe lassen.
+            -->
+            <iframe
+              id="sc"
+              allow="autoplay"
+              scrolling="no"
+              src="https://w.soundcloud.com/player/?url=https%3A//soundcloud.com/PUT-YOUR-TRACK-LINK-HERE&color=%23ffffff&auto_play=false&hide_related=true&show_comments=false&show_user=false&show_reposts=false&show_teaser=false&visual=false">
+            </iframe>
+
+            <!-- linke “Chaos-Zone” optisch abdecken -->
+            <div class="sc-left-cover" aria-hidden="true"></div>
+
+            <!-- HUD: unser eigenes sauberes UI -->
+            <div class="hud">
+              <div class="bigplay" id="bigToggle" title="Play/Pause" aria-label="Play/Pause">
+                <svg id="bigToggleIcon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+              </div>
+
+              <div class="prog">
+                <div class="bar" id="bar" title="Seek">
+                  <i id="barFill"></i>
+                </div>
+                <div class="time">
+                  <span><b id="cur">0:00</b></span>
+                  <span id="dur">0:00</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="footer">
+          <div class="left">
+            <span class="dot" id="statusDot" aria-hidden="true"></span>
+            <span id="statusText">ready</span>
+          </div>
+          <code id="ver"></code>
+        </div>
+
+      </div>
     </div>
+
   </div>
 
+  <!-- SoundCloud Widget API -->
   <script src="https://w.soundcloud.com/player/api.js"></script>
 
   <script>
     (function(){
-      const VERSION = "v0.30.3";
+      const VERSION = getComputedStyle(document.documentElement).getPropertyValue('--v').replace(/["']/g,'').trim();
+      document.getElementById('ver').textContent = VERSION;
 
-      const loading   = document.getElementById("loading");
-      const coverImg  = document.getElementById("coverImg");
-      const panelImg  = document.getElementById("panelImg");
+      const dock = document.getElementById('dock');
+      const tabOpen = document.getElementById('tabOpen');
+      const tabExpand = document.getElementById('tabExpand');
+      const closeBtn = document.getElementById('closeBtn');
 
-      const player    = document.getElementById("player");
-      const playerBtn = document.getElementById("playerBtn");
-      const closeBtn  = document.getElementById("closeBtn");
-      const playerDock= document.getElementById("playerDock");
+      const openSoundcloud = document.getElementById('openSoundcloud');
 
-      const maint     = document.getElementById("maint");
-      const errText   = document.getElementById("errText");
+      const iframe = document.getElementById('sc');
+      const widget = SC.Widget(iframe);
 
-      const scFrame   = document.getElementById("scFrame");
-      const scOverlay = document.getElementById("scOverlay");
-      const scLine    = document.getElementById("scLine");
+      const statusText = document.getElementById('statusText');
+      const statusDot = document.getElementById('statusDot');
 
-      function setError(msg){ errText.textContent = msg ? msg : "(none)"; }
+      const tabToggle = document.getElementById('tabToggle');
+      const tabToggleIcon = document.getElementById('tabToggleIcon');
 
-      // Loading
-      let panelReady = false;
-      function tryHideLoading(){
-        if(!panelReady) return;
-        setTimeout(() => {
-          loading.style.opacity = "0";
-          loading.setAttribute("aria-hidden","true");
-          setTimeout(() => { loading.style.display = "none"; }, 420);
-        }, 550);
+      const bigToggle = document.getElementById('bigToggle');
+      const bigToggleIcon = document.getElementById('bigToggleIcon');
+
+      const bar = document.getElementById('bar');
+      const barFill = document.getElementById('barFill');
+      const curEl = document.getElementById('cur');
+      const durEl = document.getElementById('dur');
+
+      let isPlaying = false;
+      let durationMs = 0;
+
+      function fmt(ms){
+        ms = Math.max(0, ms|0);
+        const s = Math.floor(ms/1000);
+        const m = Math.floor(s/60);
+        const r = s%60;
+        return m + ":" + String(r).padStart(2,'0');
       }
 
-      panelImg.addEventListener("load", () => { panelReady = true; setError("(none)"); tryHideLoading(); }, {passive:true});
-      panelImg.addEventListener("error", () => { panelReady = true; setError("Panel image missing / path error"); tryHideLoading(); }, {passive:true});
-      coverImg.addEventListener("error", () => {}, {passive:true});
+      function setPlayingUI(p){
+        isPlaying = !!p;
+        const playPath = '<path d="M8 5v14l11-7z"/>';
+        const pausePath = '<path d="M6 5h4v14H6zM14 5h4v14h-4z"/>';
+        tabToggleIcon.innerHTML = isPlaying ? pausePath : playPath;
+        bigToggleIcon.innerHTML = isPlaying ? pausePath : playPath;
 
-      // Maintenance reveal (same as before)
-      const SHOW_Y = 560;
-      function onScroll(){
-        const y = window.scrollY || document.documentElement.scrollTop || 0;
-        if(y > SHOW_Y){ maint.classList.add("show"); maint.setAttribute("aria-hidden","false"); }
-        else { maint.classList.remove("show"); maint.setAttribute("aria-hidden","true"); }
-      }
-      window.addEventListener("scroll", onScroll, { passive:true });
-      onScroll();
-
-      // SoundCloud Widget
-      const widget = (window.SC && scFrame) ? SC.Widget(scFrame) : null;
-      let widgetReady = false;
-      let lastRel = 0;
-
-      function clamp01(n){ return Math.max(0, Math.min(1, n)); }
-      function setProgress(rel, playing){
-        const p = clamp01(rel);
-        lastRel = p;
-        scLine.style.left = (p * 100) + "%";
-        if(playing) scOverlay.classList.add("playing");
-        else scOverlay.classList.remove("playing");
+        statusText.textContent = isPlaying ? "playing" : "paused";
+        statusDot.style.opacity = isPlaying ? "1" : ".6";
       }
 
-      function whenWidgetReady(cb){
-        if(!widget) return;
-        if(widgetReady) return cb();
-        widget.bind(SC.Widget.Events.READY, function(){
-          widgetReady = true;
+      function openCard(){ dock.setAttribute('data-open','1'); }
+      function closeCard(){ dock.setAttribute('data-open','0'); }
 
-          widget.bind(SC.Widget.Events.PLAY_PROGRESS, function(e){
-            if(e && typeof e.relativePosition === "number"){
-              setProgress(e.relativePosition, true);
-            }
-          });
-          widget.bind(SC.Widget.Events.PAUSE, function(){ setProgress(lastRel, false); });
-          widget.bind(SC.Widget.Events.FINISH, function(){ setProgress(1, false); });
+      tabExpand.addEventListener('click', (e)=>{ e.stopPropagation(); openCard(); });
+      tabOpen.addEventListener('click', ()=> openCard() );
+      closeBtn.addEventListener('click', ()=> closeCard() );
 
-          cb();
-        });
+      function toggle(){
+        widget.toggle();
       }
 
-      function openAndPlay(){
-        player.classList.add("expanded");
-        playerDock.classList.remove("shiftDown");
-        if(widget){
-          whenWidgetReady(() => { try { widget.play(); } catch(e) {} });
+      tabToggle.addEventListener('click', (e)=>{ e.stopPropagation(); toggle(); });
+      bigToggle.addEventListener('click', (e)=>{ e.stopPropagation(); toggle(); });
+
+      bar.addEventListener('click', (e)=>{
+        if(!durationMs) return;
+        const r = bar.getBoundingClientRect();
+        const x = Math.min(Math.max(0, e.clientX - r.left), r.width);
+        const pct = x / r.width;
+        widget.seekTo(Math.floor(durationMs * pct));
+      });
+
+      // Track-Link für "Open on SoundCloud" automatisch aus iframe src ziehen (url=...)
+      function updateOpenLink(){
+        try{
+          const u = new URL(iframe.src);
+          const raw = u.searchParams.get('url') || '';
+          const decoded = decodeURIComponent(raw);
+          if(decoded.startsWith('http')){
+            openSoundcloud.href = decoded;
+          }else{
+            openSoundcloud.href = "https://soundcloud.com";
+          }
+        }catch{
+          openSoundcloud.href = "https://soundcloud.com";
         }
       }
+      updateOpenLink();
 
-      function closePlayer(){
-        player.classList.remove("expanded");
-        playerDock.classList.remove("shiftDown");
-        if(widget){ try { widget.pause(); } catch(e) {} }
-        setProgress(lastRel, false);
-      }
+      // Widget Events
+      widget.bind(SC.Widget.Events.READY, function(){
+        statusText.textContent = "ready";
+        widget.getDuration(function(d){
+          durationMs = d || 0;
+          durEl.textContent = fmt(durationMs);
+        });
+      });
 
-      // Collapsed click => expand + play (single user gesture)
-      playerBtn.addEventListener("click", (e) => {
-        e.preventDefault(); e.stopPropagation();
-        openAndPlay();
-      }, { passive:false });
+      widget.bind(SC.Widget.Events.PLAY, function(){
+        setPlayingUI(true);
+        // frisch Duration holen, falls noch nicht da
+        widget.getDuration(function(d){
+          durationMs = d || durationMs;
+          durEl.textContent = fmt(durationMs);
+        });
+      });
 
-      // Close
-      closeBtn.addEventListener("click", (e) => {
-        e.preventDefault(); e.stopPropagation();
-        closePlayer();
-      }, { passive:false });
+      widget.bind(SC.Widget.Events.PAUSE, function(){
+        setPlayingUI(false);
+      });
 
-      // Panel tap => shift player down 200px (toggle)
-      panelImg.addEventListener("click", () => {
-        if(!player.classList.contains("expanded")) return;
-        playerDock.classList.toggle("shiftDown");
-      }, { passive:true });
+      widget.bind(SC.Widget.Events.FINISH, function(){
+        setPlayingUI(false);
+        barFill.style.width = "0%";
+        curEl.textContent = "0:00";
+      });
 
-      // Background safety
-      document.body.style.backgroundRepeat = "no-repeat";
-      document.body.style.backgroundSize = "cover";
-      document.body.style.backgroundPosition = "center top";
+      widget.bind(SC.Widget.Events.PLAY_PROGRESS, function(e){
+        if(!e) return;
+        const cur = e.currentPosition || 0;
+        curEl.textContent = fmt(cur);
 
-      console.log("SANCTUM", VERSION);
+        const dur = durationMs || e.duration || 0;
+        if(dur){
+          const pct = Math.max(0, Math.min(1, cur / dur));
+          barFill.style.width = (pct * 100).toFixed(2) + "%";
+        }
+      });
+
+      // Sanfter “geht klar” Startzustand: nicht autoplay (SoundCloud blockt oft), aber UI ist bereit.
+      // Wenn du später Autostart willst: wir können einen “User Gesture”-Kick auf dem ersten Tap machen.
+
+      // Tipp: wenn du Title/Artist dynamisch willst, können wir das aus SoundCloud ziehen – später.
+      setPlayingUI(false);
     })();
   </script>
 </body>
