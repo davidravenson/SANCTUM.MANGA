@@ -7,7 +7,7 @@
 
   <style>
     :root{
-      --v: "v0.29.9";
+      --v: "v0.30.0";
       --safe-top: env(safe-area-inset-top, 0px);
       --safe-bottom: env(safe-area-inset-bottom, 0px);
 
@@ -155,33 +155,44 @@
     .player.expanded .closeBtn{ display:block; }
     .player.expanded .playerBtn{ display:none !important; }
 
+    /* ===== FIX: META TOPBAR (less blob, compact, pro layout) ===== */
     .meta{
       position:absolute;
       left: 12px;
-      top: 14px;
-      right: 180px;
+      top: 12px;
+      right: 120px;                 /* leaves room for open+close */
+      display:flex;
+      align-items:center;
+      gap: 10px;
+      padding: 8px 10px;            /* smaller than before */
+      background: rgba(255,255,255,.66);
+      border-radius: 12px;          /* still soft, but tighter */
+      box-shadow: 0 10px 18px rgba(0,0,0,.16);
       line-height: 1.05;
-      color:#111;
-      background: rgba(255,255,255,.75);
-      border-radius: 14px;
-      padding: 10px 12px;
-      box-shadow: 0 10px 18px rgba(0,0,0,.18);
+      color:#0d0d0d;
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
     }
+
+    .metaText{
+      display:flex;
+      flex-direction:column;
+      min-width: 0;                 /* enables ellipsis */
+    }
+
     .meta .t{
       font-weight: 900;
       letter-spacing: .03em;
-      font-size: 18px;
-      color:#0d0d0d;
+      font-size: 16px;              /* slightly smaller */
       white-space:nowrap;
       overflow:hidden;
       text-overflow:ellipsis;
     }
     .meta .a{
       margin-top: 2px;
-      font-weight: 700;
+      font-weight: 750;
+      font-size: 12px;
       opacity:.92;
-      font-size: 13px;
-      color:#0d0d0d;
       white-space:nowrap;
       overflow:hidden;
       text-overflow:ellipsis;
@@ -189,49 +200,53 @@
 
     .openBtn{
       position:absolute;
-      top: 16px;
-      right: 54px;
-      padding: 10px 12px;
+      top: 12px;
+      right: 52px;
+      max-width: 140px;             /* prevents giant pill */
+      padding: 8px 10px;            /* smaller pill */
       border-radius: 999px;
       border: 1px solid rgba(255,255,255,.22);
       background: rgba(0,0,0,.18);
       color:#fff;
       font-weight: 700;
-      font-size: 13px;
+      font-size: 12px;              /* smaller */
       cursor:pointer;
       text-decoration:none;
       backdrop-filter: blur(10px);
       -webkit-backdrop-filter: blur(10px);
       white-space: nowrap;
+      overflow:hidden;
+      text-overflow: ellipsis;      /* if long, it truncates */
       user-select:none;
     }
 
     .closeBtn{
       position:absolute;
-      top: 16px;
+      top: 12px;
       right: 12px;
-      width: 36px;
-      height: 36px;
+      width: 34px;
+      height: 34px;
       border-radius: 999px;
       border: 1px solid rgba(255,255,255,.22);
       background: rgba(0,0,0,.18);
       color:#fff;
       font-weight: 900;
       font-size: 18px;
-      line-height: 34px;
+      line-height: 32px;
       text-align:center;
       cursor:pointer;
       backdrop-filter: blur(10px);
       -webkit-backdrop-filter: blur(10px);
       user-select:none;
     }
+    /* ===== /FIX ===== */
 
     .embedWrap{
       position:absolute;
       left: 10px;
       right: 10px;
       bottom: 10px;
-      top: 82px;
+      top: 72px;                    /* slightly more room for compact topbar */
       border-radius: 18px;
       overflow:hidden;
       border: 1px solid rgba(255,255,255,.18);
@@ -281,7 +296,6 @@
       border-radius:0;
     }
 
-    /* Give enough scroll room on all screens (still not endless) */
     .bottomSpacer{
       height: 720px;
       width: 100%;
@@ -354,8 +368,10 @@
             </div>
 
             <div class="meta" aria-hidden="true">
-              <div class="t">SENTINEL</div>
-              <div class="a">DAVID RAVENSON</div>
+              <div class="metaText">
+                <div class="t">SENTINEL</div>
+                <div class="a">DAVID RAVENSON</div>
+              </div>
             </div>
 
             <a
@@ -389,12 +405,11 @@
 
   <div id="maint" class="maint" aria-hidden="true">
     <div class="maintBox">
-      <div class="pill">v0.29.9</div>
+      <div class="pill">v0.30.0</div>
       <div class="pill">chapter-00 / panel01</div>
       <div class="pill">audio: SoundCloud</div>
       <div class="pill">Paper: <span class="ok">OK ✓</span></div>
       <div class="pill">error: <span id="errText" class="err">(none)</span></div>
-
       <div class="pill">SC: <span id="dbgSc" class="warn">…</span></div>
       <div class="pill">READY: <span id="dbgReady" class="warn">…</span></div>
       <div class="pill">PLAY_REQ: <span id="dbgReq" class="warn">…</span></div>
@@ -406,7 +421,7 @@
 
   <script>
     (function(){
-      const VERSION = "v0.29.9";
+      const VERSION = "v0.30.0";
 
       const ua = navigator.userAgent || "";
       const isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
@@ -439,7 +454,6 @@
       setDbg(dbgReq, "no", "warn");
       setDbg(dbgLast, "boot", "warn");
 
-      // Loader: hide after panel is ready (works even if cached)
       function hideLoading(){
         loading.style.opacity = "0";
         loading.setAttribute("aria-hidden","true");
@@ -457,7 +471,6 @@
       }
       coverImg.addEventListener("error", () => {}, { passive:true });
 
-      // Maintenance visibility: scroll OR "not scrollable" fallback OR 2-finger toggle
       const SHOW_Y = 240;
 
       function setMaintVisible(on){
@@ -478,7 +491,6 @@
       function onScroll(){
         const y = window.scrollY || document.documentElement.scrollTop || 0;
         if(!isScrollable()){
-          // If the page can't scroll, ALWAYS show debug so you aren't blind
           setMaintVisible(true);
           setDbg(dbgLast, "no-scroll => maint ON", "warn");
           return;
@@ -490,7 +502,6 @@
       window.addEventListener("resize", onScroll, { passive:true });
       onScroll();
 
-      // 2-finger tap on panel toggles maintenance (reliable on mobile)
       panelImg.addEventListener("touchstart", (e) => {
         if(e.touches && e.touches.length === 2){
           e.preventDefault();
@@ -499,7 +510,6 @@
         }
       }, { passive:false });
 
-      // SoundCloud hardening
       let widget = null;
       let widgetReady = false;
       let pendingPlay = false;
