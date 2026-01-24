@@ -7,7 +7,7 @@
 
   <style>
     :root{
-      --v: "v0.40.4";
+      --v: "v0.40.5";
       --safe-top: env(safe-area-inset-top, 0px);
       --safe-bottom: env(safe-area-inset-bottom, 0px);
       --bg: url("./media/ui/manga_paper_bg.png");
@@ -143,7 +143,7 @@
       position:relative;
       width:100%;
       max-height:100%;
-      overflow:hidden; /* holy border */
+      overflow:hidden;
       background:#000;
       transform: translateZ(0);
       backface-visibility:hidden;
@@ -273,7 +273,9 @@
       transition: transform .25s ease;
       will-change: transform;
     }
-    .playerDock.shiftDown{ transform: translateX(-50%) translateY(200px); }
+    .playerDock.shiftDown{
+      transform: translateX(-50%) translateY(200px);
+    }
 
     .player{
       position:relative;
@@ -404,6 +406,36 @@
       border-right: 1px solid rgba(255,255,255,.12);
       pointer-events:none;
     }
+
+    /* ===== PULL-UP BUTTON (only when dock is shifted down) ===== */
+    .pullUpBtn{
+      position:fixed;
+      left:50%;
+      bottom: calc(12px + var(--safe-bottom));
+      transform: translateX(-50%) translateY(22px);
+      z-index:76;
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: rgba(0,0,0,.55);
+      border: 1px solid rgba(255,255,255,.18);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      box-shadow: 0 16px 40px rgba(0,0,0,.35);
+      font-weight: 900;
+      letter-spacing:.02em;
+      font-size: 13px;
+      opacity:0;
+      pointer-events:none;
+      user-select:none;
+      transition: opacity .18s ease, transform .18s ease;
+      white-space: nowrap;
+    }
+    .pullUpBtn.show{
+      opacity:1;
+      pointer-events:auto;
+      transform: translateX(-50%) translateY(0);
+      user-select:none;
+    }
   </style>
 </head>
 
@@ -424,7 +456,7 @@
 
   <!-- DIAGNOSTICS -->
   <div class="diag" id="diag">
-    <div class="row"><b>SANCTUM</b> <span class="muted" id="d_ver">v0.40.4</span></div>
+    <div class="row"><b>SANCTUM</b> <span class="muted" id="d_ver">v0.40.5</span></div>
     <div class="row"><span>chapter</span> <b id="d_ch">-</b></div>
     <div class="row"><span>base</span> <span class="muted" id="d_base">-</span></div>
     <div class="row"><span>panels</span> <b id="d_total">0</b></div>
@@ -458,11 +490,11 @@
       </div>
 
       <a class="openBtn"
-        id="scOpen"
-        href="https://soundcloud.com/user-543596862/sentinel-2"
-        target="_blank"
-        rel="noopener noreferrer"
-        aria-hidden="true"
+         id="scOpen"
+         href="https://soundcloud.com/user-543596862/sentinel-2"
+         target="_blank"
+         rel="noopener noreferrer"
+         aria-hidden="true"
       >Open on SoundCloud</a>
 
       <div id="closeBtn" class="closeBtn" aria-hidden="true" title="Close">×</div>
@@ -481,9 +513,12 @@
     </div>
   </div>
 
+  <!-- Pull-up affordance (so you can bring the player back) -->
+  <div id="pullUpBtn" class="pullUpBtn" aria-label="Pull player up">▲ Player</div>
+
   <script>
     (function(){
-      const VERSION = "v0.40.4";
+      const VERSION = "v0.40.5";
 
       const READER = {
         chapter: "chapter-00",
@@ -575,6 +610,8 @@
       const playerDock = $("playerDock");
       const scFrame = $("scFrame");
 
+      const pullUpBtn = $("pullUpBtn");
+
       let loadingHidden = false;
       function hideLoading(){
         if(loadingHidden) return;
@@ -598,14 +635,41 @@
         setTimeout(() => { location.reload(); }, 220);
       }
 
-      // ===== Story order (01,02,03...) stays normal.
-      // ===== Visual order is reversed so NEXT page is on the LEFT.
-      let panels = [];        // story order ascending
-      let storyIndex = 0;     // 0 => panel01, 1 => panel02 ...
-      let domCount = 0;       // track slides count
+      // ===== Player Dock Recovery (NEW) =====
+      function syncPullUp(){
+        const shouldShow = player.classList.contains("expanded") && playerDock.classList.contains("shiftDown");
+        if(shouldShow) pullUpBtn.classList.add("show");
+        else pullUpBtn.classList.remove("show");
+      }
+
+      function pullPlayerUp(){
+        playerDock.classList.remove("shiftDown");
+        syncPullUp();
+      }
+
+      pullUpBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        pullPlayerUp();
+      }, { passive:false });
+
+      // Also allow tap anywhere on the lowered dock area (if visible) to pull it up.
+      // (Only triggers when the dock is shifted down AND player is expanded.)
+      playerDock.addEventListener("click", (e) => {
+        if(!player.classList.contains("expanded")) return;
+        if(!playerDock.classList.contains("shiftDown")) return;
+        // ignore clicks inside the player itself (so you can still interact)
+        const withinPlayer = player.contains(e.target);
+        if(withinPlayer) return;
+        pullPlayerUp();
+      }, { passive:true });
+
+      // ===== Story order stays normal; DOM reversed for RTL layout =====
+      let panels = [];
+      let storyIndex = 0;
+      let domCount = 0;
 
       function domIndexFromStory(i){
-        // if DOM is reversed: [last ... first], then story 0 is at DOM last
         return (domCount - 1) - i;
       }
 
@@ -692,16 +756,13 @@
       function renderAll(){
         track.innerHTML = "";
 
-        const domPanels = panels.slice().reverse(); // <-- RTL layout magic
+        const domPanels = panels.slice().reverse();
         domPanels.forEach(p => track.appendChild(makeSlide(p)));
         domCount = domPanels.length;
 
-        // Ensure we start at storyIndex 0 (panel01), which is DOM last
         updateHud();
         setStoryIndex(storyIndex, false);
 
-        // cache fast-path for panel01 if present in DOM
-        // (panel01 is DOM last; find it)
         const p1 = panels.find(p => p.n === 1);
         if(p1 && p1.imgEl && p1.imgEl.complete && p1.imgEl.naturalWidth > 0){
           p1.ok = true;
@@ -713,7 +774,7 @@
       READER.seedPanels.forEach(addPanel);
       renderAll();
 
-      // ===== Touch / Swipe (RTL feel: push right => next comes from left) =====
+      // ===== Touch / Swipe + Refresh =====
       let dragging = false;
       let lockedAxis = null;
       let startX=0, startY=0, lastX=0;
@@ -790,10 +851,7 @@
 
         const dx = lastX - startX;
 
-        // Key rule you asked for:
-        // push current panel RIGHT => NEXT page comes from LEFT
-        // So: swipe RIGHT => storyIndex + 1
-        //      swipe LEFT  => storyIndex - 1
+        // RTL feel: push right => next page comes from left
         if(dx > READER.swipeThresholdPx){
           setStoryIndex(storyIndex + 1, true);
         }else if(dx < -READER.swipeThresholdPx){
@@ -848,7 +906,7 @@
           if(ok){
             misses = 0;
             addPanel(n);
-            renderAll(); // re-render to keep RTL DOM order correct
+            renderAll();
             diagSet(diag.probe, "found panel " + padN(n,2), "ok");
           }else{
             misses++;
@@ -903,6 +961,8 @@
       function openAndPlay(){
         player.classList.add("expanded");
         playerDock.classList.remove("shiftDown");
+        syncPullUp();
+
         if(widget){
           if(widgetReady){
             try{ widget.play(); }catch(_){}
@@ -920,6 +980,8 @@
       function closePlayer(){
         player.classList.remove("expanded");
         playerDock.classList.remove("shiftDown");
+        syncPullUp();
+
         if(widget){
           try{ widget.pause(); }catch(_){}
         }
@@ -937,12 +999,17 @@
         closePlayer();
       }, { passive:false });
 
+      // Tap panel toggles dock down/up ONLY when expanded
       document.addEventListener("click", (e) => {
         if(!player.classList.contains("expanded")) return;
         if(e.target && e.target.classList && e.target.classList.contains("panelImg")){
           playerDock.classList.toggle("shiftDown");
+          syncPullUp();
         }
       }, { passive:true });
+
+      // Initial sync
+      syncPullUp();
 
       updateHud();
       diagSet(diag.js, "ok", "ok");
