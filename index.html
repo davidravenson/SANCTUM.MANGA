@@ -7,14 +7,12 @@
 
   <style>
     :root{
-      --v: "v0.40.1";
+      --v: "v0.40.2";
 
       --safe-top: env(safe-area-inset-top, 0px);
       --safe-bottom: env(safe-area-inset-bottom, 0px);
 
       --bg: url("./media/ui/manga_paper_bg.png");
-
-      --ink: #0b0b0b;
       --shadow: 0 16px 40px rgba(0,0,0,.35);
 
       /* Holy panel border + hard cinematic bars */
@@ -39,7 +37,7 @@
       color:#fff;
       font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
       -webkit-tap-highlight-color: transparent;
-      overflow:hidden; /* app-like, no accidental browser scroll */
+      overflow:hidden; /* app-like */
     }
 
     body{
@@ -50,7 +48,7 @@
       background-attachment: fixed;
     }
 
-    /* ===== LAYER: LOADING ===== */
+    /* ===== LOADING ===== */
     .loading{
       position:fixed;
       inset:0;
@@ -80,11 +78,7 @@
       cursor:pointer;
       user-select:none;
     }
-    .coverBanner img{
-      width:100%;
-      height:auto;
-      display:block;
-    }
+    .coverBanner img{ width:100%; height:auto; display:block; }
     .enterHint{
       position:absolute;
       left:50%;
@@ -102,7 +96,34 @@
       white-space: nowrap;
     }
 
-    /* ===== STAGE (carousel engine, no browser scroll) ===== */
+    /* ===== IN-APP REFRESH BAR ===== */
+    .refreshBar{
+      position:fixed;
+      top: calc(10px + var(--safe-top));
+      left:50%;
+      transform: translateX(-50%) translateY(-80px);
+      z-index:90;
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: rgba(0,0,0,.60);
+      border: 1px solid rgba(255,255,255,.18);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      font-weight: 900;
+      letter-spacing:.02em;
+      font-size: 13px;
+      opacity:0;
+      transition: transform .18s ease, opacity .18s ease;
+      pointer-events:none;
+      user-select:none;
+      box-shadow: 0 16px 40px rgba(0,0,0,.35);
+    }
+    .refreshBar.show{
+      opacity:1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* ===== STAGE (carousel engine) ===== */
     .stage{
       position:relative;
       height:100%;
@@ -113,7 +134,9 @@
       padding-top: var(--safe-top);
       padding-bottom: calc(20px + var(--safe-bottom));
       box-sizing:border-box;
-      touch-action: pan-y; /* allow vertical gestures to exist; we take over horizontal */
+
+      /* allow vertical gesture "existence"; we only preventDefault when locked to X */
+      touch-action: pan-y;
       overscroll-behavior: none;
     }
 
@@ -130,7 +153,6 @@
     .panelFrame{
       position:relative;
       width:100%;
-      height:auto;
       max-height:100%;
       overflow:hidden;
       background:#000;
@@ -168,16 +190,15 @@
       justify-content:center;
     }
 
-    /* The sacred panel itself */
     .panelImg{
       width:100%;
       height:auto;
       display:block;
       background:#000;
-      image-rendering: auto;
+      image-rendering:auto;
     }
 
-    /* Hard bars inside the holy border */
+    /* Hard bars inside holy border */
     .cinematicMask{
       position:absolute;
       inset:0;
@@ -211,7 +232,7 @@
       text-shadow: 0 10px 30px rgba(0,0,0,.55);
     }
 
-    /* ===== DIAGNOSTICS (pro mode) ===== */
+    /* ===== DIAGNOSTICS ===== */
     .diag{
       position:fixed;
       right: 12px;
@@ -252,7 +273,7 @@
       user-select:none;
     }
 
-    /* ===== PLAYER (fixed overlay) ===== */
+    /* ===== PLAYER ===== */
     .playerDock{
       position:fixed;
       left:50%;
@@ -266,9 +287,7 @@
       transition: transform .25s ease;
       will-change: transform;
     }
-    .playerDock.shiftDown{
-      transform: translateX(-50%) translateY(200px);
-    }
+    .playerDock.shiftDown{ transform: translateX(-50%) translateY(200px); }
 
     .player{
       position:relative;
@@ -283,7 +302,6 @@
       overflow:hidden;
       transition: width .28s ease, height .28s ease, border-radius .28s ease, background .28s ease;
     }
-
     .player .meta,
     .player .embedWrap,
     .player .openBtn,
@@ -299,7 +317,6 @@
       user-select:none;
     }
 
-    /* Play icon BLACK */
     .playIcon{
       width:0;height:0;
       border-top: 12px solid transparent;
@@ -413,12 +430,15 @@
     </div>
   </div>
 
+  <!-- IN-APP REFRESH -->
+  <div id="refreshBar" class="refreshBar">Refreshing…</div>
+
   <!-- HUD -->
   <div class="hud" id="hud">panel 01 / 01</div>
 
   <!-- DIAGNOSTICS -->
   <div class="diag" id="diag">
-    <div class="row"><b>SANCTUM</b> <span class="muted" id="d_ver">v0.40.1</span></div>
+    <div class="row"><b>SANCTUM</b> <span class="muted" id="d_ver">v0.40.2</span></div>
     <div class="row"><span>chapter</span> <b id="d_ch">-</b></div>
     <div class="row"><span>base</span> <span class="muted" id="d_base">-</span></div>
     <div class="row"><span>panels</span> <b id="d_total">0</b></div>
@@ -477,7 +497,7 @@
 
   <script>
     (function(){
-      const VERSION = "v0.40.1";
+      const VERSION = "v0.40.2";
 
       /* ===========================
          reader_auto (CONFIG CORE)
@@ -500,7 +520,12 @@
         maxVerticalSlope: 0.35,
         rubberbandPct: 8,
 
-        preloadAhead: 2
+        preloadAhead: 2,
+
+        /* In-app refresh */
+        refreshTopZonePx: 70,     // must start near top
+        refreshShowPx: 22,        // show indicator after this pull
+        refreshFirePx: 58         // reload after this pull
       };
 
       /* Helpers */
@@ -558,6 +583,8 @@
       /* DOM */
       const loading = $("loading");
       const coverBanner = $("coverBanner");
+      const refreshBar = $("refreshBar");
+
       const hud = $("hud");
       const stage = $("stage");
       const frame = $("panelFrame");
@@ -581,9 +608,24 @@
       coverBanner.addEventListener("click", hideLoading, { passive:true });
       setTimeout(hideLoading, READER.loadingMaxMs);
 
+      /* In-app refresh UI */
+      function showRefresh(){ refreshBar.classList.add("show"); }
+      function hideRefresh(){ refreshBar.classList.remove("show"); }
+
+      let refreshArmed = false;
+      let refreshFired = false;
+
+      function fireRefresh(){
+        if(refreshFired) return;
+        refreshFired = true;
+        showRefresh();
+        setTimeout(() => { location.reload(); }, 220);
+      }
+
       /* Panel State */
       let panels = [];
       let index = 0;
+
       let dragging = false;
       let lockedAxis = null;
       let startX=0, startY=0, lastX=0;
@@ -673,7 +715,6 @@
         updateHud();
         setIndex(index, false);
 
-        // cache fast-path for first image
         const first = panels[0];
         if(first && first.imgEl && first.imgEl.complete && first.imgEl.naturalWidth > 0){
           first.ok = true;
@@ -685,13 +726,18 @@
       READER.seedPanels.forEach(addPanel);
       renderSeed();
 
-      /* Touch / Swipe (RTL manga flow) */
+      /* Touch / Swipe + In-app Refresh (integrated, no fighting) */
       function onStart(t){
         dragging = true;
         lockedAxis = null;
         startX = lastX = t.clientX;
         startY = t.clientY;
+
         track.classList.add("dragging");
+
+        refreshFired = false;
+        refreshArmed = (startY <= READER.refreshTopZonePx);
+        if(refreshArmed) hideRefresh();
       }
 
       function onMove(t, e){
@@ -708,18 +754,23 @@
           }
         }
 
+        /* Vertical path: only used for in-app refresh (if armed) */
         if(lockedAxis === "y"){
-          track.classList.remove("dragging");
-          dragging = false;
+          // never preventDefault here; keep it "native-feeling"
+          if(refreshArmed && dy > READER.refreshShowPx) showRefresh();
+          if(refreshArmed && dy > READER.refreshFirePx) fireRefresh();
           return;
         }
 
+        /* Horizontal path: reader owns it */
         e.preventDefault();
 
+        // If it becomes too vertical, abort swipe cleanly
         if(Math.abs(dy) > Math.abs(dx) * (1/READER.maxVerticalSlope)){
           track.classList.remove("dragging");
           dragging = false;
           setIndex(index, true);
+          if(!refreshFired) hideRefresh();
           return;
         }
 
@@ -743,9 +794,18 @@
         dragging = false;
         track.classList.remove("dragging");
 
+        // if refresh fired, we are reloading anyway
+        if(refreshFired) return;
+
+        // if it was a vertical gesture and didn't fire, hide indicator
+        if(lockedAxis === "y"){
+          hideRefresh();
+          return;
+        }
+
         const dx = lastX - startX;
 
-        /* ===== RTL FIX HERE =====
+        /* RTL manga flow:
            Swipe RIGHT (dx positive) => NEXT
            Swipe LEFT  (dx negative) => PREV
         */
@@ -765,7 +825,11 @@
       }, { passive:false });
 
       stage.addEventListener("touchend", onEnd, { passive:true });
-      stage.addEventListener("touchcancel", () => { dragging=false; setIndex(index,true); }, { passive:true });
+      stage.addEventListener("touchcancel", () => {
+        dragging=false;
+        if(!refreshFired) hideRefresh();
+        setIndex(index,true);
+      }, { passive:true });
 
       /* Auto-discovery */
       async function headOK(url){
