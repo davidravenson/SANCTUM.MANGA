@@ -7,7 +7,7 @@
 
   <style>
     :root{
-      --v: "v0.30.2";
+      --v: "v0.30.3";
       --safe-top: env(safe-area-inset-top, 0px);
       --safe-bottom: env(safe-area-inset-bottom, 0px);
 
@@ -33,7 +33,10 @@
       color:#fff;
       font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
       -webkit-tap-highlight-color: transparent;
-      overflow:hidden; /* swipe app feel */
+
+      /* IMPORTANT: allow pull-to-refresh */
+      overflow-x:hidden;
+      overflow-y:auto;
     }
 
     body{
@@ -42,7 +45,11 @@
       background-position: center top;
       background-repeat: no-repeat;
       background-attachment: fixed;
-      overscroll-behavior: none;
+
+      /* IMPORTANT: do not kill overscroll */
+      overscroll-behavior-x: contain;
+      overscroll-behavior-y: auto;
+      touch-action: pan-y;
     }
 
     /* ===== LOADING OVERLAY ===== */
@@ -85,18 +92,23 @@
     /* ===== SWIPE READER ===== */
     .viewport{
       position:relative;
-      height:100%;
+      height:100vh; /* fill screen, but page can still overscroll for refresh */
       overflow-x:auto;
       overflow-y:hidden;
+
       scroll-snap-type: x mandatory;
       -webkit-overflow-scrolling: touch;
-      overscroll-behavior-x: contain;
-      overscroll-behavior-y: none;
       scroll-behavior: smooth;
+
+      overscroll-behavior-x: contain;
+      overscroll-behavior-y: auto;
 
       /* Manga flow: start on the RIGHT, swipe LEFT to go forward */
       direction: rtl;
+
+      /* horizontal swipe stays here */
       touch-action: pan-x;
+      background: transparent;
     }
 
     .viewport::-webkit-scrollbar{ display:none; }
@@ -106,9 +118,7 @@
       height:100%;
       display:flex;
       flex-direction:row;
-
-      /* keep contents normal even though container is rtl */
-      direction: ltr;
+      direction: ltr; /* keep contents normal inside rtl viewport */
     }
 
     .slide{
@@ -131,7 +141,6 @@
       align-items:center;
     }
 
-    /* Holy border */
     .panelFrame{
       position:relative;
       width:100%;
@@ -151,7 +160,6 @@
       box-shadow:none;
     }
 
-    /* Cinematic bars (hard, clipped) */
     .cinematicMask{
       position:absolute;
       inset:0;
@@ -338,7 +346,6 @@
       pointer-events:none;
     }
 
-    /* HUD */
     .hud{
       position:fixed;
       left: 12px;
@@ -355,7 +362,6 @@
 </head>
 
 <body>
-  <!-- LOADING OVERLAY -->
   <div id="loading" class="loading" aria-hidden="false">
     <div class="coverBanner" role="img" aria-label="SANCTUM cover">
       <img id="coverImg" src="./manga/chapter-00/cover.jpg" alt="SANCTUM Cover" />
@@ -366,8 +372,6 @@
 
   <div class="viewport" id="viewport">
     <div class="track" id="track">
-
-      <!-- SLIDE 1 -->
       <section class="slide">
         <div class="panelShell">
           <div class="panelFrame">
@@ -387,7 +391,6 @@
         </div>
       </section>
 
-      <!-- SLIDE 2 -->
       <section class="slide">
         <div class="panelShell">
           <div class="panelFrame">
@@ -406,11 +409,9 @@
           </div>
         </div>
       </section>
-
     </div>
   </div>
 
-  <!-- PLAYER (fixed overlay) -->
   <div id="playerDock" class="playerDock">
     <div id="player" class="player" aria-label="Player">
       <div id="playerBtn" class="playerBtn" title="Play">
@@ -449,7 +450,7 @@
 
   <script>
     (function(){
-      const VERSION = "v0.30.2";
+      const VERSION = "v0.30.3";
 
       const loading   = document.getElementById("loading");
       const panelImg1 = document.getElementById("panelImg1");
@@ -465,24 +466,43 @@
       const playerDock = document.getElementById("playerDock");
       const scFrame    = document.getElementById("scFrame");
 
-      // Loading banner
+      // ---------- Loading overlay (NEVER STICKS) ----------
+      let loadingHidden = false;
+
       function hideLoading(){
+        if(loadingHidden) return;
+        loadingHidden = true;
+
         setTimeout(() => {
           loading.style.opacity = "0";
           loading.setAttribute("aria-hidden","true");
           setTimeout(() => { loading.style.display = "none"; }, 420);
-        }, 550);
+        }, 250); // faster; feels snappy
       }
+
+      // normal events
       panelImg1.addEventListener("load", hideLoading, { passive:true });
       panelImg1.addEventListener("error", hideLoading, { passive:true });
 
-      // Preload panel 02 for seamless swipe
+      // cached image fast-path
+      function cachedFastPath(){
+        if(panelImg1 && panelImg1.complete && panelImg1.naturalWidth > 0){
+          hideLoading();
+        }
+      }
+      document.addEventListener("DOMContentLoaded", cachedFastPath, { passive:true });
+      window.addEventListener("load", cachedFastPath, { passive:true });
+
+      // hard fallback: if anything goes weird, we still proceed
+      setTimeout(hideLoading, 2200);
+
+      // preload panel 02 (seamless swipe)
       (function(){
         const img = new Image();
         img.src = panelImg2.getAttribute("src");
       })();
 
-      // Robust active slide detection (works in RTL/LTR across browsers)
+      // ---------- Robust HUD ----------
       function getActiveIndex(){
         const vpRect = viewport.getBoundingClientRect();
         const vpCenter = vpRect.left + vpRect.width / 2;
@@ -504,7 +524,7 @@
 
       function updateHud(){
         const total = slides.length;
-        const idx = getActiveIndex(); // 0-based
+        const idx = getActiveIndex();
         hud.textContent = "panel " + String(idx+1).padStart(2,"0") + " / " + String(total).padStart(2,"0");
       }
 
@@ -512,7 +532,7 @@
       window.addEventListener("resize", () => { requestAnimationFrame(updateHud); }, { passive:true });
       updateHud();
 
-      // SoundCloud widget
+      // ---------- SoundCloud widget ----------
       const widget = (window.SC && scFrame) ? SC.Widget(scFrame) : null;
       let widgetReady = false;
 
@@ -551,7 +571,6 @@
         closePlayer();
       }, { passive:false });
 
-      // Tap panel toggles shift when expanded
       document.addEventListener("click", (e) => {
         if(!player.classList.contains("expanded")) return;
         if(e.target && e.target.classList && e.target.classList.contains("panelImg")){
