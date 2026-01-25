@@ -7,7 +7,7 @@
 
   <style>
     :root{
-      --v: "v0.40.14";
+      --v: "v0.40.15";
       --safe-top: env(safe-area-inset-top, 0px);
       --safe-bottom: env(safe-area-inset-bottom, 0px);
       --bg: url("./media/ui/manga_paper_bg.png");
@@ -21,7 +21,6 @@
       --sc-left-mask-w: 106px;
       --diag-w: min(56vw, 360px);
 
-      /* Docking: will be computed at runtime to sit just under the bottom mask */
       --dock-shift-max: 120px;
       --dock-shift-peek: 0px;
       --dock-gap-under-mask: 8px;
@@ -148,7 +147,7 @@
       position:relative;
       width:100%;
       height:100%;
-      overflow:hidden; /* holy border */
+      overflow:hidden;
       background:#000;
       transform: translateZ(0);
       backface-visibility:hidden;
@@ -184,16 +183,15 @@
       justify-content:center;
     }
 
-    /* ===== PANEL: ALWAYS FULLY READABLE (Portrait + Landscape) ===== */
+    /* ALWAYS FULLY READABLE */
     .panelImg{
       width:100%;
       height:100%;
       display:block;
       background:#000;
-      object-fit: contain;         /* <-- key: no crop, ever */
+      object-fit: contain;
       object-position: center center;
       transform: none;
-      will-change: auto;
     }
 
     .cinematicMask{
@@ -215,7 +213,6 @@
     .cinematicMask .top{ top:0; height: var(--mask-top-h); }
     .cinematicMask .bottom{ bottom:0; height: var(--mask-bottom-h); }
 
-    /* ===== HUD ===== */
     .hud{
       position:fixed;
       left: 12px;
@@ -229,7 +226,6 @@
       text-shadow: 0 10px 30px rgba(0,0,0,.55);
     }
 
-    /* ===== DIAGNOSTICS ===== */
     .diag{
       position:fixed;
       right: 12px;
@@ -317,7 +313,6 @@
       cursor:pointer;
       user-select:none;
     }
-
     .playIcon{
       width:0;height:0;
       border-top: 12px solid transparent;
@@ -421,7 +416,6 @@
       pointer-events:none;
     }
 
-    /* LOWERED */
     .player.lowered{
       height: 148px;
       border-radius: 18px;
@@ -492,7 +486,7 @@
   <div class="hud" id="hud">panel 01 / 01</div>
 
   <div class="diag" id="diag">
-    <div class="row"><b>SANCTUM</b> <span class="muted" id="d_ver">v0.40.14</span></div>
+    <div class="row"><b>SANCTUM</b> <span class="muted" id="d_ver">v0.40.15</span></div>
     <div class="row"><span>chapter</span> <b id="d_ch">-</b></div>
     <div class="row"><span>base</span> <span class="muted" id="d_base">-</span></div>
     <div class="row"><span>panels</span> <b id="d_total">0</b></div>
@@ -555,7 +549,7 @@
 
   <script>
     (function(){
-      const VERSION = "v0.40.14";
+      const VERSION = "v0.40.15";
 
       const READER = {
         chapter: "chapter-00",
@@ -569,6 +563,8 @@
         stopAfterConsecutiveMisses: 3,
 
         loadingMaxMs: 1800,
+        loadingMinMs: 2000,   // <-- NEW: minimum visible time
+
         swipeThresholdPx: 44,
         axisLockPx: 10,
         maxVerticalSlope: 0.35,
@@ -613,7 +609,6 @@
       }
       window.addEventListener("error", (e) => noteErr(e.message || e.error || "error"));
       window.addEventListener("unhandledrejection", (e) => noteErr(e.reason || "promise rejection"));
-
       diagSet(diag.ver, VERSION, "muted");
 
       let diagVisible = true;
@@ -656,16 +651,29 @@
         return isFinite(n) ? n : fallback;
       }
 
+      /* ===== LOADING: MINIMUM VISIBLE TIME ===== */
+      const loadingShownAt = performance.now();
       let loadingHidden = false;
-      function hideLoading(){
+
+      function hideLoading(force=false){
         if(loadingHidden) return;
+
+        const elapsed = performance.now() - loadingShownAt;
+        const wait = Math.max(0, READER.loadingMinMs - elapsed);
+
+        if(!force && wait > 0){
+          setTimeout(() => hideLoading(true), wait);
+          return;
+        }
+
         loadingHidden = true;
         loading.style.opacity = "0";
         loading.setAttribute("aria-hidden","true");
         setTimeout(() => { loading.style.display = "none"; }, 380);
       }
-      coverBanner.addEventListener("click", hideLoading, { passive:true });
-      setTimeout(hideLoading, READER.loadingMaxMs);
+
+      coverBanner.addEventListener("click", () => hideLoading(false), { passive:true });
+      setTimeout(() => hideLoading(false), READER.loadingMaxMs);
 
       function showRefresh(){ refreshBar.classList.add("show"); }
       function hideRefresh(){ refreshBar.classList.remove("show"); }
@@ -768,7 +776,6 @@
 
       /* ===== Player drag (clamped) ===== */
       let pDrag = null;
-
       function dockShiftMaxPx(){ return cssNum("--dock-shift-max", 120); }
       function applyDockShift(px){
         const max = dockShiftMaxPx();
@@ -920,7 +927,7 @@
           p.ok = true;
           if(p.n === 1){
             diagSet(diag.first, "ok", "ok");
-            hideLoading();
+            hideLoading(false);
           }
         }, { passive:true });
 
@@ -928,7 +935,7 @@
           p.ok = false;
           if(p.n === 1){
             diagSet(diag.first, "error", "bad");
-            hideLoading();
+            hideLoading(false);
           }
         }, { passive:true });
 
@@ -960,7 +967,7 @@
         if(p1 && p1.imgEl && p1.imgEl.complete && p1.imgEl.naturalWidth > 0){
           p1.ok = true;
           diagSet(diag.first, "ok", "ok");
-          hideLoading();
+          hideLoading(false);
         }
       }
 
