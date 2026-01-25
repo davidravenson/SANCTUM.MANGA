@@ -3,22 +3,20 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>SANCTUM — Reader (Doppelseite)</title>
+  <title>SANCTUM — Reader</title>
 
   <style>
     :root{
-      --v: "v0.31.0";
+      --v: "v0.30.6";
       --safe-top: env(safe-area-inset-top, 0px);
       --safe-bottom: env(safe-area-inset-bottom, 0px);
 
       --bg: #000;
       --ink: #fff;
-      --muted: rgba(255,255,255,.75);
-
-      --shadow: 0 18px 48px rgba(0,0,0,.45);
-      --spread-gap: 10px;
-      --spread-radius: 14px;
-      --max-w: 1400px;
+      --muted: rgba(255,255,255,.7);
+      --shadow: 0 16px 40px rgba(0,0,0,.4);
+      --radius: 14px;
+      --max-w: 900px;
       --max-h: 92vh;
     }
 
@@ -29,226 +27,120 @@
       color: var(--ink);
       font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
       overflow:hidden;
-      touch-action: pan-y;
     }
 
-    /* Top HUD */
     .hud{
       position: fixed;
-      z-index: 50;
-      left: 0; right: 0;
       top: 0;
-      padding: calc(10px + var(--safe-top)) 14px 10px 14px;
+      left: 0;
+      right: 0;
+      z-index: 20;
+      padding: calc(10px + var(--safe-top)) 14px 10px;
       display:flex;
-      align-items:center;
       justify-content: space-between;
-      gap: 10px;
       pointer-events:none;
     }
+
     .hud .pill{
       pointer-events:auto;
-      display:inline-flex;
-      align-items:center;
-      gap:10px;
       background: rgba(0,0,0,.55);
-      border: 1px solid rgba(255,255,255,.14);
+      border: 1px solid rgba(255,255,255,.15);
       backdrop-filter: blur(8px);
       border-radius: 999px;
-      padding: 10px 12px;
+      padding: 8px 12px;
       box-shadow: var(--shadow);
-      user-select:none;
+      font-size: 13px;
+      color: var(--muted);
     }
-    .hud .pill b{ font-weight:700; }
-    .hud .pill small{ color: var(--muted); }
+
     .hud button{
       pointer-events:auto;
-      border: 1px solid rgba(255,255,255,.18);
+      border: 1px solid rgba(255,255,255,.2);
       background: rgba(255,255,255,.08);
-      color: var(--ink);
-      padding: 10px 12px;
+      color: #fff;
+      padding: 8px 12px;
       border-radius: 999px;
       font-size: 14px;
-      cursor: pointer;
-      user-select:none;
+      cursor:pointer;
     }
-    .hud button:active{ transform: translateY(1px); }
 
-    /* Main layout */
     .wrap{
       height:100%;
-      width:100%;
       display:flex;
       align-items:center;
       justify-content:center;
-      padding: 60px 14px calc(14px + var(--safe-bottom)) 14px; /* leaves room for hud */
+      padding: 56px 14px calc(14px + var(--safe-bottom));
       box-sizing:border-box;
     }
 
-    /* Spread */
-    .spread{
+    .page{
       width: min(100%, var(--max-w));
       height: min(100%, var(--max-h));
-      display:grid;
-      grid-template-columns: 1fr 1fr;
-      gap: var(--spread-gap);
-      align-items: stretch;
-      justify-items: stretch;
-    }
-
-    .page{
-      position: relative;
-      background: rgba(255,255,255,.04);
-      border: 1px solid rgba(255,255,255,.12);
-      border-radius: var(--spread-radius);
+      background: #000;
+      border-radius: var(--radius);
       overflow:hidden;
       box-shadow: var(--shadow);
+      border: 1px solid rgba(255,255,255,.12);
     }
 
     .page img{
       width:100%;
       height:100%;
-      display:block;
       object-fit: contain;
+      display:block;
       background:#000;
     }
 
-    /* Tap zones (invisible) */
+    /* Tap zones */
     .tap{
       position: fixed;
-      z-index: 10;
-      top: 0; bottom: 0;
+      top: 0;
+      bottom: 0;
       width: 32vw;
       max-width: 420px;
+      z-index: 10;
     }
-    .tap.left{ left: 0; }
-    .tap.right{ right: 0; }
-    .tap{ background: transparent; }
-
-    /* Rotate prompt (portrait mode) */
-    .rotate{
-      position: fixed;
-      inset: 0;
-      z-index: 100;
-      display:none;
-      align-items:center;
-      justify-content:center;
-      padding: 24px;
-      background: radial-gradient(1200px 700px at 50% 40%, rgba(255,255,255,.06), rgba(0,0,0,.92));
-      text-align:center;
-    }
-    .rotate .card{
-      width: min(520px, 92vw);
-      border: 1px solid rgba(255,255,255,.14);
-      background: rgba(0,0,0,.55);
-      backdrop-filter: blur(10px);
-      border-radius: 18px;
-      box-shadow: var(--shadow);
-      padding: 18px 16px;
-    }
-    .rotate h1{
-      font-size: 18px;
-      margin: 0 0 8px 0;
-      letter-spacing: .2px;
-    }
-    .rotate p{
-      margin: 0;
-      color: var(--muted);
-      line-height: 1.4;
-      font-size: 14px;
-    }
-    .rotate .hint{
-      margin-top: 12px;
-      font-size: 12px;
-      color: rgba(255,255,255,.65);
-    }
-
-    /* In portrait we show rotate prompt and hide spread interactions */
-    body.portrait .rotate{ display:flex; }
-    body.portrait .wrap,
-    body.portrait .tap{ display:none; }
-
-    /* Accessibility helper */
-    .sr-only{
-      position:absolute;
-      width:1px;height:1px;
-      padding:0;margin:-1px;
-      overflow:hidden;clip:rect(0,0,0,0);
-      white-space:nowrap;border:0;
-    }
+    .tap.left{ left:0; }
+    .tap.right{ right:0; }
   </style>
 </head>
 
 <body>
-  <div class="hud" aria-hidden="false">
-    <div class="pill" id="statusPill">
-      <div>
-        <b>SANCTUM</b> <small id="statusText">—</small>
-      </div>
-    </div>
-
+  <div class="hud">
+    <div class="pill" id="status">SANCTUM · v0.30.6</div>
     <div class="pill">
-      <button id="prevBtn" type="button" aria-label="Vorheriges Seitenpaar">◀</button>
-      <button id="nextBtn" type="button" aria-label="Nächstes Seitenpaar">▶</button>
+      <button id="prev">◀</button>
+      <button id="next">▶</button>
     </div>
   </div>
 
-  <div class="wrap" role="application" aria-label="Manga Reader Doppelseite">
-    <div class="spread" id="spread" aria-live="polite">
-      <div class="page" aria-label="Linke Seite">
-        <img id="imgLeft" alt="Seite links" draggable="false" />
-      </div>
-      <div class="page" aria-label="Rechte Seite">
-        <img id="imgRight" alt="Seite rechts" draggable="false" />
-      </div>
-    </div>
-    <div class="sr-only" id="ariaInfo"></div>
-  </div>
-
-  <!-- Tap zones for thumb navigation -->
-  <div class="tap left" id="tapLeft" aria-hidden="true"></div>
-  <div class="tap right" id="tapRight" aria-hidden="true"></div>
-
-  <!-- Portrait rotate prompt -->
-  <div class="rotate" role="dialog" aria-modal="true" aria-label="Bitte drehen">
-    <div class="card">
-      <h1>Bitte ins Querformat drehen</h1>
-      <p>Diese Seite liest sich als <b>Doppelseite</b>: aktuelle Seite links, nächste Seite rechts. Ein Swipe bringt das nächste Seitenpaar.</p>
-      <div class="hint">Version <span id="ver"></span></div>
+  <div class="wrap">
+    <div class="page">
+      <img id="pageImg" alt="Manga Seite" draggable="false">
     </div>
   </div>
+
+  <div class="tap left" id="tapLeft"></div>
+  <div class="tap right" id="tapRight"></div>
 
   <script>
     /* =========================
-       SANCTUM Reader — v0.31.0
-       Doppelseiten-Logik:
-       - Spread index = gerade Seite (1-basiert)
-       - Anzeige: (i) links + (i+1) rechts
-       - Navigation: i += 2 / i -= 2
-       - Preload: unsichtbare Paare im Cache
+       SANCTUM Reader v0.30.6
+       Einzelseiten-Logik
+       Swipe / Tap / Button
     ========================== */
 
-    const VERSION = "v0.31.0";
+    const VERSION = "v0.30.6";
 
-    // === Einstellungen: Hier passt du deinen Pfad & Seitenzahl an ===
-    const relativeFolder = "./manga/my-series/chapter-1/"; // <- Ordnerpfad
-    const totalPages = 60; // <- Gesamtseitenzahl (1..N)
-    const fileExt = "jpg"; // "jpg" oder "png"
-    const padTo = 3;       // 001, 002, ...
+    const relativeFolder = "./manga/my-series/chapter-1/";
+    const totalPages = 60;
+    const fileExt = "jpg";
+    const padTo = 3;
 
-    // Startseite (1-basiert). Wird auf gerade Basis indexiert (1->1, 2->1, 3->3, ...)
-    let currentLeftPage = 1;
+    let currentPage = 1;
 
-    // DOM
-    const imgLeft  = document.getElementById("imgLeft");
-    const imgRight = document.getElementById("imgRight");
-    const statusText = document.getElementById("statusText");
-    const ariaInfo = document.getElementById("ariaInfo");
-    const prevBtn = document.getElementById("prevBtn");
-    const nextBtn = document.getElementById("nextBtn");
-    document.getElementById("ver").textContent = VERSION;
-
-    // Preload cache: key = "L-R" e.g. "1-2"
-    const pairCache = new Map();
+    const img = document.getElementById("pageImg");
+    const status = document.getElementById("status");
 
     function pad(n){
       const s = String(n);
@@ -259,201 +151,73 @@
       return `${relativeFolder}${pad(n)}.${fileExt}`;
     }
 
-    function clampLeftPage(n){
-      if (n < 1) return 1;
-      // left page must not exceed totalPages (if odd last page, right may be missing)
-      if (n > totalPages) return totalPages;
-      return n;
-    }
-
-    function normalizeToLeftOdd(n){
-      // ensure the left page is odd (1,3,5...) so it's "paired" with the next page naturally
-      n = clampLeftPage(n);
-      if (n % 2 === 0) n = n - 1;
-      if (n < 1) n = 1;
-      return n;
-    }
-
-    function pairKey(left){
-      const right = left + 1;
-      return `${left}-${right}`;
-    }
-
-    function preloadImage(url){
-      return new Promise((resolve) => {
-        const im = new Image();
-        im.onload = () => resolve({ ok:true, url });
-        im.onerror = () => resolve({ ok:false, url });
-        im.src = url;
-      });
-    }
-
-    async function preloadPair(left){
-      left = normalizeToLeftOdd(left);
-      const right = left + 1;
-      const key = pairKey(left);
-
-      if (pairCache.has(key)) return pairCache.get(key);
-
-      const result = {
-        left,
-        right,
-        leftUrl: pageUrl(left),
-        rightUrl: right <= totalPages ? pageUrl(right) : null,
-        leftOk: false,
-        rightOk: false
-      };
-
-      // Unsichtbar als Paar laden: erst links, dann rechts (falls existiert)
-      const l = await preloadImage(result.leftUrl);
-      result.leftOk = l.ok;
-
-      if (result.rightUrl){
-        const r = await preloadImage(result.rightUrl);
-        result.rightOk = r.ok;
-      } else {
-        result.rightOk = false;
-      }
-
-      pairCache.set(key, result);
-      return result;
-    }
-
-    async function renderCurrentPair(){
-      const left = normalizeToLeftOdd(currentLeftPage);
-      currentLeftPage = left;
-
-      // Preload current, next and prev pairs (unsichtbar)
-      const current = await preloadPair(left);
-      preloadPair(left + 2);
-      preloadPair(left - 2);
-
-      // Set images (fallback behavior if missing)
-      imgLeft.src = current.leftOk ? current.leftUrl : "";
-      imgLeft.alt = current.leftOk ? `Seite ${current.left}` : `Seite ${current.left} (nicht gefunden)`;
-
-      if (current.rightUrl && current.rightOk){
-        imgRight.src = current.rightUrl;
-        imgRight.style.opacity = "1";
-        imgRight.alt = `Seite ${current.right}`;
-      } else {
-        // If the right page does not exist or fails, we keep it empty but present
-        imgRight.src = "";
-        imgRight.alt = current.rightUrl ? `Seite ${current.right} (nicht gefunden)` : "Keine rechte Seite";
-        imgRight.style.opacity = "0.35";
-      }
-
-      // Status text
-      const rightLabel = (left + 1 <= totalPages) ? (left + 1) : "—";
-      statusText.textContent = `Seiten ${left}–${rightLabel}  ·  ${VERSION}`;
-      ariaInfo.textContent = `Angezeigt: Seiten ${left} bis ${rightLabel}.`;
-      updateButtons();
+    function render(){
+      img.src = pageUrl(currentPage);
+      status.textContent = `SANCTUM · Seite ${currentPage}/${totalPages} · ${VERSION}`;
       updateHash();
     }
 
-    function updateButtons(){
-      prevBtn.disabled = currentLeftPage <= 1;
-      nextBtn.disabled = (currentLeftPage + 2) > totalPages;
-      prevBtn.style.opacity = prevBtn.disabled ? ".45" : "1";
-      nextBtn.style.opacity = nextBtn.disabled ? ".45" : "1";
-    }
-
-    function nextPair(){
-      const nextLeft = normalizeToLeftOdd(currentLeftPage + 2);
-      if (nextLeft > totalPages) return;
-      currentLeftPage = nextLeft;
-      renderCurrentPair();
-    }
-
-    function prevPair(){
-      const prevLeft = normalizeToLeftOdd(currentLeftPage - 2);
-      if (prevLeft < 1) return;
-      currentLeftPage = prevLeft;
-      renderCurrentPair();
-    }
-
-    // Swipe handling
-    let touchStartX = 0;
-    let touchStartY = 0;
-    let touchActive = false;
-
-    function onTouchStart(e){
-      if (!e.touches || e.touches.length !== 1) return;
-      touchActive = true;
-      touchStartX = e.touches[0].clientX;
-      touchStartY = e.touches[0].clientY;
-    }
-
-    function onTouchEnd(e){
-      if (!touchActive) return;
-      touchActive = false;
-
-      const t = (e.changedTouches && e.changedTouches[0]) ? e.changedTouches[0] : null;
-      if (!t) return;
-
-      const dx = t.clientX - touchStartX;
-      const dy = t.clientY - touchStartY;
-
-      // Ignore mostly vertical scroll gestures
-      if (Math.abs(dy) > Math.abs(dx)) return;
-
-      const threshold = 45; // px
-      if (dx <= -threshold) nextPair();
-      if (dx >= threshold) prevPair();
-    }
-
-    // Tap zones
-    document.getElementById("tapLeft").addEventListener("click", prevPair);
-    document.getElementById("tapRight").addEventListener("click", nextPair);
-
-    // Buttons
-    prevBtn.addEventListener("click", prevPair);
-    nextBtn.addEventListener("click", nextPair);
-
-    // Keyboard (desktop)
-    window.addEventListener("keydown", (e) => {
-      if (e.key === "ArrowRight") nextPair();
-      if (e.key === "ArrowLeft") prevPair();
-    });
-
-    // Orientation / portrait overlay
-    function updateOrientationClass(){
-      const isPortrait = window.matchMedia("(orientation: portrait)").matches;
-      document.body.classList.toggle("portrait", isPortrait);
-    }
-
-    // Deep link via hash: #p=3 sets left page 3 (odd). #p=4 => left becomes 3.
-    function readHash(){
-      const h = window.location.hash || "";
-      const m = h.match(/p=(\d+)/i);
-      if (!m) return;
-      const n = parseInt(m[1], 10);
-      if (!Number.isFinite(n)) return;
-      currentLeftPage = normalizeToLeftOdd(n);
-    }
-
-    function updateHash(){
-      // Keep URL stable & shareable
-      const target = `#p=${currentLeftPage}`;
-      if (window.location.hash !== target) {
-        history.replaceState(null, "", target);
+    function next(){
+      if (currentPage < totalPages){
+        currentPage++;
+        render();
       }
     }
 
-    // Attach swipe listeners
-    document.addEventListener("touchstart", onTouchStart, { passive: true });
-    document.addEventListener("touchend", onTouchEnd, { passive: true });
+    function prev(){
+      if (currentPage > 1){
+        currentPage--;
+        render();
+      }
+    }
+
+    function readHash(){
+      const m = location.hash.match(/p=(\d+)/);
+      if (m){
+        const n = parseInt(m[1],10);
+        if (n >= 1 && n <= totalPages) currentPage = n;
+      }
+    }
+
+    function updateHash(){
+      history.replaceState(null,"",`#p=${currentPage}`);
+    }
+
+    // Swipe
+    let sx = 0, sy = 0;
+    document.addEventListener("touchstart", e=>{
+      if (!e.touches[0]) return;
+      sx = e.touches[0].clientX;
+      sy = e.touches[0].clientY;
+    }, {passive:true});
+
+    document.addEventListener("touchend", e=>{
+      const t = e.changedTouches[0];
+      if (!t) return;
+      const dx = t.clientX - sx;
+      const dy = t.clientY - sy;
+      if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 40){
+        dx < 0 ? next() : prev();
+      }
+    }, {passive:true});
+
+    // Tap
+    document.getElementById("tapLeft").onclick = prev;
+    document.getElementById("tapRight").onclick = next;
+
+    // Buttons
+    document.getElementById("prev").onclick = prev;
+    document.getElementById("next").onclick = next;
+
+    // Keyboard
+    window.addEventListener("keydown", e=>{
+      if (e.key === "ArrowRight") next();
+      if (e.key === "ArrowLeft") prev();
+    });
 
     // Init
-    (function init(){
-      updateOrientationClass();
-      window.addEventListener("resize", updateOrientationClass);
-      window.addEventListener("orientationchange", updateOrientationClass);
-
-      readHash();
-      currentLeftPage = normalizeToLeftOdd(currentLeftPage);
-      renderCurrentPair();
-    })();
+    readHash();
+    render();
   </script>
 </body>
 </html>
