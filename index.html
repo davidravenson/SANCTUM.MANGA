@@ -1,223 +1,105 @@
 <!doctype html>
-<html lang="de">
+<html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>SANCTUM — Reader</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SANCTUM — Reader</title>
 
-  <style>
-    :root{
-      --v: "v0.30.6";
-      --safe-top: env(safe-area-inset-top, 0px);
-      --safe-bottom: env(safe-area-inset-bottom, 0px);
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background: #000;
+    overflow: hidden;
+  }
 
-      --bg: #000;
-      --ink: #fff;
-      --muted: rgba(255,255,255,.7);
-      --shadow: 0 16px 40px rgba(0,0,0,.4);
-      --radius: 14px;
-      --max-w: 900px;
-      --max-h: 92vh;
-    }
+  #viewer {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
 
-    html, body{
-      height:100%;
-      margin:0;
-      background: var(--bg);
-      color: var(--ink);
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-      overflow:hidden;
-    }
-
-    .hud{
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      z-index: 20;
-      padding: calc(10px + var(--safe-top)) 14px 10px;
-      display:flex;
-      justify-content: space-between;
-      pointer-events:none;
-    }
-
-    .hud .pill{
-      pointer-events:auto;
-      background: rgba(0,0,0,.55);
-      border: 1px solid rgba(255,255,255,.15);
-      backdrop-filter: blur(8px);
-      border-radius: 999px;
-      padding: 8px 12px;
-      box-shadow: var(--shadow);
-      font-size: 13px;
-      color: var(--muted);
-    }
-
-    .hud button{
-      pointer-events:auto;
-      border: 1px solid rgba(255,255,255,.2);
-      background: rgba(255,255,255,.08);
-      color: #fff;
-      padding: 8px 12px;
-      border-radius: 999px;
-      font-size: 14px;
-      cursor:pointer;
-    }
-
-    .wrap{
-      height:100%;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      padding: 56px 14px calc(14px + var(--safe-bottom));
-      box-sizing:border-box;
-    }
-
-    .page{
-      width: min(100%, var(--max-w));
-      height: min(100%, var(--max-h));
-      background: #000;
-      border-radius: var(--radius);
-      overflow:hidden;
-      box-shadow: var(--shadow);
-      border: 1px solid rgba(255,255,255,.12);
-    }
-
-    .page img{
-      width:100%;
-      height:100%;
-      object-fit: contain;
-      display:block;
-      background:#000;
-    }
-
-    /* Tap zones */
-    .tap{
-      position: fixed;
-      top: 0;
-      bottom: 0;
-      width: 32vw;
-      max-width: 420px;
-      z-index: 10;
-    }
-    .tap.left{ left:0; }
-    .tap.right{ right:0; }
-  </style>
+  #page {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    display: block;
+  }
+</style>
 </head>
 
 <body>
-  <div class="hud">
-    <div class="pill" id="status">SANCTUM · v0.30.6</div>
-    <div class="pill">
-      <button id="prev">◀</button>
-      <button id="next">▶</button>
-    </div>
-  </div>
 
-  <div class="wrap">
-    <div class="page">
-      <img id="pageImg" alt="Manga Seite" draggable="false">
-    </div>
-  </div>
+<div id="viewer">
+  <img id="page" src="" alt="Manga Page">
+</div>
 
-  <div class="tap left" id="tapLeft"></div>
-  <div class="tap right" id="tapRight"></div>
+<script>
+/* =========================
+   SANCTUM Reader v0.14.18
+   Minimal single-page reader
+========================= */
 
-  <script>
-    /* =========================
-       SANCTUM Reader v0.30.6
-       Einzelseiten-Logik
-       Swipe / Tap / Button
-    ========================== */
+const folder = "./manga/my-series/chapter-1/";
+const totalPages = 60;
+const ext = "jpg";
+const pad = 3;
 
-    const VERSION = "v0.30.6";
+let page = 1;
+const img = document.getElementById("page");
 
-    const relativeFolder = "./manga/my-series/chapter-1/";
-    const totalPages = 60;
-    const fileExt = "jpg";
-    const padTo = 3;
+function z(n){
+  return String(n).padStart(pad, "0");
+}
 
-    let currentPage = 1;
+function render(){
+  img.src = folder + z(page) + "." + ext;
+}
 
-    const img = document.getElementById("pageImg");
-    const status = document.getElementById("status");
-
-    function pad(n){
-      const s = String(n);
-      return s.length >= padTo ? s : "0".repeat(padTo - s.length) + s;
-    }
-
-    function pageUrl(n){
-      return `${relativeFolder}${pad(n)}.${fileExt}`;
-    }
-
-    function render(){
-      img.src = pageUrl(currentPage);
-      status.textContent = `SANCTUM · Seite ${currentPage}/${totalPages} · ${VERSION}`;
-      updateHash();
-    }
-
-    function next(){
-      if (currentPage < totalPages){
-        currentPage++;
-        render();
-      }
-    }
-
-    function prev(){
-      if (currentPage > 1){
-        currentPage--;
-        render();
-      }
-    }
-
-    function readHash(){
-      const m = location.hash.match(/p=(\d+)/);
-      if (m){
-        const n = parseInt(m[1],10);
-        if (n >= 1 && n <= totalPages) currentPage = n;
-      }
-    }
-
-    function updateHash(){
-      history.replaceState(null,"",`#p=${currentPage}`);
-    }
-
-    // Swipe
-    let sx = 0, sy = 0;
-    document.addEventListener("touchstart", e=>{
-      if (!e.touches[0]) return;
-      sx = e.touches[0].clientX;
-      sy = e.touches[0].clientY;
-    }, {passive:true});
-
-    document.addEventListener("touchend", e=>{
-      const t = e.changedTouches[0];
-      if (!t) return;
-      const dx = t.clientX - sx;
-      const dy = t.clientY - sy;
-      if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 40){
-        dx < 0 ? next() : prev();
-      }
-    }, {passive:true});
-
-    // Tap
-    document.getElementById("tapLeft").onclick = prev;
-    document.getElementById("tapRight").onclick = next;
-
-    // Buttons
-    document.getElementById("prev").onclick = prev;
-    document.getElementById("next").onclick = next;
-
-    // Keyboard
-    window.addEventListener("keydown", e=>{
-      if (e.key === "ArrowRight") next();
-      if (e.key === "ArrowLeft") prev();
-    });
-
-    // Init
-    readHash();
+function next(){
+  if (page < totalPages){
+    page++;
     render();
-  </script>
+  }
+}
+
+function prev(){
+  if (page > 1){
+    page--;
+    render();
+  }
+}
+
+/* Touch swipe */
+let startX = 0;
+let startY = 0;
+
+document.addEventListener("touchstart", e => {
+  startX = e.touches[0].clientX;
+  startY = e.touches[0].clientY;
+}, { passive: true });
+
+document.addEventListener("touchend", e => {
+  const dx = e.changedTouches[0].clientX - startX;
+  const dy = e.changedTouches[0].clientY - startY;
+
+  if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 40) {
+    dx < 0 ? next() : prev();
+  }
+}, { passive: true });
+
+/* Keyboard */
+document.addEventListener("keydown", e => {
+  if (e.key === "ArrowRight") next();
+  if (e.key === "ArrowLeft") prev();
+});
+
+/* Init */
+render();
+</script>
+
 </body>
 </html>
