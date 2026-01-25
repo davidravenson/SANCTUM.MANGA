@@ -7,7 +7,7 @@
 
   <style>
     :root{
-      --v: "v0.40.11";
+      --v: "v0.40.12";
       --safe-top: env(safe-area-inset-top, 0px);
       --safe-bottom: env(safe-area-inset-bottom, 0px);
       --bg: url("./media/ui/manga_paper_bg.png");
@@ -21,12 +21,12 @@
       --sc-left-mask-w: 106px;
       --diag-w: min(56vw, 360px);
 
-      /* Player dock translation (runtime controlled) */
-      --dock-shift-max: 120px;  /* runtime updated to "dock just under panel" */
-      --dock-shift-peek: 0px;   /* runtime updated while dragging */
+      /* runtime controlled */
+      --dock-shift-max: 120px;
+      --dock-shift-peek: 0px;
 
-      /* gap between panel bottom edge (cinematic bar) and player top when lowered */
-      --dock-gap-under-panel: 8px;
+      /* distance between bottom mask edge and player top when lowered */
+      --dock-gap-under-mask: 8px;
     }
 
     html, body{
@@ -125,7 +125,7 @@
     /* ===== STAGE ===== */
     .stage{
       position:relative;
-      height:100%;
+      height: 100svh;              /* important for mobile rotation stability */
       width:100%;
       display:flex;
       align-items:center;
@@ -279,7 +279,7 @@
       pointer-events:auto;
       transition: transform .22s ease;
       will-change: transform;
-      touch-action: none; /* we handle player drag gestures explicitly */
+      touch-action: none;
     }
     .playerDock.shiftDown{
       transform: translateX(-50%) translateY(var(--dock-shift-max));
@@ -323,7 +323,6 @@
       filter: drop-shadow(0 2px 6px rgba(0,0,0,.25));
     }
 
-    /* Expanded player (FULL) */
     .player.expanded{
       width: min(92vw, 640px);
       height: 240px;
@@ -407,6 +406,7 @@
       display:block;
       background: transparent;
     }
+
     .scMaskLeft{
       position:absolute;
       left:0; top:0;
@@ -417,7 +417,7 @@
       pointer-events:none;
     }
 
-    /* ===== LOWERED MODE ===== */
+    /* LOWERED */
     .player.lowered{
       height: 148px;
       border-radius: 18px;
@@ -477,7 +477,6 @@
 </head>
 
 <body>
-  <!-- LOADING -->
   <div id="loading" class="loading" aria-hidden="false">
     <div id="coverBanner" class="coverBanner" role="button" aria-label="Enter SANCTUM">
       <img id="coverImg" src="./manga/chapter-00/cover.jpg" alt="SANCTUM Cover" />
@@ -485,15 +484,11 @@
     </div>
   </div>
 
-  <!-- IN-APP REFRESH -->
   <div id="refreshBar" class="refreshBar">Refreshing…</div>
-
-  <!-- HUD -->
   <div class="hud" id="hud">panel 01 / 01</div>
 
-  <!-- DIAGNOSTICS -->
   <div class="diag" id="diag">
-    <div class="row"><b>SANCTUM</b> <span class="muted" id="d_ver">v0.40.11</span></div>
+    <div class="row"><b>SANCTUM</b> <span class="muted" id="d_ver">v0.40.12</span></div>
     <div class="row"><span>chapter</span> <b id="d_ch">-</b></div>
     <div class="row"><span>base</span> <span class="muted" id="d_base">-</span></div>
     <div class="row"><span>panels</span> <b id="d_total">0</b></div>
@@ -505,7 +500,6 @@
   </div>
   <div class="diagToggle" id="diagToggle">DIAG</div>
 
-  <!-- STAGE -->
   <div class="stage" id="stage">
     <div class="rail">
       <div class="panelFrame" id="panelFrame">
@@ -514,7 +508,6 @@
     </div>
   </div>
 
-  <!-- PLAYER -->
   <div id="playerDock" class="playerDock">
     <div id="player" class="player" aria-label="Player">
       <div id="playerBtn" class="playerBtn" title="Play">
@@ -558,7 +551,7 @@
 
   <script>
     (function(){
-      const VERSION = "v0.40.11";
+      const VERSION = "v0.40.12";
 
       const READER = {
         chapter: "chapter-00",
@@ -584,7 +577,7 @@
         refreshFirePx: 58,
 
         playerRaiseSwipePx: 26,
-        playerDragSnapPx: 42 /* tighter snap so it won't drift too far */
+        playerDragSnapPx: 42
       };
 
       const $ = (id) => document.getElementById(id);
@@ -694,55 +687,62 @@
         const v = Math.max(0, Math.round(px));
         document.documentElement.style.setProperty("--dock-shift-max", v + "px");
       }
-
       function resetDockPeek(){
         playerDock.style.transform = "";
         playerDock.classList.remove("dragging");
         document.documentElement.style.setProperty("--dock-shift-peek", "0px");
       }
 
-      function computeDockToJustUnderPanel(){
-        // We want: player TOP = panelFrame bottom + gap (in viewport space).
-        const gap = cssNum("--dock-gap-under-panel", 8);
-        const safeBottom = cssNum("--safe-bottom", 0); // env() resolves into computed style in modern browsers
-        const bottomBase = 12 + safeBottom;
+      /* === THE FIX: dock under the *bottom mask edge*, not the frame bottom ===
+         We avoid guessing SafeArea by measuring dock's real top at translateY(0). */
+      function computeDockShiftToMaskEdge(){
+        const maskBottomH = cssNum("--mask-bottom-h", 84);
+        const gap = cssNum("--dock-gap-under-mask", 8);
 
         const frameRect = frame.getBoundingClientRect();
-        const desiredTop = frameRect.bottom + gap;
+        const maskEdgeY = (frameRect.bottom - maskBottomH);  // lower bar TOP edge in viewport
 
-        const playerRect = player.getBoundingClientRect();
-        const playerH = playerRect.height || 148;
+        // ensure lowered height is applied before measuring
+        const wasLowered = player.classList.contains("lowered");
+        if(!wasLowered) setLowered(true);
 
+        // measure dock "top at shift 0" by forcing explicit transform
+        const prevStyle = playerDock.style.transform;
+        const hadShiftClass = playerDock.classList.contains("shiftDown");
+        playerDock.classList.remove("shiftDown");
+        playerDock.style.transform = "translateX(-50%) translateY(0px)";
+
+        const dockRect0 = playerDock.getBoundingClientRect();
+        const top0 = dockRect0.top;
+
+        // restore transform (we'll set proper class/vars right after)
+        playerDock.style.transform = prevStyle;
+        if(hadShiftClass) playerDock.classList.add("shiftDown");
+
+        // desired: playerDock/top == maskEdgeY + gap
+        let shift = (maskEdgeY + gap) - top0;
+
+        // never negative
+        shift = Math.max(0, shift);
+
+        // safety clamp: don't allow shifting so far that dock is offscreen
         const viewportH = window.innerHeight || document.documentElement.clientHeight || 0;
+        const dockRectNow = playerDock.getBoundingClientRect();
+        const dockH = dockRectNow.height || 240;
+        const maxShift = Math.max(0, viewportH - 8 - (top0 + dockH)); // keep at least 8px visible
+        shift = clamp(shift, 0, maxShift);
 
-        // Current top when dock shift = 0:
-        // top0 = viewportH - bottomBase - playerH
-        const top0 = viewportH - bottomBase - playerH;
-
-        // Needed translateY so that top == desiredTop:
-        let shiftY = desiredTop - top0;
-
-        // Clamp: never pull above 0; never push so far it goes out of screen.
-        // Keep at least 8px visible from bottom in worst case:
-        const maxAllowed = Math.max(0, (viewportH - bottomBase - 8) - top0);
-        shiftY = clamp(shiftY, 0, maxAllowed);
-
-        return shiftY;
+        return shift;
       }
 
       function sink(){
         if(!isExpanded()) return;
 
-        // switch into lowered visuals first, so height is correct for docking math
         setLowered(true);
 
-        // compute exact shift needed so TOP sits just under panel
-        const y = computeDockToJustUnderPanel();
-
-        // lock "max" to this dock position, so it can't flutsch deeper on tap/drag
+        const y = computeDockShiftToMaskEdge();
         setDockShiftMax(y);
 
-        // apply shiftDown class (uses --dock-shift-max)
         playerDock.classList.add("shiftDown");
         resetDockPeek();
       }
@@ -759,39 +759,47 @@
         else sink();
       }
 
-      /* Recompute docking on resize/orientation (so it stays glued to panel) */
       function onLayout(){
-        if(isExpanded() && isDown()){
-          const y = computeDockToJustUnderPanel();
-          setDockShiftMax(y);
-        }
+        // run after layout settles (rotation/address bar changes)
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            if(isExpanded() && isDown()){
+              const y = computeDockShiftToMaskEdge();
+              setDockShiftMax(y);
+            }
+          });
+        });
       }
       window.addEventListener("resize", onLayout, { passive:true });
+      window.addEventListener("orientationchange", () => setTimeout(onLayout, 80), { passive:true });
+      if(window.visualViewport){
+        window.visualViewport.addEventListener("resize", onLayout, { passive:true });
+      }
 
-      /* ===== Player drag (CLAMPED TO DOCK POSITION) ===== */
+      /* ===== Player drag (clamped to dock) ===== */
       let pDrag = null;
 
       function dockShiftMaxPx(){
-        const n = cssNum("--dock-shift-max", 120);
-        return isFinite(n) ? n : 120;
+        return cssNum("--dock-shift-max", 120);
       }
-
       function applyDockShift(px){
         const max = dockShiftMaxPx();
         const v = clamp(px, 0, max);
         playerDock.style.transform = "translateX(-50%) translateY(" + v + "px)";
         document.documentElement.style.setProperty("--dock-shift-peek", v + "px");
       }
-
       function snapDock(){
         const max = dockShiftMaxPx();
         const cur = cssNum("--dock-shift-peek", 0);
 
-        // snap logic: if user dragged more than threshold -> stay lowered, else raise
         if(cur > READER.playerDragSnapPx){
+          // recompute dock position to mask edge again (important if panel/viewport moved)
+          const y = computeDockShiftToMaskEdge();
+          setDockShiftMax(y);
+
           playerDock.classList.add("shiftDown");
           resetDockPeek();
-          document.documentElement.style.setProperty("--dock-shift-peek", max + "px");
+          document.documentElement.style.setProperty("--dock-shift-peek", y + "px");
           setLowered(true);
         }else{
           playerDock.classList.remove("shiftDown");
@@ -801,14 +809,13 @@
         }
       }
 
-      // Drag only when expanded
       playerDock.addEventListener("touchstart", (e) => {
         if(!isExpanded()) return;
         if(!e.touches || e.touches.length !== 1) return;
 
-        // If currently lowered, keep docking locked to under-panel position
+        // keep dock target correct before dragging
         if(isDown()){
-          const y = computeDockToJustUnderPanel();
+          const y = computeDockShiftToMaskEdge();
           setDockShiftMax(y);
         }
 
@@ -838,7 +845,7 @@
         snapDock();
       }, { passive:true });
 
-      /* ===== Reappear: tap + upswipe on grip ===== */
+      /* ===== Reappear: tap + upswipe ===== */
       grabHandle.addEventListener("click", (e) => {
         if(!isExpanded() || !isDown()) return;
         e.preventDefault();
@@ -906,9 +913,7 @@
 
         updateHud();
         preloadAround(storyIndex);
-
-        // If player is lowered, keep docking correct for the new frame size/position
-        requestAnimationFrame(onLayout);
+        onLayout();
       }
 
       function makeSlide(p){
@@ -1121,7 +1126,7 @@
         setTimeout(probePanels, 650);
       }
 
-      /* ===== SoundCloud (play) ===== */
+      /* ===== SoundCloud ===== */
       let widget = null;
       let widgetReady = false;
       let scScriptLoaded = false;
@@ -1152,6 +1157,7 @@
       function openAndPlay(){
         player.classList.add("expanded");
         raise();
+        onLayout();
 
         if(widget){
           if(widgetReady){ try{ widget.play(); }catch(_){} }
@@ -1184,7 +1190,6 @@
         closePlayer();
       }, { passive:false });
 
-      // Panel tap toggles sink (expanded only) — now docks precisely under the lower black bar
       document.addEventListener("click", (e) => {
         if(!isExpanded()) return;
         if(e.target && e.target.classList && e.target.classList.contains("panelImg")){
