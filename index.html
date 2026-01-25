@@ -7,7 +7,7 @@
 
   <style>
     :root{
-      --v: "v0.40.16";
+      --v: "v0.40.17";
       --safe-top: env(safe-area-inset-top, 0px);
       --safe-bottom: env(safe-area-inset-bottom, 0px);
       --bg: url("./media/ui/manga_paper_bg.png");
@@ -20,12 +20,25 @@
 
       --max-w: 860px;
 
-      /* Player sizing */
-      --player-collapsed: 78px;
-      --player-expanded-h: 240px;
-      --player-lowered-h: 150px;
+      /* ===== PLAYER SCALE =====
+         Portrait: -30%  => 0.70
+         Landscape: "um 100%" mehr shrink (deutlich kleiner) => 0.40
+         (Wenn du Landscape noch kleiner/größer willst: 0.35 / 0.45 etc.) */
+      --player-scale: 0.70;
 
-      /* IMPORTANT: reserved space under panel so player NEVER overlaps panel */
+      /* Player base sizes (unscaled) */
+      --player-collapsed-base: 78px;
+      --player-expanded-h-base: 240px;
+      --player-lowered-h-base: 150px;
+      --player-expanded-w-base: 640px;
+
+      /* Scaled sizes (computed) */
+      --player-collapsed: calc(var(--player-collapsed-base) * var(--player-scale));
+      --player-expanded-h: calc(var(--player-expanded-h-base) * var(--player-scale));
+      --player-lowered-h: calc(var(--player-lowered-h-base) * var(--player-scale));
+      --player-expanded-w: calc(var(--player-expanded-w-base) * var(--player-scale));
+
+      /* RESERVED space under panel so player NEVER overlaps panel */
       --stage-reserve: 0px; /* runtime updated */
       --reserve-gap: 16px;  /* air between panel + player area */
 
@@ -48,6 +61,16 @@
       background-position: center top;
       background-repeat: no-repeat;
       background-attachment: fixed;
+    }
+
+    /* Landscape scale override */
+    body.landscape{
+      --player-scale: 0.40; /* smaller in landscape */
+      /* re-compute scaled sizes under landscape automatically */
+      --player-collapsed: calc(var(--player-collapsed-base) * var(--player-scale));
+      --player-expanded-h: calc(var(--player-expanded-h-base) * var(--player-scale));
+      --player-lowered-h: calc(var(--player-lowered-h-base) * var(--player-scale));
+      --player-expanded-w: calc(var(--player-expanded-w-base) * var(--player-scale));
     }
 
     /* ===== LOADING ===== */
@@ -134,7 +157,6 @@
       align-items:center;
       justify-content:center;
       padding-top: var(--safe-top);
-      /* RESERVED space means: panel area ends ABOVE the player */
       padding-bottom: calc(20px + var(--safe-bottom) + var(--stage-reserve));
       box-sizing:border-box;
       touch-action: pan-y;
@@ -190,7 +212,6 @@
       justify-content:center;
     }
 
-    /* Always fully visible (like Jump+) */
     .panelImg{
       width:100%;
       height:100%;
@@ -276,8 +297,7 @@
       user-select:none;
     }
 
-    /* ===== PLAYER DOCK =====
-       Player lives in reserved space below the panel (never overlaps panel). */
+    /* ===== PLAYER DOCK ===== */
     .playerDock{
       position:fixed;
       left:50%;
@@ -332,21 +352,21 @@
     }
     .playIcon{
       width:0;height:0;
-      border-top: 12px solid transparent;
-      border-bottom: 12px solid transparent;
-      border-left: 18px solid rgba(0,0,0,.92);
+      border-top: calc(12px * var(--player-scale)) solid transparent;
+      border-bottom: calc(12px * var(--player-scale)) solid transparent;
+      border-left: calc(18px * var(--player-scale)) solid rgba(0,0,0,.92);
       transform: translateX(2px);
       filter: drop-shadow(0 2px 6px rgba(0,0,0,.25));
     }
 
     .player.expanded{
-      width: min(92vw, 640px);
+      width: min(92vw, var(--player-expanded-w));
       height: var(--player-expanded-h);
-      border-radius: 20px;
+      border-radius: calc(20px * var(--player-scale));
       background: rgba(255,255,255,.12);
     }
     body.landscape .player.expanded{
-      width: min(92vw, var(--max-w));
+      width: min(92vw, min(var(--max-w), var(--player-expanded-w)));
     }
 
     .player.expanded .meta,
@@ -358,30 +378,30 @@
     /* Minimal header */
     .meta{
       position:absolute;
-      left: 12px;
-      top: 10px;
-      right: 130px;
+      left: calc(12px * var(--player-scale));
+      top:  calc(10px * var(--player-scale));
+      right: calc(130px * var(--player-scale));
       line-height: 1.05;
       color:#111;
       background: rgba(255,255,255,.78);
-      border-radius: 14px;
-      padding: 8px 10px;
+      border-radius: calc(14px * var(--player-scale));
+      padding: calc(8px * var(--player-scale)) calc(10px * var(--player-scale));
       box-shadow: 0 10px 18px rgba(0,0,0,.18);
     }
-    .meta .t{ font-weight:900; letter-spacing:.03em; font-size:16px; color:#0d0d0d; }
-    .meta .a{ margin-top:2px; font-weight:700; opacity:.92; font-size:12px; color:#0d0d0d; }
+    .meta .t{ font-weight:900; letter-spacing:.03em; font-size: calc(16px * var(--player-scale)); color:#0d0d0d; }
+    .meta .a{ margin-top:2px; font-weight:700; opacity:.92; font-size: calc(12px * var(--player-scale)); color:#0d0d0d; }
 
     .openBtn{
       position:absolute;
-      top: 10px;
-      right: 54px;
-      padding: 8px 10px;
+      top: calc(10px * var(--player-scale));
+      right: calc(54px * var(--player-scale));
+      padding: calc(8px * var(--player-scale)) calc(10px * var(--player-scale));
       border-radius: 999px;
       border: 1px solid rgba(255,255,255,.22);
       background: rgba(0,0,0,.18);
       color:#fff;
       font-weight: 800;
-      font-size: 12px;
+      font-size: calc(12px * var(--player-scale));
       cursor:pointer;
       text-decoration:none;
       backdrop-filter: blur(10px);
@@ -391,17 +411,17 @@
 
     .closeBtn{
       position:absolute;
-      top: 10px;
-      right: 12px;
-      width: 34px;
-      height: 34px;
+      top: calc(10px * var(--player-scale));
+      right: calc(12px * var(--player-scale));
+      width: calc(34px * var(--player-scale));
+      height: calc(34px * var(--player-scale));
       border-radius: 999px;
       border: 1px solid rgba(255,255,255,.22);
       background: rgba(0,0,0,.18);
       color:#fff;
       font-weight: 900;
-      font-size: 18px;
-      line-height: 32px;
+      font-size: calc(18px * var(--player-scale));
+      line-height: calc(32px * var(--player-scale));
       text-align:center;
       cursor:pointer;
       backdrop-filter: blur(10px);
@@ -411,11 +431,11 @@
 
     .embedWrap{
       position:absolute;
-      left: 10px;
-      right: 10px;
-      bottom: 10px;
-      top: 70px;
-      border-radius: 16px;
+      left:  calc(10px * var(--player-scale));
+      right: calc(10px * var(--player-scale));
+      bottom:calc(10px * var(--player-scale));
+      top:   calc(70px * var(--player-scale));
+      border-radius: calc(16px * var(--player-scale));
       overflow:hidden;
       border: 1px solid rgba(255,255,255,.18);
       background: rgba(255,255,255,.08);
@@ -431,27 +451,27 @@
     /* Lowered mode: embed + close + grab, hide meta/link */
     .player.lowered{
       height: var(--player-lowered-h);
-      border-radius: 18px;
+      border-radius: calc(18px * var(--player-scale));
     }
     .player.lowered .embedWrap{
       display:block !important;
-      top: 26px;
-      bottom: 10px;
+      top: calc(26px * var(--player-scale));
+      bottom: calc(10px * var(--player-scale));
     }
     .player.lowered .meta{ display:none !important; }
     .player.lowered .openBtn{ display:none !important; }
     .player.lowered .closeBtn{
       display:block !important;
-      top: 6px;
-      right: 8px;
+      top: calc(6px * var(--player-scale));
+      right: calc(8px * var(--player-scale));
     }
 
     .grabHandle{
       position:absolute;
-      left: 10px;
-      right: 52px;
-      top: 6px;
-      height: 18px;
+      left: calc(10px * var(--player-scale));
+      right: calc(52px * var(--player-scale));
+      top: calc(6px * var(--player-scale));
+      height: calc(18px * var(--player-scale));
       border-radius: 999px;
       background: rgba(0,0,0,.30);
       border: 1px solid rgba(255,255,255,.12);
@@ -460,21 +480,21 @@
       display:none;
       align-items:center;
       justify-content:center;
-      gap:8px;
+      gap: calc(8px * var(--player-scale));
       z-index:9;
       user-select:none;
       cursor:pointer;
     }
     .grabDot{
-      width: 22px;
-      height: 4px;
+      width: calc(22px * var(--player-scale));
+      height: calc(4px * var(--player-scale));
       border-radius: 999px;
       background: rgba(255,255,255,.55);
       opacity:.9;
     }
     .grabTxt{
       font-weight: 900;
-      font-size: 11px;
+      font-size: calc(11px * var(--player-scale));
       letter-spacing:.02em;
       opacity:.92;
     }
@@ -499,7 +519,7 @@
 
   <!-- DIAGNOSTICS -->
   <div class="diag" id="diag">
-    <div class="row"><b>SANCTUM</b> <span class="muted" id="d_ver">v0.40.16</span></div>
+    <div class="row"><b>SANCTUM</b> <span class="muted" id="d_ver">v0.40.17</span></div>
     <div class="row"><span>chapter</span> <b id="d_ch">-</b></div>
     <div class="row"><span>base</span> <span class="muted" id="d_base">-</span></div>
     <div class="row"><span>panels</span> <b id="d_total">0</b></div>
@@ -562,7 +582,7 @@
 
   <script>
     (function(){
-      const VERSION = "v0.40.16";
+      const VERSION = "v0.40.17";
 
       const READER = {
         chapter: "chapter-00",
@@ -703,7 +723,7 @@
         setTimeout(() => { location.reload(); }, 220);
       }
 
-      /* ===== Player reserve system (the key fix) ===== */
+      /* ===== Player reserve system ===== */
       function cssNum(varName, fallback){
         const raw = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
         const n = parseFloat(raw);
@@ -720,10 +740,9 @@
           return;
         }
         const h = isLowered()
-          ? cssNum("--player-lowered-h", 150)
-          : cssNum("--player-expanded-h", 240);
+          ? cssNum("--player-lowered-h", 105)
+          : cssNum("--player-expanded-h", 168);
 
-        // Reserve player height + a little breathing room so panel never overlaps it
         document.documentElement.style.setProperty("--stage-reserve", (h + gap) + "px");
       }
 
@@ -924,7 +943,6 @@
         }
 
         e.preventDefault();
-
         lastX = t.clientX;
 
         const w = frame.clientWidth || window.innerWidth || 1;
@@ -1085,15 +1103,15 @@
         closePlayer();
       }, { passive:false });
 
-      /* Panel tap toggles sink/raise (expanded only) */
       document.addEventListener("click", (e) => {
         if(!isExpanded()) return;
         if(e.target && e.target.classList && e.target.classList.contains("panelImg")){
-          toggleSink();
+          if(isLowered()) player.classList.remove("lowered");
+          else player.classList.add("lowered");
+          updateStageReserve();
         }
       }, { passive:true });
 
-      /* Keep reserve stable on rotate/resize */
       function onLayoutChange(){
         setOrientationClass();
         updateStageReserve();
