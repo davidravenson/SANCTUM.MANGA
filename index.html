@@ -7,27 +7,28 @@
 
   <style>
     :root{
-      --v: "v0.40.17";
+      --v: "v0.40.15";
       --safe-top: env(safe-area-inset-top, 0px);
       --safe-bottom: env(safe-area-inset-bottom, 0px);
       --bg: url("./media/ui/manga_paper_bg.png");
       --shadow: 0 16px 40px rgba(0,0,0,.35);
 
+      /* Cinematic mask (hard edges) */
       --mask-top-h: 54px;
       --mask-bottom-h: 84px;
       --mask-black: #000;
 
       --max-w: 860px;
-      --sc-left-mask-w: 106px;
-      --diag-w: min(56vw, 360px);
 
-      --dock-shift-max: 120px;
-      --dock-shift-peek: 0px;
+      /* Player sizing */
+      --player-collapsed: 78px;
+      --player-expanded-h: 240px;
+      --player-lowered-h: 150px;
 
-      --dock-under-mask-gap: 12px;
-
-      --panel-w: 860px;
-      --dock-right-margin: 12px;
+      /* Dock geometry */
+      --dock-gap: 6px;            /* small air between mask and player */
+      --dock-bottom: 12px;        /* baseline bottom distance */
+      --dock-min-visible: 10px;   /* keep peeking */
     }
 
     html, body{
@@ -126,7 +127,7 @@
     /* ===== STAGE ===== */
     .stage{
       position:relative;
-      height: 100svh;
+      height:100%;
       width:100%;
       display:flex;
       align-items:center;
@@ -136,17 +137,6 @@
       box-sizing:border-box;
       touch-action: pan-y;
       overscroll-behavior: none;
-    }
-
-    /* LANDSCAPE: no wasted vertical space */
-    @media (orientation: landscape){
-      .stage{
-        padding-top: 0px;
-        padding-bottom: 0px;
-      }
-      .hud{
-        top: 12px;
-      }
     }
 
     .rail{
@@ -198,14 +188,16 @@
       justify-content:center;
     }
 
-    /* Always fully readable */
+    /* KEY FIX: image must "contain" in both orientations, never crop */
     .panelImg{
       width:100%;
       height:100%;
+      object-fit: contain;
       display:block;
       background:#000;
-      object-fit: contain;
-      object-position: center center;
+      user-select:none;
+      -webkit-user-drag:none;
+      -webkit-touch-callout:none;
     }
 
     .cinematicMask{
@@ -247,7 +239,7 @@
       right: 12px;
       top: calc(12px + var(--safe-top));
       z-index:80;
-      width: var(--diag-w);
+      width: min(56vw, 360px);
       background: rgba(0,0,0,.58);
       border: 1px solid rgba(255,255,255,.18);
       border-radius: 14px;
@@ -282,50 +274,44 @@
       user-select:none;
     }
 
-    /* ===== PLAYER ===== */
+    /* ===== PLAYER DOCK (adaptive) =====
+       default: bottom centered; landscape: can dock right but never exceed panel width */
     .playerDock{
       position:fixed;
       left:50%;
-      bottom: calc(12px + var(--safe-bottom));
-      transform: translateX(-50%) translateY(var(--dock-shift-peek));
+      bottom: calc(var(--dock-bottom) + var(--safe-bottom));
+      transform: translateX(-50%) translateY(0);
       z-index:70;
       display:flex;
-      align-items:center;
+      align-items:flex-end;
       justify-content:center;
       pointer-events:auto;
-      transition: transform .22s ease, left .22s ease, right .22s ease, bottom .22s ease, top .22s ease;
-      will-change: transform, left, right, bottom, top;
-      touch-action: none;
+      transition: transform .22s ease, left .22s ease, right .22s ease, bottom .22s ease;
+      will-change: transform, left, right, bottom;
+      touch-action:none;
+      max-width: min(100vw, var(--max-w));
     }
-    .playerDock.shiftDown{
-      transform: translateX(-50%) translateY(var(--dock-shift-max));
-    }
-    .playerDock.dragging{ transition:none; }
 
-    /* LANDSCAPE: ALWAYS dock to the right side */
-    .playerDock.landscapeRight{
+    /* Landscape: dock to right edge of PANEL (not screen) */
+    body.landscape .playerDock{
       left:auto;
-      right: calc(var(--dock-right-margin));
-      bottom: calc(12px + var(--safe-bottom));
-      transform: translateY(var(--dock-shift-peek));
-    }
-    .playerDock.landscapeRight.shiftDown{
-      transform: translateY(var(--dock-shift-max));
+      right: calc((100vw - min(100vw, var(--max-w))) / 2);
+      transform: translateX(0) translateY(0);
+      justify-content:flex-end;
     }
 
     .player{
       position:relative;
-      width:78px;
-      height:78px;
+      width: var(--player-collapsed);
+      height: var(--player-collapsed);
       border-radius:999px;
-      background: rgba(255,255,255,.08);
-      border: 1px solid rgba(255,255,255,.14);
-      box-shadow: 0 10px 26px rgba(0,0,0,.30);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
+      background: rgba(255,255,255,.10);
+      border: 1px solid rgba(255,255,255,.18);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
       overflow:hidden;
-      transition: width .26s ease, height .26s ease, border-radius .26s ease, background .26s ease;
-      max-width: var(--panel-w);
+      transition: width .28s ease, height .28s ease, border-radius .28s ease, background .28s ease;
     }
 
     .player .meta,
@@ -351,60 +337,67 @@
       filter: drop-shadow(0 2px 6px rgba(0,0,0,.25));
     }
 
+    /* Expanded player */
     .player.expanded{
       width: min(92vw, 640px);
-      height: 240px;
-      border-radius: 18px;
-      background: rgba(255,255,255,.10);
-      max-width: var(--panel-w);
+      height: var(--player-expanded-h);
+      border-radius: 20px;
+      background: rgba(255,255,255,.12);
     }
+
+    /* Cap width to panel in landscape */
+    body.landscape .player.expanded{
+      width: min(92vw, var(--max-w));
+    }
+
     .player.expanded .meta,
     .player.expanded .embedWrap,
     .player.expanded .openBtn,
     .player.expanded .closeBtn{ display:block; }
     .player.expanded .playerBtn{ display:none !important; }
 
+    /* Minimal header */
     .meta{
       position:absolute;
       left: 12px;
-      top: 12px;
-      right: 170px;
+      top: 10px;
+      right: 130px;
       line-height: 1.05;
       color:#111;
-      background: rgba(255,255,255,.72);
-      border-radius: 12px;
-      padding: 9px 11px;
-      box-shadow: 0 10px 18px rgba(0,0,0,.16);
+      background: rgba(255,255,255,.78);
+      border-radius: 14px;
+      padding: 8px 10px;
+      box-shadow: 0 10px 18px rgba(0,0,0,.18);
     }
-    .meta .t{ font-weight:900; letter-spacing:.03em; font-size:17px; color:#0d0d0d; }
-    .meta .a{ margin-top:2px; font-weight:700; opacity:.92; font-size:12.5px; color:#0d0d0d; }
+    .meta .t{ font-weight:900; letter-spacing:.03em; font-size:16px; color:#0d0d0d; }
+    .meta .a{ margin-top:2px; font-weight:700; opacity:.92; font-size:12px; color:#0d0d0d; }
 
     .openBtn{
       position:absolute;
-      top: 14px;
-      right: 50px;
-      padding: 9px 11px;
+      top: 10px;
+      right: 54px;
+      padding: 8px 10px;
       border-radius: 999px;
-      border: 1px solid rgba(255,255,255,.20);
+      border: 1px solid rgba(255,255,255,.22);
       background: rgba(0,0,0,.18);
       color:#fff;
       font-weight: 800;
-      font-size: 12.5px;
+      font-size: 12px;
       cursor:pointer;
       text-decoration:none;
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
       white-space: nowrap;
     }
 
     .closeBtn{
       position:absolute;
-      top: 14px;
+      top: 10px;
       right: 12px;
       width: 34px;
       height: 34px;
       border-radius: 999px;
-      border: 1px solid rgba(255,255,255,.20);
+      border: 1px solid rgba(255,255,255,.22);
       background: rgba(0,0,0,.18);
       color:#fff;
       font-weight: 900;
@@ -412,8 +405,8 @@
       line-height: 32px;
       text-align:center;
       cursor:pointer;
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
       user-select:none;
     }
 
@@ -422,10 +415,10 @@
       left: 10px;
       right: 10px;
       bottom: 10px;
-      top: 78px;
+      top: 70px;
       border-radius: 16px;
       overflow:hidden;
-      border: 1px solid rgba(255,255,255,.14);
+      border: 1px solid rgba(255,255,255,.18);
       background: rgba(255,255,255,.08);
     }
     .embedWrap iframe{
@@ -436,20 +429,10 @@
       background: transparent;
     }
 
-    .scMaskLeft{
-      position:absolute;
-      left:0; top:0;
-      width: var(--sc-left-mask-w);
-      height:100%;
-      background: rgba(255,255,255,.08);
-      border-right: 1px solid rgba(255,255,255,.10);
-      pointer-events:none;
-    }
-
+    /* Lowered mode: show ONLY the embed + close + grab; hide meta/link */
     .player.lowered{
-      height: 148px;
-      border-radius: 16px;
-      max-width: var(--panel-w);
+      height: var(--player-lowered-h);
+      border-radius: 18px;
     }
     .player.lowered .embedWrap{
       display:block !important;
@@ -458,28 +441,23 @@
     }
     .player.lowered .meta{ display:none !important; }
     .player.lowered .openBtn{ display:none !important; }
-    .player.lowered .scMaskLeft{ display:none !important; }
-
     .player.lowered .closeBtn{
       display:block !important;
       top: 6px;
       right: 8px;
-      width: 34px;
-      height: 34px;
-      line-height: 32px;
     }
 
     .grabHandle{
       position:absolute;
       left: 10px;
-      right: 10px;
+      right: 52px;
       top: 6px;
       height: 18px;
       border-radius: 999px;
-      background: rgba(0,0,0,.32);
+      background: rgba(0,0,0,.30);
       border: 1px solid rgba(255,255,255,.12);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
       display:none;
       align-items:center;
       justify-content:center;
@@ -502,10 +480,12 @@
       opacity:.92;
     }
     .player.lowered .grabHandle{ display:flex; }
+
   </style>
 </head>
 
 <body>
+  <!-- LOADING -->
   <div id="loading" class="loading" aria-hidden="false">
     <div id="coverBanner" class="coverBanner" role="button" aria-label="Enter SANCTUM">
       <img id="coverImg" src="./manga/chapter-00/cover.jpg" alt="SANCTUM Cover" />
@@ -513,12 +493,15 @@
     </div>
   </div>
 
+  <!-- IN-APP REFRESH -->
   <div id="refreshBar" class="refreshBar">Refreshing…</div>
 
+  <!-- HUD -->
   <div class="hud" id="hud">panel 01 / 01</div>
 
+  <!-- DIAGNOSTICS -->
   <div class="diag" id="diag">
-    <div class="row"><b>SANCTUM</b> <span class="muted" id="d_ver">v0.40.17</span></div>
+    <div class="row"><b>SANCTUM</b> <span class="muted" id="d_ver">v0.40.15</span></div>
     <div class="row"><span>chapter</span> <b id="d_ch">-</b></div>
     <div class="row"><span>base</span> <span class="muted" id="d_base">-</span></div>
     <div class="row"><span>panels</span> <b id="d_total">0</b></div>
@@ -530,6 +513,7 @@
   </div>
   <div class="diagToggle" id="diagToggle">DIAG</div>
 
+  <!-- STAGE -->
   <div class="stage" id="stage">
     <div class="rail">
       <div class="panelFrame" id="panelFrame">
@@ -538,6 +522,7 @@
     </div>
   </div>
 
+  <!-- PLAYER -->
   <div id="playerDock" class="playerDock">
     <div id="player" class="player" aria-label="Player">
       <div id="playerBtn" class="playerBtn" title="Play">
@@ -569,8 +554,6 @@
           title="SoundCloud player"
         ></iframe>
 
-        <div class="scMaskLeft" aria-hidden="true"></div>
-
         <div id="grabHandle" class="grabHandle" aria-label="Raise player">
           <div class="grabDot" aria-hidden="true"></div>
           <div class="grabTxt">tap / swipe up</div>
@@ -581,7 +564,7 @@
 
   <script>
     (function(){
-      const VERSION = "v0.40.17";
+      const VERSION = "v0.40.15";
 
       const READER = {
         chapter: "chapter-00",
@@ -595,8 +578,8 @@
         probeMax: 80,
         stopAfterConsecutiveMisses: 3,
 
-        loadingMaxMs: 1800,
-        loadingMinMs: 2000,
+        loadingMinMs: 2000,   // <- minimum banner visibility
+        loadingMaxMs: 3500,   // safety auto-hide
 
         swipeThresholdPx: 44,
         axisLockPx: 10,
@@ -609,8 +592,7 @@
         refreshShowPx: 22,
         refreshFirePx: 58,
 
-        playerRaiseSwipePx: 26,
-        playerDragSnapPx: 42
+        playerRaiseSwipePx: 26
       };
 
       const $ = (id) => document.getElementById(id);
@@ -651,6 +633,15 @@
         diag.box.style.display = diagVisible ? "block" : "none";
       }, { passive:true });
 
+      /* ===== Orientation class ===== */
+      function setOrientationClass(){
+        const isLand = window.matchMedia && window.matchMedia("(orientation: landscape)").matches;
+        document.body.classList.toggle("landscape", !!isLand);
+      }
+      window.addEventListener("resize", setOrientationClass, { passive:true });
+      window.addEventListener("orientationchange", setOrientationClass, { passive:true });
+      setOrientationClass();
+
       const basePath = READER.baseRoot + READER.chapter + "/";
       diagSet(diag.ch, READER.chapter, "");
       diagSet(diag.base, basePath, "muted");
@@ -679,27 +670,19 @@
       const scFrame = $("scFrame");
       const grabHandle = $("grabHandle");
 
-      function cssNum(varName, fallback){
-        const v = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
-        const n = parseFloat(v);
-        return isFinite(n) ? n : fallback;
-      }
-      function setCssPx(varName, px){
-        document.documentElement.style.setProperty(varName, Math.round(px) + "px");
-      }
-
-      /* ===== LOADING MIN TIME ===== */
-      const loadingShownAt = performance.now();
+      /* ===== Loading: minimum 2s ===== */
       let loadingHidden = false;
+      const loadStart = performance.now ? performance.now() : Date.now();
 
       function hideLoading(force=false){
         if(loadingHidden) return;
 
-        const elapsed = performance.now() - loadingShownAt;
-        const wait = Math.max(0, READER.loadingMinMs - elapsed);
+        const now = performance.now ? performance.now() : Date.now();
+        const elapsed = now - loadStart;
+        const remaining = READER.loadingMinMs - elapsed;
 
-        if(!force && wait > 0){
-          setTimeout(() => hideLoading(true), wait);
+        if(!force && remaining > 0){
+          setTimeout(() => hideLoading(true), Math.ceil(remaining));
           return;
         }
 
@@ -712,6 +695,7 @@
       coverBanner.addEventListener("click", () => hideLoading(false), { passive:true });
       setTimeout(() => hideLoading(false), READER.loadingMaxMs);
 
+      /* ===== In-app refresh ===== */
       function showRefresh(){ refreshBar.classList.add("show"); }
       function hideRefresh(){ refreshBar.classList.remove("show"); }
 
@@ -724,190 +708,80 @@
         setTimeout(() => { location.reload(); }, 220);
       }
 
-      /* ===== Player helpers ===== */
+      /* ===== Player state helpers ===== */
       function setLowered(on){
         if(on) player.classList.add("lowered");
         else player.classList.remove("lowered");
       }
       function isExpanded(){ return player.classList.contains("expanded"); }
-      function isDown(){ return playerDock.classList.contains("shiftDown"); }
+      function isLowered(){ return player.classList.contains("lowered"); }
 
-      function resetDockPeek(){
+      /* ===== Critical: dock lowered EXACTLY under panel mask ===== */
+      function getMaskBottomY(){
+        const bottomMask = document.querySelector(".cinematicMask .bottom");
+        if(!bottomMask) return null;
+        const r = bottomMask.getBoundingClientRect();
+        return r.bottom; // viewport y
+      }
+
+      function dockLoweredToMask(){
+        // We move the dock up/down by translateY so that the player's TOP
+        // sits just under the mask bottom line (holy border respected).
+        const maskBottom = getMaskBottomY();
+        if(maskBottom == null) return;
+
+        const gap = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--dock-gap")) || 6;
+
+        // player top in viewport if dock has no translate:
+        // playerDock bottom is fixed; player height differs in lowered mode.
+        const dockRect = playerDock.getBoundingClientRect();
+        const pRect = player.getBoundingClientRect();
+
+        // We want: playerTop = maskBottom + gap
+        const desiredTop = maskBottom + gap;
+
+        // Current top is pRect.top. translateY affects both dockRect & pRect.
+        const delta = desiredTop - pRect.top;
+
+        // Clamp so it never disappears below screen
+        const maxDown = Math.max(0, (window.innerHeight - (parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--dock-min-visible"))||10)) - pRect.bottom);
+        const clamped = clamp(delta, -999, maxDown);
+
+        playerDock.style.transform = playerDock.classList.contains("landRight")
+          ? "translateX(0) translateY(" + clamped + "px)"
+          : (document.body.classList.contains("landscape")
+              ? "translateX(0) translateY(" + clamped + "px)"
+              : "translateX(-50%) translateY(" + clamped + "px)");
+      }
+
+      function clearDockTransform(){
         playerDock.style.transform = "";
-        playerDock.classList.remove("dragging");
-        document.documentElement.style.setProperty("--dock-shift-peek", "0px");
-      }
-
-      function applyDockMode(){
-        const vw = window.innerWidth || 0;
-        const vh = window.innerHeight || 0;
-        const isLandscape = vw > vh;
-
-        const fr = frame.getBoundingClientRect();
-        setCssPx("--panel-w", fr.width);
-
-        if(isLandscape) playerDock.classList.add("landscapeRight");
-        else playerDock.classList.remove("landscapeRight");
-      }
-
-      function computeDockShiftToUnderMask(){
-        const maskBottomH = cssNum("--mask-bottom-h", 84);
-        const gap = cssNum("--dock-under-mask-gap", 12);
-
-        const fr = frame.getBoundingClientRect();
-        const targetTopY = (fr.bottom - maskBottomH + gap);
-
-        const wasLowered = player.classList.contains("lowered");
-        if(!wasLowered) setLowered(true);
-
-        const prevTransform = playerDock.style.transform;
-        const hadShift = playerDock.classList.contains("shiftDown");
-        playerDock.classList.remove("shiftDown");
-
-        // measure unshifted top
-        if(playerDock.classList.contains("landscapeRight")){
-          playerDock.style.transform = "translateY(0px)";
-        }else{
-          playerDock.style.transform = "translateX(-50%) translateY(0px)";
-        }
-
-        const dockRect0 = playerDock.getBoundingClientRect();
-        const top0 = dockRect0.top;
-
-        playerDock.style.transform = prevTransform;
-        if(hadShift) playerDock.classList.add("shiftDown");
-        if(!wasLowered) setLowered(false);
-
-        let shift = targetTopY - top0;
-        shift = Math.max(0, shift);
-
-        const viewportH = window.innerHeight || document.documentElement.clientHeight || 0;
-        const dockH = dockRect0.height || 240;
-        const maxShift = Math.max(0, viewportH - 8 - (top0 + dockH));
-        shift = clamp(shift, 0, maxShift);
-
-        return shift;
-      }
-
-      function setDockShiftMax(px){
-        setCssPx("--dock-shift-max", Math.max(0, px));
       }
 
       function sink(){
         if(!isExpanded()) return;
         setLowered(true);
-        applyDockMode();
-        const y = computeDockShiftToUnderMask();
-        setDockShiftMax(y);
-        playerDock.classList.add("shiftDown");
-        resetDockPeek();
+        // Wait one frame so lowered height applies, then dock precisely
+        requestAnimationFrame(() => {
+          dockLoweredToMask();
+        });
       }
 
       function raise(){
-        playerDock.classList.remove("shiftDown");
-        resetDockPeek();
         setLowered(false);
+        clearDockTransform();
       }
 
       function toggleSink(){
         if(!isExpanded()) return;
-        if(isDown()) raise();
+        if(isLowered()) raise();
         else sink();
       }
 
-      function onLayout(){
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            applyDockMode();
-            if(isExpanded() && isDown()){
-              const y = computeDockShiftToUnderMask();
-              setDockShiftMax(y);
-            }
-          });
-        });
-      }
-
-      window.addEventListener("resize", onLayout, { passive:true });
-      window.addEventListener("orientationchange", () => setTimeout(onLayout, 80), { passive:true });
-      if(window.visualViewport){
-        window.visualViewport.addEventListener("resize", onLayout, { passive:true });
-      }
-
-      /* ===== Player drag ===== */
-      let pDrag = null;
-
-      function dockShiftMaxPx(){
-        return cssNum("--dock-shift-max", 120);
-      }
-
-      function setDockPeek(px){
-        const max = dockShiftMaxPx();
-        const v = clamp(px, 0, max);
-
-        if(playerDock.classList.contains("landscapeRight")){
-          playerDock.style.transform = "translateY(" + v + "px)";
-        }else{
-          playerDock.style.transform = "translateX(-50%) translateY(" + v + "px)";
-        }
-        document.documentElement.style.setProperty("--dock-shift-peek", v + "px");
-      }
-
-      function snapDock(){
-        const cur = cssNum("--dock-shift-peek", 0);
-        if(cur > READER.playerDragSnapPx){
-          const y = computeDockShiftToUnderMask();
-          setDockShiftMax(y);
-          playerDock.classList.add("shiftDown");
-          resetDockPeek();
-          document.documentElement.style.setProperty("--dock-shift-peek", y + "px");
-          setLowered(true);
-        }else{
-          playerDock.classList.remove("shiftDown");
-          resetDockPeek();
-          document.documentElement.style.setProperty("--dock-shift-peek", "0px");
-          setLowered(false);
-        }
-      }
-
-      playerDock.addEventListener("touchstart", (e) => {
-        if(!isExpanded()) return;
-        if(!e.touches || e.touches.length !== 1) return;
-
-        applyDockMode();
-        if(isDown()){
-          const y = computeDockShiftToUnderMask();
-          setDockShiftMax(y);
-        }
-
-        const t = e.touches[0];
-        pDrag = { y: t.clientY, start: (isDown() ? dockShiftMaxPx() : 0) };
-        playerDock.classList.add("dragging");
-      }, { passive:true });
-
-      playerDock.addEventListener("touchmove", (e) => {
-        if(!pDrag) return;
-        if(!e.touches || e.touches.length !== 1) return;
-        const t = e.touches[0];
-        const dy = t.clientY - pDrag.y;
-        setDockPeek(pDrag.start + dy);
-      }, { passive:true });
-
-      playerDock.addEventListener("touchend", () => {
-        if(!pDrag) return;
-        pDrag = null;
-        playerDock.classList.remove("dragging");
-        snapDock();
-      }, { passive:true });
-
-      playerDock.addEventListener("touchcancel", () => {
-        pDrag = null;
-        playerDock.classList.remove("dragging");
-        snapDock();
-      }, { passive:true });
-
-      /* ===== Reappear grip ===== */
+      /* ===== Reappear: tap + upswipe on grip ===== */
       grabHandle.addEventListener("click", (e) => {
-        if(!isExpanded() || !isDown()) return;
+        if(!isExpanded()) return;
+        if(!isLowered()) return;
         e.preventDefault();
         e.stopPropagation();
         raise();
@@ -915,7 +789,7 @@
 
       let hTouch = null;
       grabHandle.addEventListener("touchstart", (e) => {
-        if(!isExpanded() || !isDown()) return;
+        if(!isExpanded() || !isLowered()) return;
         const t = e.touches && e.touches[0];
         if(!t) return;
         hTouch = { x: t.clientX, y: t.clientY };
@@ -973,7 +847,11 @@
 
         updateHud();
         preloadAround(storyIndex);
-        onLayout();
+
+        // If player is lowered, re-dock after page change (mask bottom moved)
+        if(isExpanded() && isLowered()){
+          requestAnimationFrame(() => dockLoweredToMask());
+        }
       }
 
       function makeSlide(p){
@@ -1000,7 +878,6 @@
           if(p.n === 1){
             diagSet(diag.first, "ok", "ok");
             hideLoading(false);
-            onLayout();
           }
         }, { passive:true });
 
@@ -1009,7 +886,6 @@
           if(p.n === 1){
             diagSet(diag.first, "error", "bad");
             hideLoading(false);
-            onLayout();
           }
         }, { passive:true });
 
@@ -1042,14 +918,13 @@
           p1.ok = true;
           diagSet(diag.first, "ok", "ok");
           hideLoading(false);
-          onLayout();
         }
       }
 
       READER.seedPanels.forEach(addPanel);
       renderAll();
 
-      /* ===== Swipe + refresh ===== */
+      /* ===== Reader swipe + refresh ===== */
       let dragging = false;
       let lockedAxis = null;
       let startX=0, startY=0, lastX=0;
@@ -1085,14 +960,6 @@
         }
 
         e.preventDefault();
-
-        if(Math.abs(dy) > Math.abs(dx) * (1/READER.maxVerticalSlope)){
-          track.classList.remove("dragging");
-          dragging = false;
-          setStoryIndex(storyIndex, true);
-          if(!refreshFired) hideRefresh();
-          return;
-        }
 
         lastX = t.clientX;
 
@@ -1181,7 +1048,6 @@
 
         diagSet(diag.probe, "done", "muted");
         setStoryIndex(storyIndex, false);
-        onLayout();
       }
 
       if("requestIdleCallback" in window){
@@ -1221,7 +1087,6 @@
       function openAndPlay(){
         player.classList.add("expanded");
         raise();
-        onLayout();
 
         if(widget){
           if(widgetReady){ try{ widget.play(); }catch(_){} }
@@ -1254,6 +1119,7 @@
         closePlayer();
       }, { passive:false });
 
+      // Panel tap toggles sink/raise (expanded only)
       document.addEventListener("click", (e) => {
         if(!isExpanded()) return;
         if(e.target && e.target.classList && e.target.classList.contains("panelImg")){
@@ -1261,7 +1127,20 @@
         }
       }, { passive:true });
 
-      onLayout();
+      // Re-dock after rotate/resize if lowered
+      function onLayoutChange(){
+        setOrientationClass();
+        if(isExpanded() && isLowered()){
+          requestAnimationFrame(() => dockLoweredToMask());
+        }
+      }
+      function setOrientationClass(){
+        const isLand = window.matchMedia && window.matchMedia("(orientation: landscape)").matches;
+        document.body.classList.toggle("landscape", !!isLand);
+      }
+      window.addEventListener("resize", onLayoutChange, { passive:true });
+      window.addEventListener("orientationchange", onLayoutChange, { passive:true });
+
       updateHud();
       diagSet(diag.js, "ok", "ok");
       console.log("SANCTUM", VERSION);
