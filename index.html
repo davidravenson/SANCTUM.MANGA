@@ -7,7 +7,7 @@
 
   <style>
     :root{
-      --v: "v0.40.12";
+      --v: "v0.40.14";
       --safe-top: env(safe-area-inset-top, 0px);
       --safe-bottom: env(safe-area-inset-bottom, 0px);
       --bg: url("./media/ui/manga_paper_bg.png");
@@ -21,11 +21,9 @@
       --sc-left-mask-w: 106px;
       --diag-w: min(56vw, 360px);
 
-      /* runtime controlled */
+      /* Docking: will be computed at runtime to sit just under the bottom mask */
       --dock-shift-max: 120px;
       --dock-shift-peek: 0px;
-
-      /* distance between bottom mask edge and player top when lowered */
       --dock-gap-under-mask: 8px;
     }
 
@@ -125,7 +123,7 @@
     /* ===== STAGE ===== */
     .stage{
       position:relative;
-      height: 100svh;              /* important for mobile rotation stability */
+      height: 100svh;
       width:100%;
       display:flex;
       align-items:center;
@@ -149,7 +147,7 @@
     .panelFrame{
       position:relative;
       width:100%;
-      max-height:100%;
+      height:100%;
       overflow:hidden; /* holy border */
       background:#000;
       transform: translateZ(0);
@@ -180,16 +178,22 @@
     .panelShell{
       position:relative;
       width:100%;
+      height:100%;
       display:flex;
       align-items:center;
       justify-content:center;
     }
 
+    /* ===== PANEL: ALWAYS FULLY READABLE (Portrait + Landscape) ===== */
     .panelImg{
       width:100%;
-      height:auto;
+      height:100%;
       display:block;
       background:#000;
+      object-fit: contain;         /* <-- key: no crop, ever */
+      object-position: center center;
+      transform: none;
+      will-change: auto;
     }
 
     .cinematicMask{
@@ -488,7 +492,7 @@
   <div class="hud" id="hud">panel 01 / 01</div>
 
   <div class="diag" id="diag">
-    <div class="row"><b>SANCTUM</b> <span class="muted" id="d_ver">v0.40.12</span></div>
+    <div class="row"><b>SANCTUM</b> <span class="muted" id="d_ver">v0.40.14</span></div>
     <div class="row"><span>chapter</span> <b id="d_ch">-</b></div>
     <div class="row"><span>base</span> <span class="muted" id="d_base">-</span></div>
     <div class="row"><span>panels</span> <b id="d_total">0</b></div>
@@ -551,7 +555,7 @@
 
   <script>
     (function(){
-      const VERSION = "v0.40.12";
+      const VERSION = "v0.40.14";
 
       const READER = {
         chapter: "chapter-00",
@@ -693,20 +697,16 @@
         document.documentElement.style.setProperty("--dock-shift-peek", "0px");
       }
 
-      /* === THE FIX: dock under the *bottom mask edge*, not the frame bottom ===
-         We avoid guessing SafeArea by measuring dock's real top at translateY(0). */
       function computeDockShiftToMaskEdge(){
         const maskBottomH = cssNum("--mask-bottom-h", 84);
         const gap = cssNum("--dock-gap-under-mask", 8);
 
         const frameRect = frame.getBoundingClientRect();
-        const maskEdgeY = (frameRect.bottom - maskBottomH);  // lower bar TOP edge in viewport
+        const maskEdgeY = (frameRect.bottom - maskBottomH);
 
-        // ensure lowered height is applied before measuring
         const wasLowered = player.classList.contains("lowered");
         if(!wasLowered) setLowered(true);
 
-        // measure dock "top at shift 0" by forcing explicit transform
         const prevStyle = playerDock.style.transform;
         const hadShiftClass = playerDock.classList.contains("shiftDown");
         playerDock.classList.remove("shiftDown");
@@ -715,21 +715,15 @@
         const dockRect0 = playerDock.getBoundingClientRect();
         const top0 = dockRect0.top;
 
-        // restore transform (we'll set proper class/vars right after)
         playerDock.style.transform = prevStyle;
         if(hadShiftClass) playerDock.classList.add("shiftDown");
 
-        // desired: playerDock/top == maskEdgeY + gap
         let shift = (maskEdgeY + gap) - top0;
-
-        // never negative
         shift = Math.max(0, shift);
 
-        // safety clamp: don't allow shifting so far that dock is offscreen
         const viewportH = window.innerHeight || document.documentElement.clientHeight || 0;
-        const dockRectNow = playerDock.getBoundingClientRect();
-        const dockH = dockRectNow.height || 240;
-        const maxShift = Math.max(0, viewportH - 8 - (top0 + dockH)); // keep at least 8px visible
+        const dockH = dockRect0.height || 240;
+        const maxShift = Math.max(0, viewportH - 8 - (top0 + dockH));
         shift = clamp(shift, 0, maxShift);
 
         return shift;
@@ -737,12 +731,9 @@
 
       function sink(){
         if(!isExpanded()) return;
-
         setLowered(true);
-
         const y = computeDockShiftToMaskEdge();
         setDockShiftMax(y);
-
         playerDock.classList.add("shiftDown");
         resetDockPeek();
       }
@@ -760,7 +751,6 @@
       }
 
       function onLayout(){
-        // run after layout settles (rotation/address bar changes)
         requestAnimationFrame(() => {
           requestAnimationFrame(() => {
             if(isExpanded() && isDown()){
@@ -776,12 +766,10 @@
         window.visualViewport.addEventListener("resize", onLayout, { passive:true });
       }
 
-      /* ===== Player drag (clamped to dock) ===== */
+      /* ===== Player drag (clamped) ===== */
       let pDrag = null;
 
-      function dockShiftMaxPx(){
-        return cssNum("--dock-shift-max", 120);
-      }
+      function dockShiftMaxPx(){ return cssNum("--dock-shift-max", 120); }
       function applyDockShift(px){
         const max = dockShiftMaxPx();
         const v = clamp(px, 0, max);
@@ -789,14 +777,10 @@
         document.documentElement.style.setProperty("--dock-shift-peek", v + "px");
       }
       function snapDock(){
-        const max = dockShiftMaxPx();
         const cur = cssNum("--dock-shift-peek", 0);
-
         if(cur > READER.playerDragSnapPx){
-          // recompute dock position to mask edge again (important if panel/viewport moved)
           const y = computeDockShiftToMaskEdge();
           setDockShiftMax(y);
-
           playerDock.classList.add("shiftDown");
           resetDockPeek();
           document.documentElement.style.setProperty("--dock-shift-peek", y + "px");
@@ -812,13 +796,10 @@
       playerDock.addEventListener("touchstart", (e) => {
         if(!isExpanded()) return;
         if(!e.touches || e.touches.length !== 1) return;
-
-        // keep dock target correct before dragging
         if(isDown()){
           const y = computeDockShiftToMaskEdge();
           setDockShiftMax(y);
         }
-
         const t = e.touches[0];
         pDrag = { y: t.clientY, start: (isDown() ? dockShiftMaxPx() : 0) };
         playerDock.classList.add("dragging");
