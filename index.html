@@ -7,7 +7,7 @@
 
   <style>
     :root{
-      --v: "v0.40.8";
+      --v: "v0.40.9";
       --safe-top: env(safe-area-inset-top, 0px);
       --safe-bottom: env(safe-area-inset-bottom, 0px);
       --bg: url("./media/ui/manga_paper_bg.png");
@@ -22,8 +22,10 @@
       --diag-w: min(56vw, 360px);
 
       /* Player shift limits */
-      --dock-shift-max: 132px;  /* <- was 200px (too deep) */
-      --dock-shift-peek: 0px;   /* runtime updated */
+      --dock-shift-max: 132px;
+
+      /* NEW: collapsed dock lift */
+      --dock-collapsed-lift: -500px; /* <- your request */
     }
 
     html, body{
@@ -268,7 +270,7 @@
       position:fixed;
       left:50%;
       bottom: calc(12px + var(--safe-bottom));
-      transform: translateX(-50%) translateY(var(--dock-shift-peek));
+      transform: translateX(-50%) translateY(0px);
       z-index:70;
       display:flex;
       align-items:center;
@@ -276,8 +278,13 @@
       pointer-events:auto;
       transition: transform .22s ease;
       will-change: transform;
-      touch-action: none; /* we handle player drag gestures explicitly */
+      touch-action: none; /* we handle player drag explicitly */
     }
+    /* NEW: collapsed state is lifted by 500px */
+    .playerDock.collapsedUp{
+      transform: translateX(-50%) translateY(var(--dock-collapsed-lift));
+    }
+
     .playerDock.shiftDown{
       transform: translateX(-50%) translateY(var(--dock-shift-max));
     }
@@ -414,8 +421,7 @@
       pointer-events:none;
     }
 
-    /* ===== LOWERED MODE =====
-       Goal: show SoundCloud controls (play + waveform), hide meta + link until raised */
+    /* ===== LOWERED MODE ===== */
     .player.lowered{
       height: 148px;
       border-radius: 18px;
@@ -427,11 +433,8 @@
     }
     .player.lowered .meta{ display:none !important; }
     .player.lowered .openBtn{ display:none !important; }
+    .player.lowered .scMaskLeft{ display:none !important; } /* show SC play controls */
 
-    /* IMPORTANT: when lowered, do NOT hide the left area: show SC play controls */
-    .player.lowered .scMaskLeft{ display:none !important; }
-
-    /* keep close accessible in lowered */
     .player.lowered .closeBtn{
       display:block !important;
       top: 6px;
@@ -441,7 +444,6 @@
       line-height: 32px;
     }
 
-    /* Grip / raise zone: tap OR upswipe to raise (never offscreen) */
     .grabHandle{
       position:absolute;
       left: 10px;
@@ -495,7 +497,7 @@
 
   <!-- DIAGNOSTICS -->
   <div class="diag" id="diag">
-    <div class="row"><b>SANCTUM</b> <span class="muted" id="d_ver">v0.40.8</span></div>
+    <div class="row"><b>SANCTUM</b> <span class="muted" id="d_ver">v0.40.9</span></div>
     <div class="row"><span>chapter</span> <b id="d_ch">-</b></div>
     <div class="row"><span>base</span> <span class="muted" id="d_base">-</span></div>
     <div class="row"><span>panels</span> <b id="d_total">0</b></div>
@@ -560,7 +562,7 @@
 
   <script>
     (function(){
-      const VERSION = "v0.40.8";
+      const VERSION = "v0.40.9";
 
       const READER = {
         chapter: "chapter-00",
@@ -656,6 +658,14 @@
       const scFrame = $("scFrame");
       const grabHandle = $("grabHandle");
 
+      // ===== NEW: collapsed lift default =====
+      function setCollapsedLift(on){
+        if(on) playerDock.classList.add("collapsedUp");
+        else playerDock.classList.remove("collapsedUp");
+      }
+      // Start collapsed: lifted 500px
+      setCollapsedLift(true);
+
       let loadingHidden = false;
       function hideLoading(){
         if(loadingHidden) return;
@@ -694,9 +704,8 @@
       }
       function raise(){
         playerDock.classList.remove("shiftDown");
-        playerDock.style.transform = ""; // reset any drag transform
+        playerDock.style.transform = "";
         playerDock.classList.remove("dragging");
-        document.documentElement.style.setProperty("--dock-shift-peek", "0px");
         setLowered(false);
       }
       function toggleSink(){
@@ -705,8 +714,7 @@
         else sink();
       }
 
-      /* ===== Player drag (clamped) =====
-         Fixes: "player sinks outside usability when pulling down" */
+      /* ===== Player drag (clamped) ===== */
       let pDrag = null;
       function dockShiftMaxPx(){
         const css = getComputedStyle(document.documentElement).getPropertyValue("--dock-shift-max").trim();
@@ -716,26 +724,26 @@
       function applyDockShift(px){
         const max = dockShiftMaxPx();
         const v = clamp(px, 0, max);
+        // NOTE: while expanded, we temporarily override transform; collapsedUp is disabled then.
         playerDock.style.transform = "translateX(-50%) translateY(" + v + "px)";
-        document.documentElement.style.setProperty("--dock-shift-peek", v + "px");
+        playerDock.dataset.peek = String(v);
       }
       function snapDock(){
         const max = dockShiftMaxPx();
-        const cur = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--dock-shift-peek")) || 0;
+        const cur = parseFloat(playerDock.dataset.peek || "0") || 0;
         if(cur > READER.playerDragSnapPx){
           playerDock.classList.add("shiftDown");
           playerDock.style.transform = "";
-          document.documentElement.style.setProperty("--dock-shift-peek", max + "px");
+          playerDock.dataset.peek = String(max);
           setLowered(true);
         }else{
           playerDock.classList.remove("shiftDown");
           playerDock.style.transform = "";
-          document.documentElement.style.setProperty("--dock-shift-peek", "0px");
+          playerDock.dataset.peek = "0";
           setLowered(false);
         }
       }
 
-      // Drag only when expanded (so reading gestures stay clean)
       playerDock.addEventListener("touchstart", (e) => {
         if(!isExpanded()) return;
         if(!e.touches || e.touches.length !== 1) return;
@@ -748,7 +756,7 @@
         if(!pDrag) return;
         if(!e.touches || e.touches.length !== 1) return;
         const t = e.touches[0];
-        const dy = t.clientY - pDrag.y; // down = positive
+        const dy = t.clientY - pDrag.y;
         applyDockShift(pDrag.start + dy);
       }, { passive:true });
 
@@ -767,8 +775,7 @@
 
       /* ===== Reappear: tap + upswipe on grip ===== */
       grabHandle.addEventListener("click", (e) => {
-        if(!isExpanded()) return;
-        if(!isDown()) return;
+        if(!isExpanded() || !isDown()) return;
         e.preventDefault();
         e.stopPropagation();
         raise();
@@ -1076,7 +1083,12 @@
 
       function openAndPlay(){
         player.classList.add("expanded");
-        raise(); // start in raised mode
+
+        // IMPORTANT: when expanded, do NOT keep collapsed lift
+        setCollapsedLift(false);
+
+        // start raised (not lowered)
+        raise();
 
         if(widget){
           if(widgetReady){ try{ widget.play(); }catch(_){} }
@@ -1094,6 +1106,10 @@
       function closePlayer(){
         player.classList.remove("expanded");
         raise();
+
+        // IMPORTANT: collapsed state returns to lifted position (500px up)
+        setCollapsedLift(true);
+
         if(widget){ try{ widget.pause(); }catch(_){} }
       }
 
