@@ -7,7 +7,7 @@
 
   <style>
     :root{
-      --v: "v0.40.16";
+      --v: "v0.40.17";
       --safe-top: env(safe-area-inset-top, 0px);
       --safe-bottom: env(safe-area-inset-bottom, 0px);
       --bg: url("./media/ui/manga_paper_bg.png");
@@ -21,17 +21,12 @@
       --sc-left-mask-w: 106px;
       --diag-w: min(56vw, 360px);
 
-      /* Docking: runtime computed */
       --dock-shift-max: 120px;
       --dock-shift-peek: 0px;
 
-      /* How far BELOW the bottom cinematic bar the lowered player should start */
       --dock-under-mask-gap: 12px;
 
-      /* Panel width set at runtime so player never exceeds it */
       --panel-w: 860px;
-
-      /* Landscape: how far from the screen right edge */
       --dock-right-margin: 12px;
     }
 
@@ -143,6 +138,17 @@
       overscroll-behavior: none;
     }
 
+    /* LANDSCAPE: no wasted vertical space */
+    @media (orientation: landscape){
+      .stage{
+        padding-top: 0px;
+        padding-bottom: 0px;
+      }
+      .hud{
+        top: 12px;
+      }
+    }
+
     .rail{
       position:relative;
       width: min(100vw, var(--max-w));
@@ -192,7 +198,7 @@
       justify-content:center;
     }
 
-    /* ALWAYS FULLY READABLE (Portrait + Landscape) */
+    /* Always fully readable */
     .panelImg{
       width:100%;
       height:100%;
@@ -200,7 +206,6 @@
       background:#000;
       object-fit: contain;
       object-position: center center;
-      transform:none;
     }
 
     .cinematicMask{
@@ -277,7 +282,7 @@
       user-select:none;
     }
 
-    /* ===== PLAYER (minimaler Look, gleiche Funktionen) ===== */
+    /* ===== PLAYER ===== */
     .playerDock{
       position:fixed;
       left:50%;
@@ -288,8 +293,8 @@
       align-items:center;
       justify-content:center;
       pointer-events:auto;
-      transition: transform .22s ease, left .22s ease, right .22s ease;
-      will-change: transform, left, right;
+      transition: transform .22s ease, left .22s ease, right .22s ease, bottom .22s ease, top .22s ease;
+      will-change: transform, left, right, bottom, top;
       touch-action: none;
     }
     .playerDock.shiftDown{
@@ -297,10 +302,11 @@
     }
     .playerDock.dragging{ transition:none; }
 
-    /* Landscape: dock to the right edge (in side space) */
+    /* LANDSCAPE: ALWAYS dock to the right side */
     .playerDock.landscapeRight{
       left:auto;
-      right: calc(var(--dock-right-margin) + var(--safe-bottom)*0); /* safe-bottom kept for symmetry */
+      right: calc(var(--dock-right-margin));
+      bottom: calc(12px + var(--safe-bottom));
       transform: translateY(var(--dock-shift-peek));
     }
     .playerDock.landscapeRight.shiftDown{
@@ -312,17 +318,14 @@
       width:78px;
       height:78px;
       border-radius:999px;
-
-      /* minimal glass */
       background: rgba(255,255,255,.08);
       border: 1px solid rgba(255,255,255,.14);
       box-shadow: 0 10px 26px rgba(0,0,0,.30);
       backdrop-filter: blur(8px);
       -webkit-backdrop-filter: blur(8px);
-
       overflow:hidden;
       transition: width .26s ease, height .26s ease, border-radius .26s ease, background .26s ease;
-      max-width: var(--panel-w); /* never exceed panel */
+      max-width: var(--panel-w);
     }
 
     .player .meta,
@@ -353,7 +356,7 @@
       height: 240px;
       border-radius: 18px;
       background: rgba(255,255,255,.10);
-      max-width: var(--panel-w); /* hard limit = panel width */
+      max-width: var(--panel-w);
     }
     .player.expanded .meta,
     .player.expanded .embedWrap,
@@ -443,7 +446,6 @@
       pointer-events:none;
     }
 
-    /* LOWERED: show SC controls + waveform, hide meta/link */
     .player.lowered{
       height: 148px;
       border-radius: 16px;
@@ -504,7 +506,6 @@
 </head>
 
 <body>
-  <!-- LOADING -->
   <div id="loading" class="loading" aria-hidden="false">
     <div id="coverBanner" class="coverBanner" role="button" aria-label="Enter SANCTUM">
       <img id="coverImg" src="./manga/chapter-00/cover.jpg" alt="SANCTUM Cover" />
@@ -512,15 +513,12 @@
     </div>
   </div>
 
-  <!-- REFRESH -->
   <div id="refreshBar" class="refreshBar">Refreshing…</div>
 
-  <!-- HUD -->
   <div class="hud" id="hud">panel 01 / 01</div>
 
-  <!-- DIAGNOSTICS -->
   <div class="diag" id="diag">
-    <div class="row"><b>SANCTUM</b> <span class="muted" id="d_ver">v0.40.16</span></div>
+    <div class="row"><b>SANCTUM</b> <span class="muted" id="d_ver">v0.40.17</span></div>
     <div class="row"><span>chapter</span> <b id="d_ch">-</b></div>
     <div class="row"><span>base</span> <span class="muted" id="d_base">-</span></div>
     <div class="row"><span>panels</span> <b id="d_total">0</b></div>
@@ -532,7 +530,6 @@
   </div>
   <div class="diagToggle" id="diagToggle">DIAG</div>
 
-  <!-- STAGE -->
   <div class="stage" id="stage">
     <div class="rail">
       <div class="panelFrame" id="panelFrame">
@@ -541,7 +538,6 @@
     </div>
   </div>
 
-  <!-- PLAYER -->
   <div id="playerDock" class="playerDock">
     <div id="player" class="player" aria-label="Player">
       <div id="playerBtn" class="playerBtn" title="Play">
@@ -585,7 +581,7 @@
 
   <script>
     (function(){
-      const VERSION = "v0.40.16";
+      const VERSION = "v0.40.17";
 
       const READER = {
         chapter: "chapter-00",
@@ -614,9 +610,7 @@
         refreshFirePx: 58,
 
         playerRaiseSwipePx: 26,
-        playerDragSnapPx: 42,
-
-        landscapeSideModeMinPx: 80  // if right side space exists, dock right
+        playerDragSnapPx: 42
       };
 
       const $ = (id) => document.getElementById(id);
@@ -694,7 +688,7 @@
         document.documentElement.style.setProperty(varName, Math.round(px) + "px");
       }
 
-      /* ===== LOADING: MINIMUM VISIBLE TIME ===== */
+      /* ===== LOADING MIN TIME ===== */
       const loadingShownAt = performance.now();
       let loadingHidden = false;
 
@@ -730,7 +724,7 @@
         setTimeout(() => { location.reload(); }, 220);
       }
 
-      /* ===== Player state helpers ===== */
+      /* ===== Player helpers ===== */
       function setLowered(on){
         if(on) player.classList.add("lowered");
         else player.classList.remove("lowered");
@@ -744,58 +738,49 @@
         document.documentElement.style.setProperty("--dock-shift-peek", "0px");
       }
 
-      function applyLandscapeDockMode(){
+      function applyDockMode(){
         const vw = window.innerWidth || 0;
         const vh = window.innerHeight || 0;
         const isLandscape = vw > vh;
 
-        // Update panel width var so player max-width never exceeds it
         const fr = frame.getBoundingClientRect();
         setCssPx("--panel-w", fr.width);
 
-        // If we have meaningful free space to the right of the panel, dock there
-        const rightSpace = (vw - fr.right);
-        const canDockRight = isLandscape && rightSpace >= READER.landscapeSideModeMinPx;
-
-        if(canDockRight){
-          playerDock.classList.add("landscapeRight");
-        }else{
-          playerDock.classList.remove("landscapeRight");
-        }
+        if(isLandscape) playerDock.classList.add("landscapeRight");
+        else playerDock.classList.remove("landscapeRight");
       }
 
-      /* ===== Dock shift computation (FIX: use real panelFrame edge + mask + gap) ===== */
       function computeDockShiftToUnderMask(){
         const maskBottomH = cssNum("--mask-bottom-h", 84);
         const gap = cssNum("--dock-under-mask-gap", 12);
 
-        // target line = panelFrame bottom minus mask height, plus gap
         const fr = frame.getBoundingClientRect();
         const targetTopY = (fr.bottom - maskBottomH + gap);
 
-        // temporarily force lowered state for accurate top measurement
         const wasLowered = player.classList.contains("lowered");
         if(!wasLowered) setLowered(true);
 
-        // Temporarily set dock at "not shifted" for measuring its top
         const prevTransform = playerDock.style.transform;
         const hadShift = playerDock.classList.contains("shiftDown");
         playerDock.classList.remove("shiftDown");
-        playerDock.style.transform = "translateY(0px)";
-        // If not landscapeRight, it might still have translateX in CSS; getBoundingClientRect handles it.
+
+        // measure unshifted top
+        if(playerDock.classList.contains("landscapeRight")){
+          playerDock.style.transform = "translateY(0px)";
+        }else{
+          playerDock.style.transform = "translateX(-50%) translateY(0px)";
+        }
 
         const dockRect0 = playerDock.getBoundingClientRect();
         const top0 = dockRect0.top;
 
-        // restore
         playerDock.style.transform = prevTransform;
         if(hadShift) playerDock.classList.add("shiftDown");
+        if(!wasLowered) setLowered(false);
 
-        // needed downward shift so dock top reaches target
         let shift = targetTopY - top0;
         shift = Math.max(0, shift);
 
-        // clamp to keep dock usable on screen
         const viewportH = window.innerHeight || document.documentElement.clientHeight || 0;
         const dockH = dockRect0.height || 240;
         const maxShift = Math.max(0, viewportH - 8 - (top0 + dockH));
@@ -811,11 +796,9 @@
       function sink(){
         if(!isExpanded()) return;
         setLowered(true);
-
-        applyLandscapeDockMode();
+        applyDockMode();
         const y = computeDockShiftToUnderMask();
         setDockShiftMax(y);
-
         playerDock.classList.add("shiftDown");
         resetDockPeek();
       }
@@ -835,7 +818,7 @@
       function onLayout(){
         requestAnimationFrame(() => {
           requestAnimationFrame(() => {
-            applyLandscapeDockMode();
+            applyDockMode();
             if(isExpanded() && isDown()){
               const y = computeDockShiftToUnderMask();
               setDockShiftMax(y);
@@ -850,7 +833,7 @@
         window.visualViewport.addEventListener("resize", onLayout, { passive:true });
       }
 
-      /* ===== Player drag (clamped) ===== */
+      /* ===== Player drag ===== */
       let pDrag = null;
 
       function dockShiftMaxPx(){
@@ -861,7 +844,6 @@
         const max = dockShiftMaxPx();
         const v = clamp(px, 0, max);
 
-        // Respect landscapeRight (no translateX)
         if(playerDock.classList.contains("landscapeRight")){
           playerDock.style.transform = "translateY(" + v + "px)";
         }else{
@@ -891,7 +873,7 @@
         if(!isExpanded()) return;
         if(!e.touches || e.touches.length !== 1) return;
 
-        applyLandscapeDockMode();
+        applyDockMode();
         if(isDown()){
           const y = computeDockShiftToUnderMask();
           setDockShiftMax(y);
@@ -906,7 +888,7 @@
         if(!pDrag) return;
         if(!e.touches || e.touches.length !== 1) return;
         const t = e.touches[0];
-        const dy = t.clientY - pDrag.y; // down = positive
+        const dy = t.clientY - pDrag.y;
         setDockPeek(pDrag.start + dy);
       }, { passive:true });
 
@@ -923,7 +905,7 @@
         snapDock();
       }, { passive:true });
 
-      /* ===== Reappear: tap + upswipe on grip ===== */
+      /* ===== Reappear grip ===== */
       grabHandle.addEventListener("click", (e) => {
         if(!isExpanded() || !isDown()) return;
         e.preventDefault();
@@ -1067,7 +1049,7 @@
       READER.seedPanels.forEach(addPanel);
       renderAll();
 
-      /* ===== Reader swipe + refresh ===== */
+      /* ===== Swipe + refresh ===== */
       let dragging = false;
       let lockedAxis = null;
       let startX=0, startY=0, lastX=0;
@@ -1272,7 +1254,6 @@
         closePlayer();
       }, { passive:false });
 
-      // Tap panel toggles sink (expanded only)
       document.addEventListener("click", (e) => {
         if(!isExpanded()) return;
         if(e.target && e.target.classList && e.target.classList.contains("panelImg")){
@@ -1280,9 +1261,7 @@
         }
       }, { passive:true });
 
-      // initial layout sync
       onLayout();
-
       updateHud();
       diagSet(diag.js, "ok", "ok");
       console.log("SANCTUM", VERSION);
