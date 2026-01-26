@@ -7,7 +7,7 @@
 
   <style>
     :root{
-      --v: "v0.41.2";
+      --v: "v0.41.3";
       --safe-top: env(safe-area-inset-top, 0px);
       --safe-bottom: env(safe-area-inset-bottom, 0px);
 
@@ -41,7 +41,7 @@
 
       /* RESERVED space under panel so player NEVER overlaps panel */
       --stage-reserve: 0px; /* runtime updated */
-      --reserve-gap: 16px;  /* air between panel + player area */
+      --reserve-gap: 16px;
       --dock-bottom: 12px;
     }
 
@@ -59,9 +59,7 @@
       -webkit-touch-callout:none;
     }
 
-    body{
-      background: var(--bg);
-    }
+    body{ background: var(--bg); }
 
     /* Landscape scale override */
     body.landscape{
@@ -72,7 +70,7 @@
       --player-expanded-w: calc(var(--player-expanded-w-base) * var(--player-scale));
     }
 
-    /* ===== LOADING (optional cover) ===== */
+    /* ===== LOADING / COVER ===== */
     .loading{
       position:fixed;
       inset:0;
@@ -98,6 +96,7 @@
       box-shadow: 0 30px 70px rgba(0,0,0,.6);
       background: rgba(0,0,0,.55);
       position:relative;
+      cursor:pointer;
     }
     .loadingCard img{ width:100%; height:auto; display:block; }
     .enterHint{
@@ -115,6 +114,33 @@
       letter-spacing: .02em;
       font-size: 13px;
       white-space: nowrap;
+    }
+
+    /* ===== IN-APP REFRESH BAR ===== */
+    .refreshBar{
+      position:fixed;
+      top: calc(10px + var(--safe-top));
+      left:50%;
+      transform: translateX(-50%) translateY(-80px);
+      z-index:9200;
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: rgba(0,0,0,.60);
+      border: 1px solid rgba(255,255,255,.18);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      font-weight: 900;
+      letter-spacing:.02em;
+      font-size: 13px;
+      opacity:0;
+      transition: transform .18s ease, opacity .18s ease;
+      pointer-events:none;
+      user-select:none;
+      box-shadow: 0 16px 40px rgba(0,0,0,.35);
+    }
+    .refreshBar.show{
+      opacity:1;
+      transform: translateX(-50%) translateY(0);
     }
 
     /* ===== STAGE ===== */
@@ -203,6 +229,48 @@
     .cinematicMask .top{ top:0; height: var(--mask-top-h); }
     .cinematicMask .bottom{ bottom:0; height: var(--mask-bottom-h); }
 
+    /* ===== Swipe hint arrow (transparent, narrow) ===== */
+    .swipeHint{
+      position:fixed;
+      right: 10px;
+      top:50%;
+      transform: translateY(-50%);
+      z-index:200;
+      width: 26px;
+      height: 86px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.12);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      pointer-events:none;
+      opacity:.55;
+    }
+    .swipeHint::before{
+      content:"";
+      position:absolute;
+      left:50%;
+      top:50%;
+      width: 10px;
+      height: 10px;
+      border-left: 2px solid rgba(255,255,255,.55);
+      border-bottom: 2px solid rgba(255,255,255,.55);
+      transform: translate(-50%,-50%) rotate(45deg);
+      /* This arrow points LEFT (gesture: swipe left to go forward) */
+    }
+    .swipeHint::after{
+      content:"";
+      position:absolute;
+      left:50%;
+      top:50%;
+      width: 2px;
+      height: 34px;
+      background: rgba(255,255,255,.18);
+      transform: translate(-50%,-50%);
+      border-radius: 999px;
+    }
+    .swipeHint.dim{ opacity:.18; }
+
     /* ===== HUD ===== */
     .hud{
       position:fixed;
@@ -216,7 +284,7 @@
       text-shadow: 0 10px 30px rgba(0,0,0,.55);
     }
 
-    /* ===== SEEKER WALL (simplified keeper + 4-digit + slider) ===== */
+    /* ===== SEEKER WALL ===== */
     .gate{
       position:fixed;
       inset:0;
@@ -346,7 +414,7 @@
     .gateMsg.ok{ color:#7CFF9A; font-weight:900; opacity:1; }
     .gateMsg.bad{ color:#FF7C7C; font-weight:900; opacity:1; }
 
-    /* ===== PLAYER DOCK (unchanged from your system) ===== */
+    /* ===== PLAYER DOCK ===== */
     .playerDock{
       position:fixed;
       left:50%;
@@ -535,13 +603,12 @@
       opacity:.92;
     }
     .player.lowered .grabHandle{ display:flex; }
-
   </style>
 </head>
 
 <body>
 
-  <!-- OPTIONAL COVER / LOADING -->
+  <!-- COVER / LOADING -->
   <div id="loading" class="loading" aria-hidden="false">
     <div id="loadingCard" class="loadingCard" role="button" aria-label="Enter SANCTUM">
       <img id="coverImg" src="./manga/chapter-00-public/cover.jpg" alt="SANCTUM Cover" />
@@ -549,8 +616,14 @@
     </div>
   </div>
 
+  <!-- REFRESH BAR -->
+  <div id="refreshBar" class="refreshBar">Refreshing…</div>
+
   <!-- HUD -->
   <div class="hud" id="hud">page 01 / 01</div>
+
+  <!-- Swipe Hint -->
+  <div class="swipeHint" id="swipeHint" aria-hidden="true"></div>
 
   <!-- STAGE -->
   <div class="stage" id="stage">
@@ -633,7 +706,12 @@
   <script>
     (function(){
       /* =========================================================
-         v0.41.2 — 2-ORDNER FLOW (PUBLIC INTRO -> GATE -> MAIN)
+         v0.41.3 — Updates requested:
+         1) Swipe direction reversed: forward = SWIPE LEFT
+            + subtle arrow hint on the right edge
+         2) Player included
+         3) Downswipe reload included + banner
+         4) Loading cover included
 
          FILE STRUCTURE:
            ./manga/chapter-00-public/
@@ -647,29 +725,22 @@
              ... (0..n)
 
          STORY FLOW:
-           - Website loads PUBLIC intro (2 pages)
-           - After page 2, next swipe triggers SEEKER WALL
-           - After verified, MAIN pilot starts (page 0..auto-discovery)
-           - Token stored for 24h:
-             returning seekers jump directly to MAIN (skip public+gate)
+           - New visitors: PUBLIC (2 pages) -> next forward swipe triggers GATE -> MAIN
+           - Returning seekers (token): jump directly to MAIN
 
          TETHERCODE:
-           - Placeholder in this build.
-           - To enforce real subscriber codes, fill VALID_CODES.
-
-         NOTE:
-           - No true screenshot blocking exists on the open web.
+           - If VALID_CODES empty => accepts any 4 digits.
+           - If you add codes there => only those are accepted.
       ========================================================= */
 
-      const VERSION = "v0.41.2";
+      const VERSION = "v0.41.3";
 
       const STORAGE_KEY = "sanctum_seeker_token_v1";
       const TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
 
-      // === OPTIONAL: enforce codes (subscriber list). Empty => accept any 4 digits.
+      // === OPTIONAL: enforce real tethercodes
       const VALID_CODES = [
-        // "1337",
-        // "0420",
+        // "7391",
       ];
 
       const READER = {
@@ -679,9 +750,9 @@
         filePrefix: "SANCTUMPILOTBYDAVIDRAVENSON",
         ext: ".jpg",
 
-        publicPages: [0,1],           // exactly two pages on website before the wall
-        mainSeed: [0,1],              // main starts here
-        probeMax: 500,                // how far to try
+        publicPages: [0,1],
+        mainSeed: [0,1],
+        probeMax: 500,
         stopAfterConsecutiveMisses: 3,
 
         swipeThresholdPx: 44,
@@ -689,8 +760,14 @@
         rubberbandPct: 8,
         preloadAhead: 2,
 
-        loadingMinMs: 500,            // short. (cover tap is the main beat)
+        // pull to refresh
+        refreshTopZonePx: 70,
+        refreshShowPx: 22,
+        refreshFirePx: 58,
+
+        loadingMinMs: 450,
         loadingMaxMs: 2500,
+
         playerRaiseSwipePx: 26
       };
 
@@ -699,7 +776,7 @@
       const pad2 = (n) => String(n).padStart(2,"0");
       const nowMs = () => Date.now ? Date.now() : (new Date()).getTime();
 
-      // mild friction (doesn't "secure", only discourages casual actions)
+      // mild friction (discourage)
       document.addEventListener("contextmenu", (e) => e.preventDefault(), { passive:false });
       document.addEventListener("dragstart", (e) => e.preventDefault(), { passive:false });
       document.addEventListener("selectstart", (e) => e.preventDefault(), { passive:false });
@@ -729,10 +806,12 @@
       // ===== DOM =====
       const loading = $("loading");
       const loadingCard = $("loadingCard");
+      const refreshBar = $("refreshBar");
       const hud = $("hud");
       const stage = $("stage");
       const frame = $("panelFrame");
       const track = $("track");
+      const swipeHint = $("swipeHint");
 
       const gate = $("gate");
       const gateTarget = $("gateTarget");
@@ -993,7 +1072,6 @@
           const ok = await headOK(url);
           if(ok){
             misses = 0;
-            // temporarily switch URL-building without toggling mode yet
             const savedMode = mode;
             mode = "main";
             addPage(n);
@@ -1014,7 +1092,8 @@
         gate.setAttribute("aria-hidden","false");
         gate.classList.add("show");
 
-        // reset gate UI
+        swipeHint.classList.add("dim");
+
         codeInputs.forEach((inp) => inp.value = "");
         codeInputs[0].focus();
 
@@ -1024,12 +1103,13 @@
 
         gateEnter.disabled = true;
         gateMsg.className = "gateMsg";
-        gateMsg.textContent = "Enter the tethercode. Match the slider to the target (±2).";
+        gateMsg.textContent = "Four digits. Match the slider (±2).";
       }
 
       function gateHide(){
         gate.setAttribute("aria-hidden","true");
         gate.classList.remove("show");
+        swipeHint.classList.remove("dim");
       }
 
       function getCode(){
@@ -1041,7 +1121,7 @@
         if(Array.isArray(VALID_CODES) && VALID_CODES.length){
           return VALID_CODES.includes(code);
         }
-        return true; // placeholder mode: any 4 digits
+        return true;
       }
 
       function gateEvaluate(){
@@ -1092,25 +1172,41 @@
 
         storeToken();
         gateHide();
-
-        // Switch to MAIN
         startMain();
       }, { passive:false });
 
-      // ===== Swipe handling (RTL track) =====
+      // ===== Pull-to-refresh =====
+      function showRefresh(){ refreshBar.classList.add("show"); }
+      function hideRefresh(){ refreshBar.classList.remove("show"); }
+
+      let refreshArmed = false;
+      let refreshFired = false;
+
+      function fireRefresh(){
+        if(refreshFired) return;
+        refreshFired = true;
+        showRefresh();
+        setTimeout(() => { location.reload(); }, 220);
+      }
+
+      // ===== Swipe handling (forward = swipe LEFT) =====
       let dragging = false;
       let lockedAxis = null;
       let startX=0, startY=0, lastX=0;
 
       function onStart(t){
-        // if gate is open: no swipes
         if(gate.classList.contains("show")) return;
 
         dragging = true;
         lockedAxis = null;
         startX = lastX = t.clientX;
         startY = t.clientY;
+
         track.classList.add("dragging");
+
+        refreshFired = false;
+        refreshArmed = (startY <= READER.refreshTopZonePx);
+        if(refreshArmed) hideRefresh();
       }
 
       function onMove(t, e){
@@ -1124,8 +1220,11 @@
             lockedAxis = (Math.abs(dx) >= Math.abs(dy)) ? "x" : "y";
           }else return;
         }
+
         if(lockedAxis === "y"){
-          return; // allow scroll-ish (though we hide overflow)
+          if(refreshArmed && dy > READER.refreshShowPx) showRefresh();
+          if(refreshArmed && dy > READER.refreshFirePx) fireRefresh();
+          return;
         }
 
         e.preventDefault();
@@ -1150,18 +1249,19 @@
         dragging = false;
         track.classList.remove("dragging");
 
+        if(refreshFired) return;
+
         if(lockedAxis !== "x"){
+          hideRefresh();
           setStoryIndex(storyIndex, true);
           return;
         }
 
         const dx = lastX - startX;
 
-        // swipe right -> next story page (storyIndex + 1)
-        if(dx > READER.swipeThresholdPx){
-          // If public and already at last public page, opening the next should trigger gate
+        // FORWARD = swipe LEFT (dx negative)
+        if(dx < -READER.swipeThresholdPx){
           if(mode === "public" && storyIndex >= pages.length - 1){
-            // Story wants to go forward, but gate stands there.
             setStoryIndex(storyIndex, true);
             gateShow();
             return;
@@ -1170,8 +1270,8 @@
           return;
         }
 
-        // swipe left -> previous story page
-        if(dx < -READER.swipeThresholdPx){
+        // BACK = swipe RIGHT (dx positive)
+        if(dx > READER.swipeThresholdPx){
           setStoryIndex(storyIndex - 1, true);
           return;
         }
@@ -1192,34 +1292,28 @@
       stage.addEventListener("touchend", onEnd, { passive:true });
       stage.addEventListener("touchcancel", () => {
         dragging=false;
+        hideRefresh();
         setStoryIndex(storyIndex,true);
       }, { passive:true });
 
-      // ===== Flow control =====
-      function hideLoading(force=false){
-        if(!loading) return;
+      // ===== Loading cover logic =====
+      let loadingHidden = false;
+      function hideLoading(){
+        if(loadingHidden) return;
+        loadingHidden = true;
         loading.classList.add("hidden");
         setTimeout(() => { loading.style.display = "none"; }, 380);
       }
-
-      // cover tap makes it feel like "instagram -> panel continues"
-      let loadingHidden = false;
-      function maybeHideLoading(){
-        if(loadingHidden) return;
-        loadingHidden = true;
-        hideLoading(false);
-      }
       loadingCard.addEventListener("click", (e) => {
         e.preventDefault();
-        maybeHideLoading();
+        hideLoading();
       }, { passive:false });
 
-      setTimeout(() => { maybeHideLoading(); }, READER.loadingMaxMs);
+      setTimeout(() => { hideLoading(); }, READER.loadingMaxMs);
 
+      // ===== Flow control =====
       function startPublic(){
         resetReader("public");
-
-        // add exactly 2 public pages
         mode = "public";
         READER.publicPages.forEach(n => addPage(n));
         renderAll();
@@ -1228,13 +1322,11 @@
 
       function startMain(){
         resetReader("main");
-
         mode = "main";
         READER.mainSeed.forEach(n => addPage(n));
         renderAll();
         setStoryIndex(0, false);
 
-        // discover more in idle
         const goProbe = () => {
           const savedMode = mode;
           mode = "main";
@@ -1247,24 +1339,15 @@
         }
       }
 
-      // ===== Boot =====
       function boot(){
         updateStageReserve();
-
-        // returning seekers: skip public+gate, go main
         if(hasValidToken()){
-          // hide cover fast
-          setTimeout(() => { maybeHideLoading(); }, READER.loadingMinMs);
           startMain();
-          return;
+        }else{
+          startPublic();
         }
-
-        // new visitors: show public intro (2 pages), then gate on next swipe
-        setTimeout(() => { maybeHideLoading(); }, READER.loadingMinMs);
-        startPublic();
       }
 
-      // keep reserve correct
       function onLayoutChange(){
         setOrientationClass();
         updateStageReserve();
@@ -1274,8 +1357,6 @@
 
       // start
       boot();
-
-      // log
       console.log("SANCTUM", VERSION);
     })();
   </script>
