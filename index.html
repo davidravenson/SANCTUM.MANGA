@@ -2,65 +2,80 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, viewport-fit=cover"
+  />
   <title>SANCTUM — Pilot</title>
 
   <style>
-    :root{ --bg:#000; --panel-max-w: 960px; }
-    html, body{ margin:0; padding:0; background:var(--bg); color:#fff; font-family:system-ui,-apple-system,Segoe UI,sans-serif; height:100%; }
-    .wrap{ min-height:100%; display:flex; justify-content:center; padding:12px; box-sizing:border-box; }
-    .reader{ width:100%; max-width:var(--panel-max-w); }
-    .reader img{ width:100%; height:auto; display:block; margin-bottom:12px; background:#000; }
-    .note{ opacity:.75; font-size:.95rem; padding:8px 0 14px; }
+    :root{
+      --bg: #000;
+      --panel-max-w: 960px;
+    }
+
+    html, body{
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: #fff;
+      font-family: system-ui, -apple-system, Segoe UI, sans-serif;
+      height: 100%;
+    }
+
+    .wrap{
+      min-height: 100%;
+      display: flex;
+      justify-content: center;
+      padding: 12px;
+      box-sizing: border-box;
+    }
+
+    .reader{
+      width: 100%;
+      max-width: var(--panel-max-w);
+    }
+
+    .reader img{
+      width: 100%;
+      height: auto;
+      display: block;
+      margin-bottom: 12px;
+      background: #000;
+    }
   </style>
 </head>
 
 <body>
   <div class="wrap">
-    <div class="reader" id="reader">
-      <div class="note" id="note">Loading pages…</div>
-    </div>
+    <div class="reader" id="reader"></div>
   </div>
 
   <script>
-    // IMPORTANT:
-    // Your real filenames on GitHub are:
-    //   #1SANCTUMPilotBYDAVIDRAVENSON0.jpg
-    //   #1SANCTUMPilotBYDAVIDRAVENSON1.jpg
-    // But in URLs, "#" must be requested as "%23".
-    const BASE_NAME_URL = "%231SANCTUMPilotBYDAVIDRAVENSON"; // "%23" == "#"
+    const BASE_NAME = "#1SANCTUMPilotBYDAVIDRAVENSON";
     const EXT = ".jpg";
 
-    function getPanelURL(i){
-      return `${BASE_NAME_URL}${i}${EXT}`;
+    function getPanelFilename(index){
+      return `${BASE_NAME}${index}${EXT}`;
     }
 
     const reader = document.getElementById("reader");
-    const note = document.getElementById("note");
     let index = 0;
-    let loadedAny = false;
 
     function loadNext(){
       const img = new Image();
       img.alt = `Page ${index}`;
       img.loading = "lazy";
-      img.src = getPanelURL(index);
+      img.src = getPanelFilename(index);
 
       img.onload = () => {
-        loadedAny = true;
-        if(note) note.remove();
         reader.appendChild(img);
         index++;
-        loadNext();
+        loadNext(); // lädt die nächste Seite
       };
 
       img.onerror = () => {
-        if(!loadedAny){
-          note.textContent =
-            "No images loaded. Check: images in SAME folder as index.html, exact names, and numbering starts at 0.";
-        } else {
-          // stop silently when the next file doesn't exist
-        }
+        // keine weitere Seite vorhanden → sauberer Abbruch
       };
     }
 
