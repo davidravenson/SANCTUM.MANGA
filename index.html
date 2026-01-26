@@ -7,9 +7,10 @@
 
   <style>
     :root{
-      --v: "v0.40.17";
+      --v: "v0.40.18";
       --safe-top: env(safe-area-inset-top, 0px);
       --safe-bottom: env(safe-area-inset-bottom, 0px);
+
       --bg: url("./media/ui/manga_paper_bg.png");
       --shadow: 0 16px 40px rgba(0,0,0,.35);
 
@@ -22,8 +23,8 @@
 
       /* ===== PLAYER SCALE =====
          Portrait: -30%  => 0.70
-         Landscape: "um 100%" mehr shrink (deutlich kleiner) => 0.40
-         (Wenn du Landscape noch kleiner/größer willst: 0.35 / 0.45 etc.) */
+         Landscape: much smaller => 0.40
+      */
       --player-scale: 0.70;
 
       /* Player base sizes (unscaled) */
@@ -43,6 +44,11 @@
       --reserve-gap: 16px;  /* air between panel + player area */
 
       --dock-bottom: 12px;
+
+      /* Watermark (discourages easy reposting; does NOT block screenshots) */
+      --wm-opacity: .13;
+      --wm-size: 22px;
+      --wm-rot: -18deg;
     }
 
     html, body{
@@ -53,6 +59,10 @@
       font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
       -webkit-tap-highlight-color: transparent;
       overflow:hidden;
+
+      user-select:none;
+      -webkit-user-select:none;
+      -webkit-touch-callout:none;
     }
 
     body{
@@ -66,7 +76,6 @@
     /* Landscape scale override */
     body.landscape{
       --player-scale: 0.40; /* smaller in landscape */
-      /* re-compute scaled sizes under landscape automatically */
       --player-collapsed: calc(var(--player-collapsed-base) * var(--player-scale));
       --player-expanded-h: calc(var(--player-expanded-h-base) * var(--player-scale));
       --player-lowered-h: calc(var(--player-lowered-h-base) * var(--player-scale));
@@ -162,7 +171,6 @@
       touch-action: pan-y;
       overscroll-behavior: none;
     }
-
     .rail{
       position:relative;
       width: min(100vw, var(--max-w));
@@ -171,7 +179,6 @@
       align-items:center;
       justify-content:center;
     }
-
     .panelFrame{
       position:relative;
       width:100%;
@@ -182,7 +189,6 @@
       backface-visibility:hidden;
       -webkit-backface-visibility:hidden;
     }
-
     .track{
       display:flex;
       flex-direction:row;
@@ -202,7 +208,6 @@
       justify-content:center;
       background:#000;
     }
-
     .panelShell{
       position:relative;
       width:100%;
@@ -210,6 +215,27 @@
       display:flex;
       align-items:center;
       justify-content:center;
+      background:#000;
+    }
+
+    /* watermark layer */
+    .watermark{
+      position:absolute;
+      inset:0;
+      pointer-events:none;
+      z-index:8;
+      opacity: var(--wm-opacity);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      transform: rotate(var(--wm-rot));
+      font-weight: 900;
+      letter-spacing: .06em;
+      font-size: var(--wm-size);
+      text-transform: uppercase;
+      color: rgba(255,255,255,.9);
+      mix-blend-mode: overlay;
+      text-shadow: 0 2px 10px rgba(0,0,0,.35);
     }
 
     .panelImg{
@@ -218,9 +244,11 @@
       object-fit: contain;
       display:block;
       background:#000;
+
       user-select:none;
       -webkit-user-drag:none;
       -webkit-touch-callout:none;
+      pointer-events:auto;
     }
 
     .cinematicMask{
@@ -279,7 +307,6 @@
     .ok{ color:#7CFF9A; font-weight:900; }
     .bad{ color:#FF7C7C; font-weight:900; }
     .muted{ opacity:.75; }
-
     .diagToggle{
       position:fixed;
       right: 12px;
@@ -313,7 +340,6 @@
       touch-action:none;
       max-width: min(100vw, var(--max-w));
     }
-
     /* Landscape: move to right side (outside panel area), but width capped to panel */
     body.landscape .playerDock{
       left:auto;
@@ -335,7 +361,6 @@
       overflow:hidden;
       transition: width .28s ease, height .28s ease, border-radius .28s ease, background .28s ease;
     }
-
     .player .meta,
     .player .embedWrap,
     .player .openBtn,
@@ -368,7 +393,6 @@
     body.landscape .player.expanded{
       width: min(92vw, min(var(--max-w), var(--player-expanded-w)));
     }
-
     .player.expanded .meta,
     .player.expanded .embedWrap,
     .player.expanded .openBtn,
@@ -515,14 +539,14 @@
   <div id="refreshBar" class="refreshBar">Refreshing…</div>
 
   <!-- HUD -->
-  <div class="hud" id="hud">panel 01 / 01</div>
+  <div class="hud" id="hud">page 01 / 01</div>
 
   <!-- DIAGNOSTICS -->
   <div class="diag" id="diag">
-    <div class="row"><b>SANCTUM</b> <span class="muted" id="d_ver">v0.40.17</span></div>
+    <div class="row"><b>SANCTUM</b> <span class="muted" id="d_ver">v0.40.18</span></div>
     <div class="row"><span>chapter</span> <b id="d_ch">-</b></div>
     <div class="row"><span>base</span> <span class="muted" id="d_base">-</span></div>
-    <div class="row"><span>panels</span> <b id="d_total">0</b></div>
+    <div class="row"><span>pages</span> <b id="d_total">0</b></div>
     <div class="row"><span>storyIndex</span> <b id="d_idx">0</b></div>
     <div class="row"><span>first load</span> <b id="d_first" class="bad">pending</b></div>
     <div class="row"><span>probe</span> <b id="d_probe" class="muted">idle</b></div>
@@ -582,19 +606,38 @@
 
   <script>
     (function(){
-      const VERSION = "v0.40.17";
+      /* =========================================================
+         SANCTUM Reader Core — goals/rules baked into config
+
+         FILE RULE (Pilot):
+         - Put pages in: ./manga/chapter-00/
+         - Name them exactly:
+           SANCTUMPILOTBYDAVIDRAVENSON0.JPG
+           SANCTUMPILOTBYDAVIDRAVENSON1.JPG
+           SANCTUMPILOTBYDAVIDRAVENSON2.JPG
+           ... (0 to infinite)
+         - No padding required. Case matters on GitHub.
+
+         UX RULES:
+         - HUD says "page", not "panel"
+         - Auto-discovery keeps adding pages until misses stop it
+         - Player NEVER overlaps the panel (stage reserve system)
+         - "Protection by friction": disable right-click + drag + selection
+           (cannot truly block screenshots; watermarks discourage reposting)
+      ========================================================= */
+
+      const VERSION = "v0.40.18";
 
       const READER = {
         chapter: "chapter-00",
         baseRoot: "./manga/",
-        panelPrefix: "panel",
-        ext: ".jpg",
-        pad: 2,
 
-        seedPanels: [1,2],
-
-        probeMax: 80,
-        stopAfterConsecutiveMisses: 3,
+        /* Pilot naming */
+        pagePrefix: "SANCTUMPILOTBYDAVIDRAVENSON",
+        ext: ".JPG",
+        seedPages: [0,1],                 // starts at 0
+        probeMax: 300,                    // increase if you upload lots
+        stopAfterConsecutiveMisses: 3,    // stops after 3 missing pages in a row
 
         loadingMinMs: 2000,
         loadingMaxMs: 3500,
@@ -602,15 +645,21 @@
         swipeThresholdPx: 44,
         axisLockPx: 10,
         rubberbandPct: 8,
-
         preloadAhead: 2,
 
         refreshTopZonePx: 70,
         refreshShowPx: 22,
         refreshFirePx: 58,
 
-        playerRaiseSwipePx: 26
+        playerRaiseSwipePx: 26,
+
+        watermarkText: "SANCTUM · DAVID RAVENSON"
       };
+
+      /* ===== friction-protection ===== */
+      document.addEventListener("contextmenu", (e) => e.preventDefault(), { passive:false });
+      document.addEventListener("dragstart", (e) => e.preventDefault(), { passive:false });
+      document.addEventListener("selectstart", (e) => e.preventDefault(), { passive:false });
 
       const $ = (id) => document.getElementById(id);
       const clamp = (n,a,b) => Math.max(a, Math.min(b,n));
@@ -635,36 +684,38 @@
         el.textContent = text;
         if(cls) el.className = cls;
       }
+
       function noteErr(msg){
         diagSet(diag.err, String(msg || "(unknown)"), "muted");
         if(diag.js) diag.js.className = "bad";
       }
+
       window.addEventListener("error", (e) => noteErr(e.message || e.error || "error"));
       window.addEventListener("unhandledrejection", (e) => noteErr(e.reason || "promise rejection"));
 
       diagSet(diag.ver, VERSION, "muted");
 
       let diagVisible = true;
-      diag.toggle.addEventListener("click", () => {
-        diagVisible = !diagVisible;
-        diag.box.style.display = diagVisible ? "block" : "none";
-      }, { passive:true });
+      if(diag.toggle){
+        diag.toggle.addEventListener("click", () => {
+          diagVisible = !diagVisible;
+          diag.box.style.display = diagVisible ? "block" : "none";
+        }, { passive:true });
+      }
 
       function setOrientationClass(){
         const isLand = window.matchMedia && window.matchMedia("(orientation: landscape)").matches;
         document.body.classList.toggle("landscape", !!isLand);
       }
-      window.addEventListener("resize", setOrientationClass, { passive:true });
-      window.addEventListener("orientationchange", setOrientationClass, { passive:true });
-      setOrientationClass();
 
       const basePath = READER.baseRoot + READER.chapter + "/";
       diagSet(diag.ch, READER.chapter, "");
       diagSet(diag.base, basePath, "muted");
 
-      function panelURL(n){
-        return basePath + READER.panelPrefix + padN(n, READER.pad) + READER.ext;
+      function pageURL(n){
+        return basePath + READER.pagePrefix + String(n) + READER.ext;
       }
+
       function bust(url){
         const s = (Date.now() + Math.random()).toString(36);
         return url + (url.includes("?") ? "&" : "?") + "v=" + encodeURIComponent(s);
@@ -673,7 +724,6 @@
       const loading = $("loading");
       const coverBanner = $("coverBanner");
       const refreshBar = $("refreshBar");
-
       const hud = $("hud");
       const stage = $("stage");
       const frame = $("panelFrame");
@@ -691,7 +741,6 @@
 
       function hideLoading(force=false){
         if(loadingHidden) return;
-
         const now = performance.now ? performance.now() : Date.now();
         const elapsed = now - loadStart;
         const remaining = READER.loadingMinMs - elapsed;
@@ -702,20 +751,25 @@
         }
 
         loadingHidden = true;
-        loading.style.opacity = "0";
-        loading.setAttribute("aria-hidden","true");
-        setTimeout(() => { loading.style.display = "none"; }, 380);
+        if(loading){
+          loading.style.opacity = "0";
+          loading.setAttribute("aria-hidden","true");
+          setTimeout(() => { loading.style.display = "none"; }, 380);
+        }
       }
 
-      coverBanner.addEventListener("click", () => hideLoading(false), { passive:true });
+      if(coverBanner){
+        coverBanner.addEventListener("click", () => hideLoading(false), { passive:true });
+      }
       setTimeout(() => hideLoading(false), READER.loadingMaxMs);
 
       /* ===== In-app refresh ===== */
-      function showRefresh(){ refreshBar.classList.add("show"); }
-      function hideRefresh(){ refreshBar.classList.remove("show"); }
+      function showRefresh(){ if(refreshBar) refreshBar.classList.add("show"); }
+      function hideRefresh(){ if(refreshBar) refreshBar.classList.remove("show"); }
 
       let refreshArmed = false;
       let refreshFired = false;
+
       function fireRefresh(){
         if(refreshFired) return;
         refreshFired = true;
@@ -729,94 +783,91 @@
         const n = parseFloat(raw);
         return isFinite(n) ? n : fallback;
       }
-
-      function isExpanded(){ return player.classList.contains("expanded"); }
-      function isLowered(){ return player.classList.contains("lowered"); }
+      function isExpanded(){ return player && player.classList.contains("expanded"); }
+      function isLowered(){ return player && player.classList.contains("lowered"); }
 
       function updateStageReserve(){
         const gap = cssNum("--reserve-gap", 16);
-        if(!isExpanded()){
+        if(!player || !isExpanded()){
           document.documentElement.style.setProperty("--stage-reserve", "0px");
           return;
         }
         const h = isLowered()
           ? cssNum("--player-lowered-h", 105)
           : cssNum("--player-expanded-h", 168);
-
         document.documentElement.style.setProperty("--stage-reserve", (h + gap) + "px");
       }
 
       function setLowered(on){
+        if(!player) return;
         if(on) player.classList.add("lowered");
         else player.classList.remove("lowered");
         updateStageReserve();
       }
-
       function sink(){
-        if(!isExpanded()) return;
+        if(!player || !isExpanded()) return;
         setLowered(true);
       }
-
       function raise(){
+        if(!player) return;
         setLowered(false);
       }
 
-      function toggleSink(){
-        if(!isExpanded()) return;
-        if(isLowered()) raise();
-        else sink();
-      }
-
       /* Reappear: tap + upswipe on grip */
-      grabHandle.addEventListener("click", (e) => {
-        if(!isExpanded() || !isLowered()) return;
-        e.preventDefault();
-        e.stopPropagation();
-        raise();
-      }, { passive:false });
-
       let hTouch = null;
-      grabHandle.addEventListener("touchstart", (e) => {
-        if(!isExpanded() || !isLowered()) return;
-        const t = e.touches && e.touches[0];
-        if(!t) return;
-        hTouch = { x: t.clientX, y: t.clientY };
-      }, { passive:true });
 
-      grabHandle.addEventListener("touchmove", (e) => {
-        if(!hTouch) return;
-        const t = e.touches && e.touches[0];
-        if(!t) return;
-        const dx = t.clientX - hTouch.x;
-        const dy = t.clientY - hTouch.y;
-        if(Math.abs(dy) > Math.abs(dx) && dy < -READER.playerRaiseSwipePx){
+      if(grabHandle){
+        grabHandle.addEventListener("click", (e) => {
+          if(!player || !isExpanded() || !isLowered()) return;
           e.preventDefault();
           e.stopPropagation();
-          hTouch = null;
           raise();
-        }
-      }, { passive:false });
+        }, { passive:false });
 
-      grabHandle.addEventListener("touchend", () => { hTouch = null; }, { passive:true });
-      grabHandle.addEventListener("touchcancel", () => { hTouch = null; }, { passive:true });
+        grabHandle.addEventListener("touchstart", (e) => {
+          if(!player || !isExpanded() || !isLowered()) return;
+          const t = e.touches && e.touches[0];
+          if(!t) return;
+          hTouch = { x: t.clientX, y: t.clientY };
+        }, { passive:true });
+
+        grabHandle.addEventListener("touchmove", (e) => {
+          if(!hTouch) return;
+          const t = e.touches && e.touches[0];
+          if(!t) return;
+          const dx = t.clientX - hTouch.x;
+          const dy = t.clientY - hTouch.y;
+          if(Math.abs(dy) > Math.abs(dx) && dy < -READER.playerRaiseSwipePx){
+            e.preventDefault();
+            e.stopPropagation();
+            hTouch = null;
+            raise();
+          }
+        }, { passive:false });
+
+        grabHandle.addEventListener("touchend", () => { hTouch = null; }, { passive:true });
+        grabHandle.addEventListener("touchcancel", () => { hTouch = null; }, { passive:true });
+      }
 
       /* ===== Reader (RTL track) ===== */
-      let panels = [];
+      let pages = [];
       let storyIndex = 0;
       let domCount = 0;
 
       function domIndexFromStory(i){ return (domCount - 1) - i; }
 
       function updateHud(){
-        const total = Math.max(1, panels.length);
-        hud.textContent = "panel " + padN(storyIndex+1,2) + " / " + padN(total,2);
-        diagSet(diag.total, String(panels.length), "");
+        const total = Math.max(1, pages.length);
+        if(hud){
+          hud.textContent = "page " + padN(storyIndex+1,2) + " / " + padN(total,2);
+        }
+        diagSet(diag.total, String(pages.length), "");
         diagSet(diag.idx, String(storyIndex), "");
       }
 
       function preloadAround(i){
         for(let k=1; k<=READER.preloadAhead; k++){
-          const p = panels[i + k];
+          const p = pages[i + k];
           if(p && p.ok !== false){
             const img = new Image();
             img.decoding = "async";
@@ -826,7 +877,7 @@
       }
 
       function setStoryIndex(next, animate=true){
-        storyIndex = clamp(next, 0, Math.max(0, panels.length-1));
+        storyIndex = clamp(next, 0, Math.max(0, pages.length-1));
         const di = domIndexFromStory(storyIndex);
 
         if(!animate) track.classList.add("dragging");
@@ -846,10 +897,14 @@
 
         const img = document.createElement("img");
         img.className = "panelImg";
-        img.alt = "Panel " + padN(p.n,2);
+        img.alt = "Page " + String(p.n);
         img.decoding = "async";
         img.loading = "lazy";
         img.src = p.url;
+
+        const wm = document.createElement("div");
+        wm.className = "watermark";
+        wm.textContent = READER.watermarkText;
 
         const mask = document.createElement("div");
         mask.className = "cinematicMask";
@@ -858,7 +913,7 @@
 
         img.addEventListener("load", () => {
           p.ok = true;
-          if(p.n === 1){
+          if(p.n === 0){
             diagSet(diag.first, "ok", "ok");
             hideLoading(false);
           }
@@ -866,7 +921,7 @@
 
         img.addEventListener("error", () => {
           p.ok = false;
-          if(p.n === 1){
+          if(p.n === 0){
             diagSet(diag.first, "error", "bad");
             hideLoading(false);
           }
@@ -875,36 +930,37 @@
         p.imgEl = img;
 
         shell.appendChild(img);
+        shell.appendChild(wm);
         shell.appendChild(mask);
         slide.appendChild(shell);
         return slide;
       }
 
-      function addPanel(n){
-        const url = panelURL(n);
-        if(panels.some(x => x.n === n)) return;
-        panels.push({ n, url, ok: null, imgEl: null });
-        panels.sort((a,b) => a.n - b.n);
+      function addPage(n){
+        const url = pageURL(n);
+        if(pages.some(x => x.n === n)) return;
+        pages.push({ n, url, ok: null, imgEl: null });
+        pages.sort((a,b) => a.n - b.n);
       }
 
       function renderAll(){
         track.innerHTML = "";
-        const domPanels = panels.slice().reverse();
-        domPanels.forEach(p => track.appendChild(makeSlide(p)));
-        domCount = domPanels.length;
+        const domPages = pages.slice().reverse();
+        domPages.forEach(p => track.appendChild(makeSlide(p)));
+        domCount = domPages.length;
 
         updateHud();
         setStoryIndex(storyIndex, false);
 
-        const p1 = panels.find(p => p.n === 1);
-        if(p1 && p1.imgEl && p1.imgEl.complete && p1.imgEl.naturalWidth > 0){
-          p1.ok = true;
+        const p0 = pages.find(p => p.n === 0);
+        if(p0 && p0.imgEl && p0.imgEl.complete && p0.imgEl.naturalWidth > 0){
+          p0.ok = true;
           diagSet(diag.first, "ok", "ok");
           hideLoading(false);
         }
       }
 
-      READER.seedPanels.forEach(addPanel);
+      READER.seedPages.forEach(addPage);
       renderAll();
 
       /* ===== Reader swipe + refresh ===== */
@@ -917,6 +973,7 @@
         lockedAxis = null;
         startX = lastX = t.clientX;
         startY = t.clientY;
+
         track.classList.add("dragging");
 
         refreshFired = false;
@@ -988,6 +1045,7 @@
       }, { passive:false });
 
       stage.addEventListener("touchend", onEnd, { passive:true });
+
       stage.addEventListener("touchcancel", () => {
         dragging=false;
         if(!refreshFired) hideRefresh();
@@ -1007,23 +1065,24 @@
         }
       }
 
-      async function probePanels(){
+      async function probePages(){
         diagSet(diag.probe, "probing…", "muted");
+
         let misses = 0;
-        let startN = panels.length ? (Math.max(...panels.map(p => p.n)) + 1) : 1;
+        let startN = pages.length ? (Math.max(...pages.map(p => p.n)) + 1) : 0;
 
         for(let n=startN; n<=READER.probeMax; n++){
-          const url = panelURL(n);
+          const url = pageURL(n);
           const ok = await headOK(url);
 
           if(ok){
             misses = 0;
-            addPanel(n);
+            addPage(n);
             renderAll();
-            diagSet(diag.probe, "found panel " + padN(n,2), "ok");
+            diagSet(diag.probe, "found " + READER.pagePrefix + n + READER.ext, "ok");
           }else{
             misses++;
-            diagSet(diag.probe, "miss " + misses + " (panel " + padN(n,2) + ")", "muted");
+            diagSet(diag.probe, "miss " + misses + " (page " + n + ")", "muted");
             if(misses >= READER.stopAfterConsecutiveMisses) break;
           }
         }
@@ -1033,9 +1092,9 @@
       }
 
       if("requestIdleCallback" in window){
-        requestIdleCallback(probePanels, { timeout: 1200 });
+        requestIdleCallback(probePages, { timeout: 1200 });
       }else{
-        setTimeout(probePanels, 650);
+        setTimeout(probePages, 650);
       }
 
       /* ===== SoundCloud ===== */
@@ -1067,13 +1126,15 @@
       initWidget();
 
       function openAndPlay(){
+        if(!player) return;
         player.classList.add("expanded");
         player.classList.remove("lowered");
         updateStageReserve();
 
         if(widget){
-          if(widgetReady){ try{ widget.play(); }catch(_){} }
-          else{
+          if(widgetReady){
+            try{ widget.play(); }catch(_){}
+          }else{
             try{
               widget.bind(SC.Widget.Events.READY, function(){
                 widgetReady = true;
@@ -1085,26 +1146,31 @@
       }
 
       function closePlayer(){
+        if(!player) return;
         player.classList.remove("expanded");
         player.classList.remove("lowered");
         updateStageReserve();
         if(widget){ try{ widget.pause(); }catch(_){} }
       }
 
-      playerBtn.addEventListener("click", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        openAndPlay();
-      }, { passive:false });
+      if(playerBtn){
+        playerBtn.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          openAndPlay();
+        }, { passive:false });
+      }
 
-      closeBtn.addEventListener("click", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        closePlayer();
-      }, { passive:false });
+      if(closeBtn){
+        closeBtn.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          closePlayer();
+        }, { passive:false });
+      }
 
       document.addEventListener("click", (e) => {
-        if(!isExpanded()) return;
+        if(!player || !isExpanded()) return;
         if(e.target && e.target.classList && e.target.classList.contains("panelImg")){
           if(isLowered()) player.classList.remove("lowered");
           else player.classList.add("lowered");
@@ -1116,15 +1182,14 @@
         setOrientationClass();
         updateStageReserve();
       }
-      function setOrientationClass(){
-        const isLand = window.matchMedia && window.matchMedia("(orientation: landscape)").matches;
-        document.body.classList.toggle("landscape", !!isLand);
-      }
+
       window.addEventListener("resize", onLayoutChange, { passive:true });
       window.addEventListener("orientationchange", onLayoutChange, { passive:true });
 
+      setOrientationClass();
       updateStageReserve();
       updateHud();
+
       diagSet(diag.js, "ok", "ok");
       console.log("SANCTUM", VERSION);
     })();
