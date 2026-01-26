@@ -7,7 +7,7 @@
 
   <style>
     :root{
-      --v: "v0.41.6";
+      --v: "v0.41.7";
       --safe-top: env(safe-area-inset-top, 0px);
       --safe-bottom: env(safe-area-inset-bottom, 0px);
 
@@ -267,7 +267,7 @@
       pointer-events:auto;
     }
 
-    /* ===== Swipe hint (LEFT arrow + pendulum) ===== */
+    /* ===== Swipe hint (LEFT side, LEFT arrow, pendle) ===== */
     @keyframes pendleLeft {
       0%   { transform: translateY(-50%) translateX(0) rotate(0deg); opacity:.55; }
       50%  { transform: translateY(-50%) translateX(-8px) rotate(-3deg); opacity:.72; }
@@ -275,7 +275,7 @@
     }
     .swipeHint{
       position:fixed;
-      right: 10px;
+      left: 10px;           /* ✅ left side */
       top:50%;
       transform: translateY(-50%);
       z-index: 410;
@@ -300,8 +300,7 @@
       height: 10px;
       border-left: 2px solid rgba(255,255,255,.55);
       border-bottom: 2px solid rgba(255,255,255,.55);
-      transform: translate(-50%,-50%) rotate(45deg);
-      /* points LEFT: swipe LEFT = forward */
+      transform: translate(-50%,-50%) rotate(45deg); /* points LEFT */
     }
     .swipeHint::after{
       content:"";
@@ -314,7 +313,8 @@
       transform: translate(-50%,-50%);
       border-radius: 999px;
     }
-    .swipeHint.dim{ opacity:.18; animation: none; }
+    .swipeHint.dim{ opacity:.18; animation:none; }
+    .swipeHint.off{ opacity:0; animation:none; }
 
     /* ===== SEEKER WALL ===== */
     .gate{
@@ -720,7 +720,7 @@
 
   <script>
     (function(){
-      const VERSION = "v0.41.6";
+      const VERSION = "v0.41.7";
 
       const STORAGE_KEY = "sanctum_seeker_token_v1";
       const TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
@@ -730,13 +730,8 @@
       ];
 
       const READER = {
-        /* IMPORTANT FIX:
-           Your real repo path is:
-           ./manga/chapter-00/chapter-00-public/SANCTUMPILOTBYDAVIDRAVENSON0.jpg
-           So folderPublic MUST be "chapter-00/chapter-00-public"
-        */
         baseRoot: "./manga/",
-        folderPublic: "chapter-00/chapter-00-public",  // ✅ fixed
+        folderPublic: "chapter-00/chapter-00-public",
         folderMain: "chapter-00",
         filePrefix: "SANCTUMPILOTBYDAVIDRAVENSON",
         ext: ".jpg",
@@ -816,6 +811,14 @@
       const closeBtn = $("closeBtn");
       const scFrame = $("scFrame");
       const grabHandle = $("grabHandle");
+
+      // Hide swipe hint after first real swipe
+      let swipeHintOff = false;
+      function killSwipeHint(){
+        if(swipeHintOff) return;
+        swipeHintOff = true;
+        swipeHint.classList.add("off");
+      }
 
       function bust(url){
         const s = (Date.now() + Math.random()).toString(36);
@@ -947,7 +950,7 @@
       }, { passive:true });
 
       /* ===== Reader ===== */
-      let mode = "public"; // "public" or "main"
+      let mode = "public";
       let pages = [];
       let storyIndex = 0;
       let domCount = 0;
@@ -1160,7 +1163,7 @@
         setTimeout(() => { location.reload(); }, 220);
       }
 
-      /* ===== Swipe handling (forward = swipe LEFT) ===== */
+      /* ===== Swipe handling (REVERSED: forward = swipe RIGHT) ===== */
       let dragging = false;
       let lockedAxis = null;
       let startX=0, startY=0, lastX=0;
@@ -1230,8 +1233,11 @@
 
         const dx = lastX - startX;
 
-        // FORWARD = swipe LEFT (dx negative)
-        if(dx < -READER.swipeThresholdPx){
+        // After first real swipe (either direction), remove hint forever
+        if(Math.abs(dx) > READER.swipeThresholdPx) killSwipeHint();
+
+        // FORWARD = swipe RIGHT (dx positive)
+        if(dx > READER.swipeThresholdPx){
           if(mode === "public" && storyIndex >= pages.length - 1){
             setStoryIndex(storyIndex, true);
             gateShow();
@@ -1241,8 +1247,8 @@
           return;
         }
 
-        // BACK = swipe RIGHT (dx positive)
-        if(dx > READER.swipeThresholdPx){
+        // BACK = swipe LEFT (dx negative)
+        if(dx < -READER.swipeThresholdPx){
           setStoryIndex(storyIndex - 1, true);
           return;
         }
@@ -1267,7 +1273,7 @@
         setStoryIndex(storyIndex,true);
       }, { passive:true });
 
-      /* ===== Loading cover (min time like v0.40) ===== */
+      /* ===== Loading cover (min time) ===== */
       let loadingHidden = false;
       const loadStart = performance.now ? performance.now() : Date.now();
 
