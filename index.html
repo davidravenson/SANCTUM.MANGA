@@ -7,7 +7,7 @@
 
   <style>
     :root{
-      --v: "v0.41.5";
+      --v: "v0.41.6";
       --safe-top: env(safe-area-inset-top, 0px);
       --safe-bottom: env(safe-area-inset-bottom, 0px);
 
@@ -15,16 +15,13 @@
       --shadow: 0 16px 40px rgba(0,0,0,.35);
       --max-w: 860px;
 
-      /* ===== HUD BAR (never overlaps page area) ===== */
+      /* ===== HUD BAR ===== */
       --hud-h: 44px;
       --hud-pad-x: 12px;
 
-      /* ===== CINEMATIC BARS (OUTSIDE the panel) =====
-         Bottom bar MUST NEVER overlap the page (your requirement #1).
-         So: it's a fixed UI bar + stage padding reserves its space.
-      */
-      --mask-top-h: 0px;     /* keep 0 for now */
-      --mask-bottom-h: 84px; /* black bar height */
+      /* ===== CINEMATIC BARS (outside page) ===== */
+      --mask-top-h: 0px;
+      --mask-bottom-h: 84px;
 
       /* ===== PLAYER SCALE ===== */
       --player-scale: 0.70;
@@ -35,7 +32,7 @@
       --player-lowered-h-base: 150px;
       --player-expanded-w-base: 640px;
 
-      /* Scaled sizes (computed) */
+      /* Scaled sizes */
       --player-collapsed: calc(var(--player-collapsed-base) * var(--player-scale));
       --player-expanded-h: calc(var(--player-expanded-h-base) * var(--player-scale));
       --player-lowered-h: calc(var(--player-lowered-h-base) * var(--player-scale));
@@ -63,7 +60,6 @@
 
     body{ background: var(--bg); }
 
-    /* Landscape scale override */
     body.landscape{
       --player-scale: 0.40;
       --player-collapsed: calc(var(--player-collapsed-base) * var(--player-scale));
@@ -78,7 +74,7 @@
       left:0; right:0; top:0;
       height: calc(var(--hud-h) + var(--safe-top));
       padding-top: var(--safe-top);
-      background: #000;
+      background:#000;
       z-index: 500;
       display:flex;
       align-items:center;
@@ -108,7 +104,7 @@
     .maskBottom{
       position:fixed;
       left:0; right:0;
-      bottom: 0;
+      bottom:0;
       height: calc(var(--mask-bottom-h) + var(--safe-bottom));
       padding-bottom: var(--safe-bottom);
       background:#000;
@@ -118,7 +114,7 @@
       box-sizing:border-box;
     }
 
-    /* ===== LOADING / COVER ===== */
+    /* ===== LOADING (v0.40-ish) ===== */
     .loading{
       position:fixed;
       inset:0;
@@ -131,10 +127,7 @@
       opacity:1;
       transition: opacity .35s ease;
     }
-    .loading.hidden{
-      opacity:0;
-      pointer-events:none;
-    }
+    .loading.hidden{ opacity:0; pointer-events:none; }
     .loading::before{
       content:"";
       position:absolute;
@@ -210,7 +203,6 @@
       align-items:center;
       justify-content:center;
 
-      /* Reserve HUD + cinematic bars so they NEVER overlap page */
       padding-top: calc(var(--safe-top) + var(--hud-h) + var(--mask-top-h));
       padding-bottom: calc(20px + var(--safe-bottom) + var(--mask-bottom-h) + var(--stage-reserve));
       box-sizing:border-box;
@@ -275,10 +267,15 @@
       pointer-events:auto;
     }
 
-    /* ===== Swipe hint arrow (transparent, narrow) ===== */
+    /* ===== Swipe hint (LEFT arrow + pendulum) ===== */
+    @keyframes pendleLeft {
+      0%   { transform: translateY(-50%) translateX(0) rotate(0deg); opacity:.55; }
+      50%  { transform: translateY(-50%) translateX(-8px) rotate(-3deg); opacity:.72; }
+      100% { transform: translateY(-50%) translateX(0) rotate(0deg); opacity:.55; }
+    }
     .swipeHint{
       position:fixed;
-      left: 10px;
+      right: 10px;
       top:50%;
       transform: translateY(-50%);
       z-index: 410;
@@ -291,6 +288,8 @@
       -webkit-backdrop-filter: blur(8px);
       pointer-events:none;
       opacity:.55;
+      animation: pendleLeft 1.15s ease-in-out infinite;
+      transform-origin: 50% 50%;
     }
     .swipeHint::before{
       content:"";
@@ -299,10 +298,10 @@
       top:50%;
       width: 10px;
       height: 10px;
-      border-right: 2px solid rgba(255,255,255,.55);
+      border-left: 2px solid rgba(255,255,255,.55);
       border-bottom: 2px solid rgba(255,255,255,.55);
-      transform: translate(-50%,-50%) rotate(-45deg);
-      /* points RIGHT: forward = swipe RIGHT (requirement #2) */
+      transform: translate(-50%,-50%) rotate(45deg);
+      /* points LEFT: swipe LEFT = forward */
     }
     .swipeHint::after{
       content:"";
@@ -315,7 +314,7 @@
       transform: translate(-50%,-50%);
       border-radius: 999px;
     }
-    .swipeHint.dim{ opacity:.18; }
+    .swipeHint.dim{ opacity:.18; animation: none; }
 
     /* ===== SEEKER WALL ===== */
     .gate{
@@ -443,7 +442,7 @@
       left:50%;
       bottom: calc(var(--dock-bottom) + var(--safe-bottom));
       transform: translateX(-50%);
-      z-index: 430; /* above bars */
+      z-index: 430;
       display:flex;
       align-items:flex-end;
       justify-content:center;
@@ -626,31 +625,24 @@
 
 <body>
 
-  <!-- TOP HUD BAR -->
   <div class="hudBar" aria-hidden="true">
     <div class="hudText" id="hud">page 01 / 01</div>
   </div>
 
-  <!-- CINEMATIC BARS (outside page) -->
   <div class="maskTop" aria-hidden="true"></div>
   <div class="maskBottom" aria-hidden="true"></div>
 
-  <!-- LOADING (cover like v0.40 style) -->
   <div id="loading" class="loading" aria-hidden="false">
     <div id="coverBanner" class="coverBanner" role="button" aria-label="Enter SANCTUM">
-      <!-- requirement #3 path exactly -->
       <img id="coverImg" src="./manga/chapter-00/chapter-00-public/cover.jpg" alt="SANCTUM Cover" />
       <div class="enterHint">Tap to Enter</div>
     </div>
   </div>
 
-  <!-- REFRESH BAR -->
   <div id="refreshBar" class="refreshBar">Refreshing…</div>
 
-  <!-- Swipe Hint -->
   <div class="swipeHint" id="swipeHint" aria-hidden="true"></div>
 
-  <!-- STAGE -->
   <div class="stage" id="stage">
     <div class="rail">
       <div class="panelFrame" id="panelFrame">
@@ -659,7 +651,6 @@
     </div>
   </div>
 
-  <!-- SEEKER WALL -->
   <div id="gate" class="gate" aria-hidden="true">
     <div class="gateCard" role="dialog" aria-label="Seeker Wall">
       <div class="gateTitle">KEEPER</div>
@@ -688,7 +679,6 @@
     </div>
   </div>
 
-  <!-- PLAYER -->
   <div id="playerDock" class="playerDock">
     <div id="player" class="player" aria-label="Player">
       <div id="playerBtn" class="playerBtn" title="Play">
@@ -730,16 +720,23 @@
 
   <script>
     (function(){
-      const VERSION = "v0.41.5";
+      const VERSION = "v0.41.6";
 
       const STORAGE_KEY = "sanctum_seeker_token_v1";
       const TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
 
-      const VALID_CODES = ["2204" ];
+      const VALID_CODES = [
+        // "7391",
+      ];
 
       const READER = {
+        /* IMPORTANT FIX:
+           Your real repo path is:
+           ./manga/chapter-00/chapter-00-public/SANCTUMPILOTBYDAVIDRAVENSON0.jpg
+           So folderPublic MUST be "chapter-00/chapter-00-public"
+        */
         baseRoot: "./manga/",
-        folderPublic: "chapter-00-public",
+        folderPublic: "chapter-00/chapter-00-public",  // ✅ fixed
         folderMain: "chapter-00",
         filePrefix: "SANCTUMPILOTBYDAVIDRAVENSON",
         ext: ".jpg",
@@ -769,7 +766,6 @@
       const pad2 = (n) => String(n).padStart(2,"0");
       const nowMs = () => Date.now ? Date.now() : (new Date()).getTime();
 
-      // discourage casual copy actions (not real security)
       document.addEventListener("contextmenu", (e) => e.preventDefault(), { passive:false });
       document.addEventListener("dragstart", (e) => e.preventDefault(), { passive:false });
       document.addEventListener("selectstart", (e) => e.preventDefault(), { passive:false });
@@ -796,7 +792,6 @@
         }catch(_){}
       }
 
-      // DOM
       const loading = $("loading");
       const coverBanner = $("coverBanner");
       const coverImg = $("coverImg");
@@ -822,14 +817,13 @@
       const scFrame = $("scFrame");
       const grabHandle = $("grabHandle");
 
-      // cover: cache-bust like the old “it just works” feel
       function bust(url){
         const s = (Date.now() + Math.random()).toString(36);
         return url + (url.includes("?") ? "&" : "?") + "v=" + encodeURIComponent(s);
       }
       coverImg.src = bust(coverImg.getAttribute("src"));
 
-      // ===== Player reserve system =====
+      /* ===== Player reserve ===== */
       function cssNum(varName, fallback){
         const raw = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
         const n = parseFloat(raw);
@@ -855,7 +849,6 @@
       }
       function raise(){ setLowered(false); }
 
-      // grip behavior
       let hTouch = null;
       grabHandle.addEventListener("click", (e) => {
         if(!isExpanded() || !isLowered()) return;
@@ -886,7 +879,7 @@
       grabHandle.addEventListener("touchend", () => { hTouch=null; }, { passive:true });
       grabHandle.addEventListener("touchcancel", () => { hTouch=null; }, { passive:true });
 
-      // ===== SoundCloud =====
+      /* ===== SoundCloud ===== */
       let widget = null;
       let widgetReady = false;
       let scScriptLoaded = false;
@@ -953,9 +946,9 @@
         }
       }, { passive:true });
 
-      // ===== Reader model =====
+      /* ===== Reader ===== */
       let mode = "public"; // "public" or "main"
-      let pages = [];      // { n, url, ok }
+      let pages = [];
       let storyIndex = 0;
       let domCount = 0;
 
@@ -1025,15 +1018,6 @@
         setStoryIndex(storyIndex, false);
       }
 
-      function resetReader(newMode){
-        mode = newMode;
-        pages = [];
-        storyIndex = 0;
-        domCount = 0;
-        track.style.transform = "translate3d(0,0,0)";
-        renderAll();
-      }
-
       function addPage(n){
         const url = pageURL(mode, n);
         if(pages.some(x => x.n === n)) return;
@@ -1075,7 +1059,7 @@
         setStoryIndex(storyIndex, false);
       }
 
-      // ===== Seeker wall =====
+      /* ===== Seeker wall ===== */
       let gateTargetValue = 0;
 
       function gateShow(){
@@ -1162,7 +1146,7 @@
         startMain();
       }, { passive:false });
 
-      // ===== Pull-to-refresh =====
+      /* ===== Pull-to-refresh ===== */
       function showRefresh(){ refreshBar.classList.add("show"); }
       function hideRefresh(){ refreshBar.classList.remove("show"); }
 
@@ -1176,7 +1160,7 @@
         setTimeout(() => { location.reload(); }, 220);
       }
 
-      // ===== Swipe handling (REVERSED: forward = swipe RIGHT) =====
+      /* ===== Swipe handling (forward = swipe LEFT) ===== */
       let dragging = false;
       let lockedAxis = null;
       let startX=0, startY=0, lastX=0;
@@ -1246,8 +1230,8 @@
 
         const dx = lastX - startX;
 
-        // FORWARD = swipe RIGHT (dx positive)
-        if(dx > READER.swipeThresholdPx){
+        // FORWARD = swipe LEFT (dx negative)
+        if(dx < -READER.swipeThresholdPx){
           if(mode === "public" && storyIndex >= pages.length - 1){
             setStoryIndex(storyIndex, true);
             gateShow();
@@ -1257,8 +1241,8 @@
           return;
         }
 
-        // BACK = swipe LEFT (dx negative)
-        if(dx < -READER.swipeThresholdPx){
+        // BACK = swipe RIGHT (dx positive)
+        if(dx > READER.swipeThresholdPx){
           setStoryIndex(storyIndex - 1, true);
           return;
         }
@@ -1283,7 +1267,7 @@
         setStoryIndex(storyIndex,true);
       }, { passive:true });
 
-      // ===== Loading cover logic (v0.40-ish) =====
+      /* ===== Loading cover (min time like v0.40) ===== */
       let loadingHidden = false;
       const loadStart = performance.now ? performance.now() : Date.now();
 
@@ -1306,7 +1290,16 @@
       coverBanner.addEventListener("click", () => hideLoading(false), { passive:true });
       setTimeout(() => hideLoading(false), READER.loadingMaxMs);
 
-      // ===== Flow control =====
+      /* ===== Flow ===== */
+      function resetReader(newMode){
+        mode = newMode;
+        pages = [];
+        storyIndex = 0;
+        domCount = 0;
+        track.style.transform = "translate3d(0,0,0)";
+        renderAll();
+      }
+
       function startPublic(){
         resetReader("public");
         mode = "public";
@@ -1334,15 +1327,6 @@
         }
       }
 
-      function resetReader(newMode){
-        mode = newMode;
-        pages = [];
-        storyIndex = 0;
-        domCount = 0;
-        track.style.transform = "translate3d(0,0,0)";
-        renderAll();
-      }
-
       function onLayoutChange(){
         setOrientationClass();
         updateStageReserve();
@@ -1350,15 +1334,12 @@
       window.addEventListener("resize", onLayoutChange, { passive:true });
       window.addEventListener("orientationchange", onLayoutChange, { passive:true });
 
-      // Boot
       updateStageReserve();
-      if(hasValidToken()){
-        startMain();
-      }else{
-        startPublic();
-      }
+      if(hasValidToken()) startMain();
+      else startPublic();
 
       console.log("SANCTUM", VERSION);
+      console.log("PUBLIC FIRST URL (expected):", pageURL("public", 0));
     })();
   </script>
 
