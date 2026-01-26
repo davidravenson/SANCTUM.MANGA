@@ -7,7 +7,7 @@
 
   <style>
     :root{
-      --v: "v0.40.18";
+      --v: "v0.40.19";
       --safe-top: env(safe-area-inset-top, 0px);
       --safe-bottom: env(safe-area-inset-bottom, 0px);
 
@@ -75,12 +75,163 @@
 
     /* Landscape scale override */
     body.landscape{
-      --player-scale: 0.40; /* smaller in landscape */
+      --player-scale: 0.40;
       --player-collapsed: calc(var(--player-collapsed-base) * var(--player-scale));
       --player-expanded-h: calc(var(--player-expanded-h-base) * var(--player-scale));
       --player-lowered-h: calc(var(--player-lowered-h-base) * var(--player-scale));
       --player-expanded-w: calc(var(--player-expanded-w-base) * var(--player-scale));
     }
+
+    /* =========================================================
+       SEEKER GATE (Subscriber wall / human-verify)
+       - Not true DRM.
+       - Blocks app init until verified.
+       - Stores a short-lived token in localStorage.
+    ========================================================= */
+    .gate{
+      position:fixed;
+      inset:0;
+      z-index:10000;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding: calc(16px + var(--safe-top)) 14px calc(18px + var(--safe-bottom)) 14px;
+      box-sizing:border-box;
+      background: rgba(0,0,0,.34);
+    }
+    .gate::before{
+      content:"";
+      position:absolute;
+      inset:0;
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      background: rgba(0,0,0,.22);
+    }
+    .gateCard{
+      position:relative;
+      width: min(92vw, 560px);
+      border-radius: 22px;
+      padding: 16px 16px 14px 16px;
+      box-sizing:border-box;
+      background: rgba(0,0,0,.62);
+      border: 1px solid rgba(255,255,255,.16);
+      box-shadow: 0 26px 70px rgba(0,0,0,.55);
+      transform: translateZ(0);
+    }
+    .gateTitle{
+      font-weight: 950;
+      letter-spacing: .04em;
+      font-size: 16px;
+      opacity:.92;
+    }
+    .gateSub{
+      margin-top: 8px;
+      opacity: .82;
+      font-size: 13px;
+      line-height: 1.35;
+    }
+    .gateRule{
+      margin-top: 12px;
+      padding: 10px 12px;
+      border-radius: 16px;
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.14);
+      font-size: 12px;
+      line-height: 1.35;
+      opacity:.92;
+    }
+    .gateRow{
+      margin-top: 12px;
+      display:flex;
+      gap:10px;
+      align-items:center;
+      justify-content:space-between;
+      flex-wrap:wrap;
+    }
+    .gateCheck{
+      display:flex;
+      gap:10px;
+      align-items:flex-start;
+      font-size: 13px;
+      opacity:.92;
+    }
+    .gateCheck input{
+      margin-top: 2px;
+      transform: scale(1.2);
+      accent-color: #fff;
+    }
+    .gateSliderWrap{
+      margin-top: 12px;
+      padding: 12px;
+      border-radius: 16px;
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.14);
+    }
+    .gateSliderTop{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      margin-bottom: 10px;
+      font-size: 12px;
+      opacity:.9;
+    }
+    .gatePill{
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(0,0,0,.35);
+      border: 1px solid rgba(255,255,255,.14);
+      font-weight: 900;
+      letter-spacing:.02em;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+    .gateSlider{
+      width:100%;
+      height: 36px;
+      accent-color: #fff;
+    }
+    .gateActions{
+      margin-top: 12px;
+      display:flex;
+      gap:10px;
+      align-items:center;
+      justify-content:space-between;
+      flex-wrap:wrap;
+    }
+    .gateBtn{
+      appearance:none;
+      border: 1px solid rgba(255,255,255,.18);
+      background: rgba(255,255,255,.12);
+      color:#fff;
+      padding: 12px 14px;
+      border-radius: 999px;
+      font-weight: 950;
+      letter-spacing:.02em;
+      cursor:pointer;
+      box-shadow: 0 16px 40px rgba(0,0,0,.35);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+    .gateBtn:disabled{
+      opacity:.45;
+      cursor:not-allowed;
+      box-shadow:none;
+    }
+    .gateTiny{
+      font-size: 12px;
+      opacity:.75;
+      line-height: 1.3;
+      max-width: 360px;
+    }
+    .gateMsg{
+      margin-top: 10px;
+      min-height: 18px;
+      font-size: 12px;
+      opacity:.82;
+    }
+    .gateMsg.ok{ color:#7CFF9A; font-weight:900; opacity:1; }
+    .gateMsg.bad{ color:#FF7C7C; font-weight:900; opacity:1; }
 
     /* ===== LOADING ===== */
     .loading{
@@ -183,7 +334,7 @@
       position:relative;
       width:100%;
       height:100%;
-      overflow:hidden; /* holy border */
+      overflow:hidden;
       background:#000;
       transform: translateZ(0);
       backface-visibility:hidden;
@@ -199,7 +350,6 @@
       will-change: transform;
     }
     .track.dragging{ transition:none; }
-
     .slide{
       flex:0 0 100%;
       height:100%;
@@ -244,7 +394,6 @@
       object-fit: contain;
       display:block;
       background:#000;
-
       user-select:none;
       -webkit-user-drag:none;
       -webkit-touch-callout:none;
@@ -340,7 +489,6 @@
       touch-action:none;
       max-width: min(100vw, var(--max-w));
     }
-    /* Landscape: move to right side (outside panel area), but width capped to panel */
     body.landscape .playerDock{
       left:auto;
       right: calc((100vw - min(100vw, var(--max-w))) / 2);
@@ -399,7 +547,6 @@
     .player.expanded .closeBtn{ display:block; }
     .player.expanded .playerBtn{ display:none !important; }
 
-    /* Minimal header */
     .meta{
       position:absolute;
       left: calc(12px * var(--player-scale));
@@ -472,7 +619,6 @@
       background: transparent;
     }
 
-    /* Lowered mode: embed + close + grab, hide meta/link */
     .player.lowered{
       height: var(--player-lowered-h);
       border-radius: calc(18px * var(--player-scale));
@@ -527,8 +673,57 @@
 </head>
 
 <body>
+  <!-- SEEKER GATE -->
+  <div id="gate" class="gate" aria-hidden="false">
+    <div class="gateCard" role="dialog" aria-label="Seeker Verification">
+      <div class="gateTitle">THE KEEPER</div>
+      <div class="gateSub">
+        This place is not a feed.<br/>
+        Enter as a <b>Seeker</b> — with intent, not noise.
+      </div>
+
+      <div class="gateRule">
+        <b>Rules of Entry:</b><br/>
+        1) confirm intent<br/>
+        2) complete the human motion<br/>
+        3) proceed — your access is remembered for a while
+      </div>
+
+      <div class="gateRow">
+        <label class="gateCheck">
+          <input id="gateIntent" type="checkbox" />
+          <span>I’m here to read, not to scrape. I accept that screenshots can’t be truly blocked.</span>
+        </label>
+      </div>
+
+      <div class="gateSliderWrap">
+        <div class="gateSliderTop">
+          <span>Human verify</span>
+          <span class="gatePill" id="gateTargetPill">target: —</span>
+        </div>
+        <input id="gateSlider" class="gateSlider" type="range" min="0" max="100" value="0" />
+        <div class="gateSub" style="margin-top:8px; font-size:12px; opacity:.82;">
+          Slide to match the target number — within ±2. (Bots hate nuance.)
+        </div>
+      </div>
+
+      <!-- Honeypot (bots may fill; humans won't see/use it) -->
+      <input id="gateHoney" type="text" autocomplete="off" tabindex="-1"
+             style="position:absolute; left:-9999px; top:-9999px; opacity:0;" />
+
+      <div class="gateActions">
+        <button id="gateEnter" class="gateBtn" disabled>Enter SANCTUM</button>
+        <div class="gateTiny">
+          Access is stored locally on this device for <b>24h</b>. Clear site data to forget.
+        </div>
+      </div>
+
+      <div id="gateMsg" class="gateMsg muted"></div>
+    </div>
+  </div>
+
   <!-- LOADING -->
-  <div id="loading" class="loading" aria-hidden="false">
+  <div id="loading" class="loading" aria-hidden="false" style="display:none;">
     <div id="coverBanner" class="coverBanner" role="button" aria-label="Enter SANCTUM">
       <img id="coverImg" src="./manga/chapter-00/cover.jpg" alt="SANCTUM Cover" />
       <div class="enterHint">Tap to Enter</div>
@@ -543,7 +738,7 @@
 
   <!-- DIAGNOSTICS -->
   <div class="diag" id="diag">
-    <div class="row"><b>SANCTUM</b> <span class="muted" id="d_ver">v0.40.18</span></div>
+    <div class="row"><b>SANCTUM</b> <span class="muted" id="d_ver">v0.40.19</span></div>
     <div class="row"><span>chapter</span> <b id="d_ch">-</b></div>
     <div class="row"><span>base</span> <span class="muted" id="d_base">-</span></div>
     <div class="row"><span>pages</span> <b id="d_total">0</b></div>
@@ -607,9 +802,9 @@
   <script>
     (function(){
       /* =========================================================
-         SANCTUM Reader Core — goals/rules baked into config
+         v0.40.19 — Seeker Gate integrated
 
-         FILE RULE (Pilot):
+         PILOT FILE RULE:
          - Put pages in: ./manga/chapter-00/
          - Name them exactly:
            SANCTUMPILOTBYDAVIDRAVENSON0.JPG
@@ -618,580 +813,706 @@
            ... (0 to infinite)
          - No padding required. Case matters on GitHub.
 
-         UX RULES:
-         - HUD says "page", not "panel"
-         - Auto-discovery keeps adding pages until misses stop it
-         - Player NEVER overlaps the panel (stage reserve system)
-         - "Protection by friction": disable right-click + drag + selection
-           (cannot truly block screenshots; watermarks discourage reposting)
+         SEEKER WALL:
+         - Blocks app init until:
+           1) intent checkbox checked
+           2) slider matches target within ±2
+           3) honeypot remains empty
+         - Stores local token for 24h
+         - Not true DRM, but strong friction vs bots/scrapers
       ========================================================= */
 
-      const VERSION = "v0.40.18";
+      const VERSION = "v0.40.19";
+      const GATE_KEY = "sanctum_seeker_token_v1";
+      const GATE_TTL_MS = 24 * 60 * 60 * 1000;
 
-      const READER = {
-        chapter: "chapter-00",
-        baseRoot: "./manga/",
-
-        /* Pilot naming */
-        pagePrefix: "SANCTUMPILOTBYDAVIDRAVENSON",
-        ext: ".JPG",
-        seedPages: [0,1],                 // starts at 0
-        probeMax: 300,                    // increase if you upload lots
-        stopAfterConsecutiveMisses: 3,    // stops after 3 missing pages in a row
-
-        loadingMinMs: 2000,
-        loadingMaxMs: 3500,
-
-        swipeThresholdPx: 44,
-        axisLockPx: 10,
-        rubberbandPct: 8,
-        preloadAhead: 2,
-
-        refreshTopZonePx: 70,
-        refreshShowPx: 22,
-        refreshFirePx: 58,
-
-        playerRaiseSwipePx: 26,
-
-        watermarkText: "SANCTUM · DAVID RAVENSON"
-      };
+      const $ = (id) => document.getElementById(id);
+      const clamp = (n,a,b) => Math.max(a, Math.min(b,n));
+      const padN = (n, w) => String(n).padStart(w, "0");
 
       /* ===== friction-protection ===== */
       document.addEventListener("contextmenu", (e) => e.preventDefault(), { passive:false });
       document.addEventListener("dragstart", (e) => e.preventDefault(), { passive:false });
       document.addEventListener("selectstart", (e) => e.preventDefault(), { passive:false });
 
-      const $ = (id) => document.getElementById(id);
-      const clamp = (n,a,b) => Math.max(a, Math.min(b,n));
-      const padN = (n, w) => String(n).padStart(w, "0");
-
-      const diag = {
-        box: $("diag"),
-        toggle: $("diagToggle"),
-        ver: $("d_ver"),
-        ch: $("d_ch"),
-        base: $("d_base"),
-        total: $("d_total"),
-        idx: $("d_idx"),
-        first: $("d_first"),
-        probe: $("d_probe"),
-        js: $("d_js"),
-        err: $("d_err")
-      };
-
-      function diagSet(el, text, cls){
+      function note(msg, cls){
+        const el = $("gateMsg");
         if(!el) return;
-        el.textContent = text;
-        if(cls) el.className = cls;
+        el.className = "gateMsg " + (cls || "muted");
+        el.textContent = msg || "";
       }
 
-      function noteErr(msg){
-        diagSet(diag.err, String(msg || "(unknown)"), "muted");
-        if(diag.js) diag.js.className = "bad";
+      function nowMs(){
+        return Date.now ? Date.now() : (new Date()).getTime();
       }
 
-      window.addEventListener("error", (e) => noteErr(e.message || e.error || "error"));
-      window.addEventListener("unhandledrejection", (e) => noteErr(e.reason || "promise rejection"));
+      function gateHasValidToken(){
+        try{
+          const raw = localStorage.getItem(GATE_KEY);
+          if(!raw) return false;
+          const obj = JSON.parse(raw);
+          return obj && obj.exp && obj.exp > nowMs();
+        }catch(_){ return false; }
+      }
 
-      diagSet(diag.ver, VERSION, "muted");
+      function gateStoreToken(){
+        try{
+          const obj = { exp: nowMs() + GATE_TTL_MS, v: VERSION };
+          localStorage.setItem(GATE_KEY, JSON.stringify(obj));
+        }catch(_){}
+      }
 
-      let diagVisible = true;
-      if(diag.toggle){
-        diag.toggle.addEventListener("click", () => {
-          diagVisible = !diagVisible;
-          diag.box.style.display = diagVisible ? "block" : "none";
+      function hideGate(){
+        const gate = $("gate");
+        if(!gate) return;
+        gate.setAttribute("aria-hidden","true");
+        gate.style.display = "none";
+      }
+
+      function showLoading(){
+        const loading = $("loading");
+        if(!loading) return;
+        loading.style.display = "flex";
+      }
+
+      function seedTarget(){
+        const t = 15 + Math.floor(Math.random() * 71); // 15..85 (avoid extremes)
+        return t;
+      }
+
+      function initGate(startApp){
+        const gate = $("gate");
+        const intent = $("gateIntent");
+        const slider = $("gateSlider");
+        const enterBtn = $("gateEnter");
+        const honey = $("gateHoney");
+        const targetPill = $("gateTargetPill");
+
+        if(!gate || !intent || !slider || !enterBtn || !targetPill) return startApp();
+
+        let target = seedTarget();
+        targetPill.textContent = "target: " + target;
+
+        let firstTouchAt = 0;
+
+        function evaluate(){
+          const isIntent = !!intent.checked;
+          const honeyOk = !honey || String(honey.value || "").trim() === "";
+          const v = parseInt(slider.value, 10);
+          const closeEnough = Math.abs(v - target) <= 2;
+
+          const enoughTime = (firstTouchAt > 0) && ((nowMs() - firstTouchAt) >= 650);
+          const ok = isIntent && honeyOk && closeEnough && enoughTime;
+
+          enterBtn.disabled = !ok;
+
+          if(!isIntent){
+            note("Confirm intent to proceed.", "muted");
+          }else if(!enoughTime){
+            note("Hold steady… breathe once.", "muted");
+          }else if(!closeEnough){
+            note("Not quite. Match the target within ±2.", "muted");
+          }else if(!honeyOk){
+            note("Access denied.", "bad");
+          }else{
+            note("Verified. The door is open.", "ok");
+          }
+        }
+
+        intent.addEventListener("change", evaluate, { passive:true });
+
+        slider.addEventListener("pointerdown", () => {
+          if(firstTouchAt === 0) firstTouchAt = nowMs();
+          evaluate();
         }, { passive:true });
-      }
 
-      function setOrientationClass(){
-        const isLand = window.matchMedia && window.matchMedia("(orientation: landscape)").matches;
-        document.body.classList.toggle("landscape", !!isLand);
-      }
+        slider.addEventListener("input", () => {
+          if(firstTouchAt === 0) firstTouchAt = nowMs();
+          evaluate();
+        }, { passive:true });
 
-      const basePath = READER.baseRoot + READER.chapter + "/";
-      diagSet(diag.ch, READER.chapter, "");
-      diagSet(diag.base, basePath, "muted");
-
-      function pageURL(n){
-        return basePath + READER.pagePrefix + String(n) + READER.ext;
-      }
-
-      function bust(url){
-        const s = (Date.now() + Math.random()).toString(36);
-        return url + (url.includes("?") ? "&" : "?") + "v=" + encodeURIComponent(s);
-      }
-
-      const loading = $("loading");
-      const coverBanner = $("coverBanner");
-      const refreshBar = $("refreshBar");
-      const hud = $("hud");
-      const stage = $("stage");
-      const frame = $("panelFrame");
-      const track = $("track");
-
-      const player = $("player");
-      const playerBtn = $("playerBtn");
-      const closeBtn = $("closeBtn");
-      const scFrame = $("scFrame");
-      const grabHandle = $("grabHandle");
-
-      /* ===== Loading: minimum 2s ===== */
-      let loadingHidden = false;
-      const loadStart = performance.now ? performance.now() : Date.now();
-
-      function hideLoading(force=false){
-        if(loadingHidden) return;
-        const now = performance.now ? performance.now() : Date.now();
-        const elapsed = now - loadStart;
-        const remaining = READER.loadingMinMs - elapsed;
-
-        if(!force && remaining > 0){
-          setTimeout(() => hideLoading(true), Math.ceil(remaining));
-          return;
-        }
-
-        loadingHidden = true;
-        if(loading){
-          loading.style.opacity = "0";
-          loading.setAttribute("aria-hidden","true");
-          setTimeout(() => { loading.style.display = "none"; }, 380);
-        }
-      }
-
-      if(coverBanner){
-        coverBanner.addEventListener("click", () => hideLoading(false), { passive:true });
-      }
-      setTimeout(() => hideLoading(false), READER.loadingMaxMs);
-
-      /* ===== In-app refresh ===== */
-      function showRefresh(){ if(refreshBar) refreshBar.classList.add("show"); }
-      function hideRefresh(){ if(refreshBar) refreshBar.classList.remove("show"); }
-
-      let refreshArmed = false;
-      let refreshFired = false;
-
-      function fireRefresh(){
-        if(refreshFired) return;
-        refreshFired = true;
-        showRefresh();
-        setTimeout(() => { location.reload(); }, 220);
-      }
-
-      /* ===== Player reserve system ===== */
-      function cssNum(varName, fallback){
-        const raw = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
-        const n = parseFloat(raw);
-        return isFinite(n) ? n : fallback;
-      }
-      function isExpanded(){ return player && player.classList.contains("expanded"); }
-      function isLowered(){ return player && player.classList.contains("lowered"); }
-
-      function updateStageReserve(){
-        const gap = cssNum("--reserve-gap", 16);
-        if(!player || !isExpanded()){
-          document.documentElement.style.setProperty("--stage-reserve", "0px");
-          return;
-        }
-        const h = isLowered()
-          ? cssNum("--player-lowered-h", 105)
-          : cssNum("--player-expanded-h", 168);
-        document.documentElement.style.setProperty("--stage-reserve", (h + gap) + "px");
-      }
-
-      function setLowered(on){
-        if(!player) return;
-        if(on) player.classList.add("lowered");
-        else player.classList.remove("lowered");
-        updateStageReserve();
-      }
-      function sink(){
-        if(!player || !isExpanded()) return;
-        setLowered(true);
-      }
-      function raise(){
-        if(!player) return;
-        setLowered(false);
-      }
-
-      /* Reappear: tap + upswipe on grip */
-      let hTouch = null;
-
-      if(grabHandle){
-        grabHandle.addEventListener("click", (e) => {
-          if(!player || !isExpanded() || !isLowered()) return;
+        enterBtn.addEventListener("click", (e) => {
           e.preventDefault();
           e.stopPropagation();
-          raise();
+          if(enterBtn.disabled) return;
+
+          gateStoreToken();
+          hideGate();
+          showLoading();
+          startApp();
         }, { passive:false });
 
-        grabHandle.addEventListener("touchstart", (e) => {
-          if(!player || !isExpanded() || !isLowered()) return;
-          const t = e.touches && e.touches[0];
-          if(!t) return;
-          hTouch = { x: t.clientX, y: t.clientY };
-        }, { passive:true });
+        evaluate();
+      }
 
-        grabHandle.addEventListener("touchmove", (e) => {
-          if(!hTouch) return;
-          const t = e.touches && e.touches[0];
-          if(!t) return;
-          const dx = t.clientX - hTouch.x;
-          const dy = t.clientY - hTouch.y;
-          if(Math.abs(dy) > Math.abs(dx) && dy < -READER.playerRaiseSwipePx){
+      function bootstrap(){
+        if(gateHasValidToken()){
+          hideGate();
+          showLoading();
+          startApp();
+        }else{
+          showLoading(); // keep it ready, but hidden until gate passes
+          const loading = $("loading");
+          if(loading) loading.style.display = "none";
+          initGate(startApp);
+        }
+      }
+
+      /* =========================================================
+         MAIN APP — starts ONLY after gate passes
+      ========================================================= */
+      function startApp(){
+        const READER = {
+          chapter: "chapter-00",
+          baseRoot: "./manga/",
+
+          /* Pilot naming */
+          pagePrefix: "SANCTUMPILOTBYDAVIDRAVENSON",
+          ext: ".JPG",
+          seedPages: [0,1],
+          probeMax: 300,
+          stopAfterConsecutiveMisses: 3,
+
+          loadingMinMs: 2000,
+          loadingMaxMs: 3500,
+
+          swipeThresholdPx: 44,
+          axisLockPx: 10,
+          rubberbandPct: 8,
+          preloadAhead: 2,
+
+          refreshTopZonePx: 70,
+          refreshShowPx: 22,
+          refreshFirePx: 58,
+
+          playerRaiseSwipePx: 26,
+
+          watermarkText: "SANCTUM · DAVID RAVENSON"
+        };
+
+        const diag = {
+          box: $("diag"),
+          toggle: $("diagToggle"),
+          ver: $("d_ver"),
+          ch: $("d_ch"),
+          base: $("d_base"),
+          total: $("d_total"),
+          idx: $("d_idx"),
+          first: $("d_first"),
+          probe: $("d_probe"),
+          js: $("d_js"),
+          err: $("d_err")
+        };
+
+        function diagSet(el, text, cls){
+          if(!el) return;
+          el.textContent = text;
+          if(cls) el.className = cls;
+        }
+
+        function noteErr(msg){
+          diagSet(diag.err, String(msg || "(unknown)"), "muted");
+          if(diag.js) diag.js.className = "bad";
+        }
+
+        window.addEventListener("error", (e) => noteErr(e.message || e.error || "error"));
+        window.addEventListener("unhandledrejection", (e) => noteErr(e.reason || "promise rejection"));
+
+        diagSet(diag.ver, VERSION, "muted");
+
+        let diagVisible = true;
+        if(diag.toggle){
+          diag.toggle.addEventListener("click", () => {
+            diagVisible = !diagVisible;
+            diag.box.style.display = diagVisible ? "block" : "none";
+          }, { passive:true });
+        }
+
+        function setOrientationClass(){
+          const isLand = window.matchMedia && window.matchMedia("(orientation: landscape)").matches;
+          document.body.classList.toggle("landscape", !!isLand);
+        }
+
+        const basePath = READER.baseRoot + READER.chapter + "/";
+        diagSet(diag.ch, READER.chapter, "");
+        diagSet(diag.base, basePath, "muted");
+
+        function pageURL(n){
+          return basePath + READER.pagePrefix + String(n) + READER.ext;
+        }
+
+        function bust(url){
+          const s = (Date.now() + Math.random()).toString(36);
+          return url + (url.includes("?") ? "&" : "?") + "v=" + encodeURIComponent(s);
+        }
+
+        const loading = $("loading");
+        const coverBanner = $("coverBanner");
+        const refreshBar = $("refreshBar");
+        const hud = $("hud");
+        const stage = $("stage");
+        const frame = $("panelFrame");
+        const track = $("track");
+
+        const player = $("player");
+        const playerBtn = $("playerBtn");
+        const closeBtn = $("closeBtn");
+        const scFrame = $("scFrame");
+        const grabHandle = $("grabHandle");
+
+        /* ===== Loading: minimum 2s ===== */
+        let loadingHidden = false;
+        const loadStart = performance.now ? performance.now() : Date.now();
+
+        function hideLoading(force=false){
+          if(loadingHidden) return;
+          const now = performance.now ? performance.now() : Date.now();
+          const elapsed = now - loadStart;
+          const remaining = READER.loadingMinMs - elapsed;
+
+          if(!force && remaining > 0){
+            setTimeout(() => hideLoading(true), Math.ceil(remaining));
+            return;
+          }
+
+          loadingHidden = true;
+          if(loading){
+            loading.style.opacity = "0";
+            loading.setAttribute("aria-hidden","true");
+            setTimeout(() => { loading.style.display = "none"; }, 380);
+          }
+        }
+
+        if(coverBanner){
+          coverBanner.addEventListener("click", () => hideLoading(false), { passive:true });
+        }
+        setTimeout(() => hideLoading(false), READER.loadingMaxMs);
+
+        /* ===== In-app refresh ===== */
+        function showRefresh(){ if(refreshBar) refreshBar.classList.add("show"); }
+        function hideRefresh(){ if(refreshBar) refreshBar.classList.remove("show"); }
+
+        let refreshArmed = false;
+        let refreshFired = false;
+
+        function fireRefresh(){
+          if(refreshFired) return;
+          refreshFired = true;
+          showRefresh();
+          setTimeout(() => { location.reload(); }, 220);
+        }
+
+        /* ===== Player reserve system ===== */
+        function cssNum(varName, fallback){
+          const raw = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+          const n = parseFloat(raw);
+          return isFinite(n) ? n : fallback;
+        }
+        function isExpanded(){ return player && player.classList.contains("expanded"); }
+        function isLowered(){ return player && player.classList.contains("lowered"); }
+
+        function updateStageReserve(){
+          const gap = cssNum("--reserve-gap", 16);
+          if(!player || !isExpanded()){
+            document.documentElement.style.setProperty("--stage-reserve", "0px");
+            return;
+          }
+          const h = isLowered()
+            ? cssNum("--player-lowered-h", 105)
+            : cssNum("--player-expanded-h", 168);
+          document.documentElement.style.setProperty("--stage-reserve", (h + gap) + "px");
+        }
+
+        function setLowered(on){
+          if(!player) return;
+          if(on) player.classList.add("lowered");
+          else player.classList.remove("lowered");
+          updateStageReserve();
+        }
+        function raise(){ setLowered(false); }
+
+        /* Reappear: tap + upswipe on grip */
+        let hTouch = null;
+
+        if(grabHandle){
+          grabHandle.addEventListener("click", (e) => {
+            if(!player || !isExpanded() || !isLowered()) return;
             e.preventDefault();
             e.stopPropagation();
-            hTouch = null;
             raise();
-          }
-        }, { passive:false });
+          }, { passive:false });
 
-        grabHandle.addEventListener("touchend", () => { hTouch = null; }, { passive:true });
-        grabHandle.addEventListener("touchcancel", () => { hTouch = null; }, { passive:true });
-      }
+          grabHandle.addEventListener("touchstart", (e) => {
+            if(!player || !isExpanded() || !isLowered()) return;
+            const t = e.touches && e.touches[0];
+            if(!t) return;
+            hTouch = { x: t.clientX, y: t.clientY };
+          }, { passive:true });
 
-      /* ===== Reader (RTL track) ===== */
-      let pages = [];
-      let storyIndex = 0;
-      let domCount = 0;
+          grabHandle.addEventListener("touchmove", (e) => {
+            if(!hTouch) return;
+            const t = e.touches && e.touches[0];
+            if(!t) return;
+            const dx = t.clientX - hTouch.x;
+            const dy = t.clientY - hTouch.y;
+            if(Math.abs(dy) > Math.abs(dx) && dy < -READER.playerRaiseSwipePx){
+              e.preventDefault();
+              e.stopPropagation();
+              hTouch = null;
+              raise();
+            }
+          }, { passive:false });
 
-      function domIndexFromStory(i){ return (domCount - 1) - i; }
-
-      function updateHud(){
-        const total = Math.max(1, pages.length);
-        if(hud){
-          hud.textContent = "page " + padN(storyIndex+1,2) + " / " + padN(total,2);
+          grabHandle.addEventListener("touchend", () => { hTouch = null; }, { passive:true });
+          grabHandle.addEventListener("touchcancel", () => { hTouch = null; }, { passive:true });
         }
-        diagSet(diag.total, String(pages.length), "");
-        diagSet(diag.idx, String(storyIndex), "");
-      }
 
-      function preloadAround(i){
-        for(let k=1; k<=READER.preloadAhead; k++){
-          const p = pages[i + k];
-          if(p && p.ok !== false){
-            const img = new Image();
-            img.decoding = "async";
-            img.src = p.url;
+        /* ===== Reader (RTL track) ===== */
+        let pages = [];
+        let storyIndex = 0;
+        let domCount = 0;
+
+        function domIndexFromStory(i){ return (domCount - 1) - i; }
+
+        function updateHud(){
+          const total = Math.max(1, pages.length);
+          if(hud){
+            hud.textContent = "page " + padN(storyIndex+1,2) + " / " + padN(total,2);
+          }
+          diagSet(diag.total, String(pages.length), "");
+          diagSet(diag.idx, String(storyIndex), "");
+        }
+
+        function preloadAround(i){
+          for(let k=1; k<=READER.preloadAhead; k++){
+            const p = pages[i + k];
+            if(p && p.ok !== false){
+              const img = new Image();
+              img.decoding = "async";
+              img.src = p.url;
+            }
           }
         }
-      }
 
-      function setStoryIndex(next, animate=true){
-        storyIndex = clamp(next, 0, Math.max(0, pages.length-1));
-        const di = domIndexFromStory(storyIndex);
+        function setStoryIndex(next, animate=true){
+          storyIndex = clamp(next, 0, Math.max(0, pages.length-1));
+          const di = domIndexFromStory(storyIndex);
 
-        if(!animate) track.classList.add("dragging");
-        track.style.transform = "translate3d(" + (-(di * 100)) + "%,0,0)";
-        if(!animate) requestAnimationFrame(() => track.classList.remove("dragging"));
+          if(!animate) track.classList.add("dragging");
+          track.style.transform = "translate3d(" + (-(di * 100)) + "%,0,0)";
+          if(!animate) requestAnimationFrame(() => track.classList.remove("dragging"));
 
-        updateHud();
-        preloadAround(storyIndex);
-      }
+          updateHud();
+          preloadAround(storyIndex);
+        }
 
-      function makeSlide(p){
-        const slide = document.createElement("div");
-        slide.className = "slide";
+        function makeSlide(p){
+          const slide = document.createElement("div");
+          slide.className = "slide";
 
-        const shell = document.createElement("div");
-        shell.className = "panelShell";
+          const shell = document.createElement("div");
+          shell.className = "panelShell";
 
-        const img = document.createElement("img");
-        img.className = "panelImg";
-        img.alt = "Page " + String(p.n);
-        img.decoding = "async";
-        img.loading = "lazy";
-        img.src = p.url;
+          const img = document.createElement("img");
+          img.className = "panelImg";
+          img.alt = "Page " + String(p.n);
+          img.decoding = "async";
+          img.loading = "lazy";
+          img.src = p.url;
 
-        const wm = document.createElement("div");
-        wm.className = "watermark";
-        wm.textContent = READER.watermarkText;
+          const wm = document.createElement("div");
+          wm.className = "watermark";
+          wm.textContent = READER.watermarkText;
 
-        const mask = document.createElement("div");
-        mask.className = "cinematicMask";
-        mask.setAttribute("aria-hidden","true");
-        mask.innerHTML = '<div class="top"></div><div class="bottom"></div>';
+          const mask = document.createElement("div");
+          mask.className = "cinematicMask";
+          mask.setAttribute("aria-hidden","true");
+          mask.innerHTML = '<div class="top"></div><div class="bottom"></div>';
 
-        img.addEventListener("load", () => {
-          p.ok = true;
-          if(p.n === 0){
+          img.addEventListener("load", () => {
+            p.ok = true;
+            if(p.n === 0){
+              diagSet(diag.first, "ok", "ok");
+              hideLoading(false);
+            }
+          }, { passive:true });
+
+          img.addEventListener("error", () => {
+            p.ok = false;
+            if(p.n === 0){
+              diagSet(diag.first, "error", "bad");
+              hideLoading(false);
+            }
+          }, { passive:true });
+
+          p.imgEl = img;
+
+          shell.appendChild(img);
+          shell.appendChild(wm);
+          shell.appendChild(mask);
+          slide.appendChild(shell);
+          return slide;
+        }
+
+        function addPage(n){
+          const url = pageURL(n);
+          if(pages.some(x => x.n === n)) return;
+          pages.push({ n, url, ok: null, imgEl: null });
+          pages.sort((a,b) => a.n - b.n);
+        }
+
+        function renderAll(){
+          track.innerHTML = "";
+          const domPages = pages.slice().reverse();
+          domPages.forEach(p => track.appendChild(makeSlide(p)));
+          domCount = domPages.length;
+
+          updateHud();
+          setStoryIndex(storyIndex, false);
+
+          const p0 = pages.find(p => p.n === 0);
+          if(p0 && p0.imgEl && p0.imgEl.complete && p0.imgEl.naturalWidth > 0){
+            p0.ok = true;
             diagSet(diag.first, "ok", "ok");
             hideLoading(false);
           }
-        }, { passive:true });
+        }
 
-        img.addEventListener("error", () => {
-          p.ok = false;
-          if(p.n === 0){
-            diagSet(diag.first, "error", "bad");
-            hideLoading(false);
+        READER.seedPages.forEach(addPage);
+        renderAll();
+
+        /* ===== Reader swipe + refresh ===== */
+        let dragging = false;
+        let lockedAxis = null;
+        let startX=0, startY=0, lastX=0;
+
+        function onStart(t){
+          dragging = true;
+          lockedAxis = null;
+          startX = lastX = t.clientX;
+          startY = t.clientY;
+
+          track.classList.add("dragging");
+
+          refreshFired = false;
+          refreshArmed = (startY <= READER.refreshTopZonePx);
+          if(refreshArmed) hideRefresh();
+        }
+
+        function onMove(t, e){
+          if(!dragging) return;
+
+          const dx = t.clientX - startX;
+          const dy = t.clientY - startY;
+
+          if(!lockedAxis){
+            if(Math.abs(dx) > READER.axisLockPx || Math.abs(dy) > READER.axisLockPx){
+              lockedAxis = (Math.abs(dx) >= Math.abs(dy)) ? "x" : "y";
+            }else return;
           }
+
+          if(lockedAxis === "y"){
+            if(refreshArmed && dy > READER.refreshShowPx) showRefresh();
+            if(refreshArmed && dy > READER.refreshFirePx) fireRefresh();
+            return;
+          }
+
+          e.preventDefault();
+          lastX = t.clientX;
+
+          const w = frame.clientWidth || window.innerWidth || 1;
+          const deltaPct = (dx / w) * 100;
+
+          const di = domIndexFromStory(storyIndex);
+          const basePct = di * 100;
+          const movedPct = basePct - deltaPct;
+
+          const minPct = 0;
+          const maxPct = Math.max(0, (domCount-1) * 100);
+          const clamped = clamp(movedPct, minPct - READER.rubberbandPct, maxPct + READER.rubberbandPct);
+
+          track.style.transform = "translate3d(" + (-clamped) + "%,0,0)";
+        }
+
+        function onEnd(){
+          if(!dragging) return;
+          dragging = false;
+          track.classList.remove("dragging");
+
+          if(refreshFired) return;
+
+          if(lockedAxis === "y"){
+            hideRefresh();
+            return;
+          }
+
+          const dx = lastX - startX;
+          if(dx > READER.swipeThresholdPx) setStoryIndex(storyIndex + 1, true);
+          else if(dx < -READER.swipeThresholdPx) setStoryIndex(storyIndex - 1, true);
+          else setStoryIndex(storyIndex, true);
+        }
+
+        stage.addEventListener("touchstart", (e) => {
+          if(!e.touches || e.touches.length !== 1) return;
+          onStart(e.touches[0]);
         }, { passive:true });
 
-        p.imgEl = img;
+        stage.addEventListener("touchmove", (e) => {
+          if(!e.touches || e.touches.length !== 1) return;
+          onMove(e.touches[0], e);
+        }, { passive:false });
 
-        shell.appendChild(img);
-        shell.appendChild(wm);
-        shell.appendChild(mask);
-        slide.appendChild(shell);
-        return slide;
-      }
+        stage.addEventListener("touchend", onEnd, { passive:true });
 
-      function addPage(n){
-        const url = pageURL(n);
-        if(pages.some(x => x.n === n)) return;
-        pages.push({ n, url, ok: null, imgEl: null });
-        pages.sort((a,b) => a.n - b.n);
-      }
+        stage.addEventListener("touchcancel", () => {
+          dragging=false;
+          if(!refreshFired) hideRefresh();
+          setStoryIndex(storyIndex,true);
+        }, { passive:true });
 
-      function renderAll(){
-        track.innerHTML = "";
-        const domPages = pages.slice().reverse();
-        domPages.forEach(p => track.appendChild(makeSlide(p)));
-        domCount = domPages.length;
-
-        updateHud();
-        setStoryIndex(storyIndex, false);
-
-        const p0 = pages.find(p => p.n === 0);
-        if(p0 && p0.imgEl && p0.imgEl.complete && p0.imgEl.naturalWidth > 0){
-          p0.ok = true;
-          diagSet(diag.first, "ok", "ok");
-          hideLoading(false);
-        }
-      }
-
-      READER.seedPages.forEach(addPage);
-      renderAll();
-
-      /* ===== Reader swipe + refresh ===== */
-      let dragging = false;
-      let lockedAxis = null;
-      let startX=0, startY=0, lastX=0;
-
-      function onStart(t){
-        dragging = true;
-        lockedAxis = null;
-        startX = lastX = t.clientX;
-        startY = t.clientY;
-
-        track.classList.add("dragging");
-
-        refreshFired = false;
-        refreshArmed = (startY <= READER.refreshTopZonePx);
-        if(refreshArmed) hideRefresh();
-      }
-
-      function onMove(t, e){
-        if(!dragging) return;
-
-        const dx = t.clientX - startX;
-        const dy = t.clientY - startY;
-
-        if(!lockedAxis){
-          if(Math.abs(dx) > READER.axisLockPx || Math.abs(dy) > READER.axisLockPx){
-            lockedAxis = (Math.abs(dx) >= Math.abs(dy)) ? "x" : "y";
-          }else return;
-        }
-
-        if(lockedAxis === "y"){
-          if(refreshArmed && dy > READER.refreshShowPx) showRefresh();
-          if(refreshArmed && dy > READER.refreshFirePx) fireRefresh();
-          return;
-        }
-
-        e.preventDefault();
-        lastX = t.clientX;
-
-        const w = frame.clientWidth || window.innerWidth || 1;
-        const deltaPct = (dx / w) * 100;
-
-        const di = domIndexFromStory(storyIndex);
-        const basePct = di * 100;
-        const movedPct = basePct - deltaPct;
-
-        const minPct = 0;
-        const maxPct = Math.max(0, (domCount-1) * 100);
-        const clamped = clamp(movedPct, minPct - READER.rubberbandPct, maxPct + READER.rubberbandPct);
-
-        track.style.transform = "translate3d(" + (-clamped) + "%,0,0)";
-      }
-
-      function onEnd(){
-        if(!dragging) return;
-        dragging = false;
-        track.classList.remove("dragging");
-
-        if(refreshFired) return;
-
-        if(lockedAxis === "y"){
-          hideRefresh();
-          return;
-        }
-
-        const dx = lastX - startX;
-        if(dx > READER.swipeThresholdPx) setStoryIndex(storyIndex + 1, true);
-        else if(dx < -READER.swipeThresholdPx) setStoryIndex(storyIndex - 1, true);
-        else setStoryIndex(storyIndex, true);
-      }
-
-      stage.addEventListener("touchstart", (e) => {
-        if(!e.touches || e.touches.length !== 1) return;
-        onStart(e.touches[0]);
-      }, { passive:true });
-
-      stage.addEventListener("touchmove", (e) => {
-        if(!e.touches || e.touches.length !== 1) return;
-        onMove(e.touches[0], e);
-      }, { passive:false });
-
-      stage.addEventListener("touchend", onEnd, { passive:true });
-
-      stage.addEventListener("touchcancel", () => {
-        dragging=false;
-        if(!refreshFired) hideRefresh();
-        setStoryIndex(storyIndex,true);
-      }, { passive:true });
-
-      /* ===== Auto-discovery ===== */
-      async function headOK(url){
-        try{
-          const res = await fetch(bust(url), { method:"HEAD", cache:"no-store" });
-          return res && res.ok;
-        }catch(e){
+        /* ===== Auto-discovery ===== */
+        async function headOK(url){
           try{
-            const res2 = await fetch(bust(url), { method:"GET", cache:"no-store" });
-            return res2 && res2.ok;
-          }catch(_){ return false; }
-        }
-      }
-
-      async function probePages(){
-        diagSet(diag.probe, "probing…", "muted");
-
-        let misses = 0;
-        let startN = pages.length ? (Math.max(...pages.map(p => p.n)) + 1) : 0;
-
-        for(let n=startN; n<=READER.probeMax; n++){
-          const url = pageURL(n);
-          const ok = await headOK(url);
-
-          if(ok){
-            misses = 0;
-            addPage(n);
-            renderAll();
-            diagSet(diag.probe, "found " + READER.pagePrefix + n + READER.ext, "ok");
-          }else{
-            misses++;
-            diagSet(diag.probe, "miss " + misses + " (page " + n + ")", "muted");
-            if(misses >= READER.stopAfterConsecutiveMisses) break;
-          }
-        }
-
-        diagSet(diag.probe, "done", "muted");
-        setStoryIndex(storyIndex, false);
-      }
-
-      if("requestIdleCallback" in window){
-        requestIdleCallback(probePages, { timeout: 1200 });
-      }else{
-        setTimeout(probePages, 650);
-      }
-
-      /* ===== SoundCloud ===== */
-      let widget = null;
-      let widgetReady = false;
-      let scScriptLoaded = false;
-
-      function loadSoundCloudAPI(){
-        return new Promise((resolve) => {
-          if(scScriptLoaded || window.SC){ scScriptLoaded = true; return resolve(); }
-          const s = document.createElement("script");
-          s.src = "https://w.soundcloud.com/player/api.js";
-          s.async = true;
-          s.onload = () => { scScriptLoaded = true; resolve(); };
-          s.onerror = () => { noteErr("SoundCloud API failed to load"); resolve(); };
-          document.head.appendChild(s);
-        });
-      }
-
-      async function initWidget(){
-        await loadSoundCloudAPI();
-        try{
-          if(window.SC && scFrame){
-            widget = SC.Widget(scFrame);
-            widget.bind(SC.Widget.Events.READY, function(){ widgetReady = true; });
-          }
-        }catch(e){ noteErr("SC init: " + e); }
-      }
-      initWidget();
-
-      function openAndPlay(){
-        if(!player) return;
-        player.classList.add("expanded");
-        player.classList.remove("lowered");
-        updateStageReserve();
-
-        if(widget){
-          if(widgetReady){
-            try{ widget.play(); }catch(_){}
-          }else{
+            const res = await fetch(bust(url), { method:"HEAD", cache:"no-store" });
+            return res && res.ok;
+          }catch(e){
             try{
-              widget.bind(SC.Widget.Events.READY, function(){
-                widgetReady = true;
-                try{ widget.play(); }catch(_){}
-              });
-            }catch(_){}
+              const res2 = await fetch(bust(url), { method:"GET", cache:"no-store" });
+              return res2 && res2.ok;
+            }catch(_){ return false; }
           }
         }
-      }
 
-      function closePlayer(){
-        if(!player) return;
-        player.classList.remove("expanded");
-        player.classList.remove("lowered");
-        updateStageReserve();
-        if(widget){ try{ widget.pause(); }catch(_){} }
-      }
+        async function probePages(){
+          diagSet(diag.probe, "probing…", "muted");
 
-      if(playerBtn){
-        playerBtn.addEventListener("click", (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          openAndPlay();
-        }, { passive:false });
-      }
+          let misses = 0;
+          let startN = pages.length ? (Math.max(...pages.map(p => p.n)) + 1) : 0;
 
-      if(closeBtn){
-        closeBtn.addEventListener("click", (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          closePlayer();
-        }, { passive:false });
-      }
+          for(let n=startN; n<=READER.probeMax; n++){
+            const url = pageURL(n);
+            const ok = await headOK(url);
 
-      document.addEventListener("click", (e) => {
-        if(!player || !isExpanded()) return;
-        if(e.target && e.target.classList && e.target.classList.contains("panelImg")){
-          if(isLowered()) player.classList.remove("lowered");
-          else player.classList.add("lowered");
+            if(ok){
+              misses = 0;
+              addPage(n);
+              renderAll();
+              diagSet(diag.probe, "found " + READER.pagePrefix + n + READER.ext, "ok");
+            }else{
+              misses++;
+              diagSet(diag.probe, "miss " + misses + " (page " + n + ")", "muted");
+              if(misses >= READER.stopAfterConsecutiveMisses) break;
+            }
+          }
+
+          diagSet(diag.probe, "done", "muted");
+          setStoryIndex(storyIndex, false);
+        }
+
+        if("requestIdleCallback" in window){
+          requestIdleCallback(probePages, { timeout: 1200 });
+        }else{
+          setTimeout(probePages, 650);
+        }
+
+        /* ===== SoundCloud ===== */
+        let widget = null;
+        let widgetReady = false;
+        let scScriptLoaded = false;
+
+        function loadSoundCloudAPI(){
+          return new Promise((resolve) => {
+            if(scScriptLoaded || window.SC){ scScriptLoaded = true; return resolve(); }
+            const s = document.createElement("script");
+            s.src = "https://w.soundcloud.com/player/api.js";
+            s.async = true;
+            s.onload = () => { scScriptLoaded = true; resolve(); };
+            s.onerror = () => { noteErr("SoundCloud API failed to load"); resolve(); };
+            document.head.appendChild(s);
+          });
+        }
+
+        async function initWidget(){
+          await loadSoundCloudAPI();
+          try{
+            if(window.SC && scFrame){
+              widget = SC.Widget(scFrame);
+              widget.bind(SC.Widget.Events.READY, function(){ widgetReady = true; });
+            }
+          }catch(e){ noteErr("SC init: " + e); }
+        }
+        initWidget();
+
+        function openAndPlay(){
+          if(!player) return;
+          player.classList.add("expanded");
+          player.classList.remove("lowered");
+          updateStageReserve();
+
+          if(widget){
+            if(widgetReady){
+              try{ widget.play(); }catch(_){}
+            }else{
+              try{
+                widget.bind(SC.Widget.Events.READY, function(){
+                  widgetReady = true;
+                  try{ widget.play(); }catch(_){}
+                });
+              }catch(_){}
+            }
+          }
+        }
+
+        function closePlayer(){
+          if(!player) return;
+          player.classList.remove("expanded");
+          player.classList.remove("lowered");
+          updateStageReserve();
+          if(widget){ try{ widget.pause(); }catch(_){} }
+        }
+
+        if(playerBtn){
+          playerBtn.addEventListener("click", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            openAndPlay();
+          }, { passive:false });
+        }
+
+        if(closeBtn){
+          closeBtn.addEventListener("click", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            closePlayer();
+          }, { passive:false });
+        }
+
+        document.addEventListener("click", (e) => {
+          if(!player || !isExpanded()) return;
+          if(e.target && e.target.classList && e.target.classList.contains("panelImg")){
+            if(isLowered()) player.classList.remove("lowered");
+            else player.classList.add("lowered");
+            updateStageReserve();
+          }
+        }, { passive:true });
+
+        function onLayoutChange(){
+          setOrientationClass();
           updateStageReserve();
         }
-      }, { passive:true });
 
-      function onLayoutChange(){
+        window.addEventListener("resize", onLayoutChange, { passive:true });
+        window.addEventListener("orientationchange", onLayoutChange, { passive:true });
+
         setOrientationClass();
         updateStageReserve();
+        updateHud();
+
+        diagSet(diag.js, "ok", "ok");
+        console.log("SANCTUM", VERSION);
       }
 
-      window.addEventListener("resize", onLayoutChange, { passive:true });
-      window.addEventListener("orientationchange", onLayoutChange, { passive:true });
-
-      setOrientationClass();
-      updateStageReserve();
-      updateHud();
-
-      diagSet(diag.js, "ok", "ok");
-      console.log("SANCTUM", VERSION);
+      bootstrap();
     })();
   </script>
 </body>
