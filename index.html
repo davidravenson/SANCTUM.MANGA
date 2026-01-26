@@ -7,7 +7,7 @@
 
   <style>
     :root{
-      --v: "v0.41.3";
+      --v: "v0.41.4";
       --safe-top: env(safe-area-inset-top, 0px);
       --safe-bottom: env(safe-area-inset-bottom, 0px);
 
@@ -20,6 +20,10 @@
       --mask-black: #000;
 
       --max-w: 860px;
+
+      /* ===== HUD BAR (never overlaps page area) ===== */
+      --hud-h: 44px;         /* height of top bar */
+      --hud-pad-x: 12px;
 
       /* ===== PLAYER SCALE =====
          Portrait: -30% => 0.70
@@ -70,6 +74,31 @@
       --player-expanded-w: calc(var(--player-expanded-w-base) * var(--player-scale));
     }
 
+    /* ===== TOP HUD BAR (separate from page area) ===== */
+    .hudBar{
+      position:fixed;
+      left:0;
+      right:0;
+      top:0;
+      height: calc(var(--hud-h) + var(--safe-top));
+      padding-top: var(--safe-top);
+      background: #000;
+      z-index: 200;
+      display:flex;
+      align-items:center;
+      box-sizing:border-box;
+      pointer-events:none;
+      border-bottom: 1px solid rgba(255,255,255,.08);
+    }
+    .hudText{
+      padding-left: var(--hud-pad-x);
+      padding-right: var(--hud-pad-x);
+      font-weight: 900;
+      letter-spacing:.02em;
+      opacity:.92;
+      text-shadow: 0 10px 30px rgba(0,0,0,.55);
+    }
+
     /* ===== LOADING / COVER ===== */
     .loading{
       position:fixed;
@@ -115,6 +144,26 @@
       font-size: 13px;
       white-space: nowrap;
     }
+    .coverFallback{
+      display:none;
+      padding: 28px 18px 62px 18px;
+      background:
+        radial-gradient(900px 300px at 50% 10%, rgba(255,255,255,.10), rgba(0,0,0,0)),
+        linear-gradient(180deg, rgba(255,255,255,.06), rgba(0,0,0,0));
+      min-height: 220px;
+    }
+    .coverFallback .t{
+      font-weight: 950;
+      letter-spacing: .08em;
+      font-size: 13px;
+      opacity:.92;
+    }
+    .coverFallback .s{
+      margin-top: 8px;
+      font-size: 13px;
+      opacity:.78;
+      line-height:1.35;
+    }
 
     /* ===== IN-APP REFRESH BAR ===== */
     .refreshBar{
@@ -151,9 +200,12 @@
       display:flex;
       align-items:center;
       justify-content:center;
-      padding-top: var(--safe-top);
+
+      /* Reserve HUD bar space so it NEVER overlaps the page */
+      padding-top: calc(var(--safe-top) + var(--hud-h));
       padding-bottom: calc(20px + var(--safe-bottom) + var(--stage-reserve));
       box-sizing:border-box;
+
       touch-action: pan-y;
       overscroll-behavior: none;
     }
@@ -235,7 +287,7 @@
       right: 10px;
       top:50%;
       transform: translateY(-50%);
-      z-index:200;
+      z-index:190;
       width: 26px;
       height: 86px;
       border-radius: 999px;
@@ -256,7 +308,7 @@
       border-left: 2px solid rgba(255,255,255,.55);
       border-bottom: 2px solid rgba(255,255,255,.55);
       transform: translate(-50%,-50%) rotate(45deg);
-      /* This arrow points LEFT (gesture: swipe left to go forward) */
+      /* points LEFT: swipe left = forward */
     }
     .swipeHint::after{
       content:"";
@@ -270,19 +322,6 @@
       border-radius: 999px;
     }
     .swipeHint.dim{ opacity:.18; }
-
-    /* ===== HUD ===== */
-    .hud{
-      position:fixed;
-      left: 12px;
-      top: calc(12px + var(--safe-top));
-      z-index:80;
-      font-weight: 900;
-      letter-spacing:.02em;
-      opacity:.90;
-      pointer-events:none;
-      text-shadow: 0 10px 30px rgba(0,0,0,.55);
-    }
 
     /* ===== SEEKER WALL ===== */
     .gate{
@@ -420,7 +459,7 @@
       left:50%;
       bottom: calc(var(--dock-bottom) + var(--safe-bottom));
       transform: translateX(-50%);
-      z-index:70;
+      z-index:170;
       display:flex;
       align-items:flex-end;
       justify-content:center;
@@ -462,13 +501,14 @@
       cursor:pointer;
       user-select:none;
     }
+    /* (2) play icon is WHITE now */
     .playIcon{
       width:0;height:0;
       border-top: calc(12px * var(--player-scale)) solid transparent;
       border-bottom: calc(12px * var(--player-scale)) solid transparent;
-      border-left: calc(18px * var(--player-scale)) solid rgba(0,0,0,.92);
+      border-left: calc(18px * var(--player-scale)) solid rgba(255,255,255,.92);
       transform: translateX(2px);
-      filter: drop-shadow(0 2px 6px rgba(0,0,0,.25));
+      filter: drop-shadow(0 2px 6px rgba(0,0,0,.35));
     }
     .player.expanded{
       width: min(92vw, var(--player-expanded-w));
@@ -608,19 +648,25 @@
 
 <body>
 
+  <!-- TOP HUD BAR (separate from page area) -->
+  <div class="hudBar" aria-hidden="true">
+    <div class="hudText" id="hud">page 01 / 01</div>
+  </div>
+
   <!-- COVER / LOADING -->
   <div id="loading" class="loading" aria-hidden="false">
     <div id="loadingCard" class="loadingCard" role="button" aria-label="Enter SANCTUM">
       <img id="coverImg" src="./manga/chapter-00-public/cover.jpg" alt="SANCTUM Cover" />
+      <div id="coverFallback" class="coverFallback" aria-hidden="true">
+        <div class="t">SANCTUM</div>
+        <div class="s">Signal received. Tap to continue.</div>
+      </div>
       <div class="enterHint">Tap to continue</div>
     </div>
   </div>
 
   <!-- REFRESH BAR -->
   <div id="refreshBar" class="refreshBar">Refreshing…</div>
-
-  <!-- HUD -->
-  <div class="hud" id="hud">page 01 / 01</div>
 
   <!-- Swipe Hint -->
   <div class="swipeHint" id="swipeHint" aria-hidden="true"></div>
@@ -705,40 +751,12 @@
 
   <script>
     (function(){
-      /* =========================================================
-         v0.41.3 — Updates requested:
-         1) Swipe direction reversed: forward = SWIPE LEFT
-            + subtle arrow hint on the right edge
-         2) Player included
-         3) Downswipe reload included + banner
-         4) Loading cover included
-
-         FILE STRUCTURE:
-           ./manga/chapter-00-public/
-             SANCTUMPILOTBYDAVIDRAVENSON0.jpg
-             SANCTUMPILOTBYDAVIDRAVENSON1.jpg
-             cover.jpg (optional)
-           ./manga/chapter-00/
-             SANCTUMPILOTBYDAVIDRAVENSON0.jpg
-             SANCTUMPILOTBYDAVIDRAVENSON1.jpg
-             SANCTUMPILOTBYDAVIDRAVENSON2.jpg
-             ... (0..n)
-
-         STORY FLOW:
-           - New visitors: PUBLIC (2 pages) -> next forward swipe triggers GATE -> MAIN
-           - Returning seekers (token): jump directly to MAIN
-
-         TETHERCODE:
-           - If VALID_CODES empty => accepts any 4 digits.
-           - If you add codes there => only those are accepted.
-      ========================================================= */
-
-      const VERSION = "v0.41.3";
+      const VERSION = "v0.41.4";
 
       const STORAGE_KEY = "sanctum_seeker_token_v1";
       const TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
 
-      // === OPTIONAL: enforce real tethercodes
+      // OPTIONAL: enforce real tethercodes
       const VALID_CODES = [
         // "7391",
       ];
@@ -760,7 +778,6 @@
         rubberbandPct: 8,
         preloadAhead: 2,
 
-        // pull to refresh
         refreshTopZonePx: 70,
         refreshShowPx: 22,
         refreshFirePx: 58,
@@ -776,7 +793,7 @@
       const pad2 = (n) => String(n).padStart(2,"0");
       const nowMs = () => Date.now ? Date.now() : (new Date()).getTime();
 
-      // mild friction (discourage)
+      // discourage casual copy actions (not real security)
       document.addEventListener("contextmenu", (e) => e.preventDefault(), { passive:false });
       document.addEventListener("dragstart", (e) => e.preventDefault(), { passive:false });
       document.addEventListener("selectstart", (e) => e.preventDefault(), { passive:false });
@@ -803,11 +820,15 @@
         }catch(_){}
       }
 
-      // ===== DOM =====
+      // DOM
       const loading = $("loading");
       const loadingCard = $("loadingCard");
+      const coverImg = $("coverImg");
+      const coverFallback = $("coverFallback");
+
       const refreshBar = $("refreshBar");
       const hud = $("hud");
+
       const stage = $("stage");
       const frame = $("panelFrame");
       const track = $("track");
@@ -826,7 +847,21 @@
       const scFrame = $("scFrame");
       const grabHandle = $("grabHandle");
 
-      // ===== Player reserve system =====
+      // (3) Cover not loading: cache-bust + fallback UI
+      function bustOnce(url){
+        const s = (Date.now() + Math.random()).toString(36);
+        return url + (url.includes("?") ? "&" : "?") + "v=" + encodeURIComponent(s);
+      }
+      function enableCoverFallback(){
+        coverImg.style.display = "none";
+        coverFallback.style.display = "block";
+        coverFallback.setAttribute("aria-hidden", "false");
+      }
+      // try to force reload even if GitHub caches
+      coverImg.src = bustOnce(coverImg.getAttribute("src"));
+      coverImg.addEventListener("error", enableCoverFallback, { passive:true });
+
+      // Player reserve system
       function cssNum(varName, fallback){
         const raw = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
         const n = parseFloat(raw);
@@ -883,7 +918,7 @@
       grabHandle.addEventListener("touchend", () => { hTouch=null; }, { passive:true });
       grabHandle.addEventListener("touchcancel", () => { hTouch=null; }, { passive:true });
 
-      // ===== SoundCloud =====
+      // SoundCloud
       let widget = null;
       let widgetReady = false;
       let scScriptLoaded = false;
@@ -950,7 +985,7 @@
         }
       }, { passive:true });
 
-      // ===== Reader model =====
+      // Reader model
       let mode = "public"; // "public" or "main"
       let pages = [];      // { n, url, ok, imgEl }
       let storyIndex = 0;
@@ -1085,13 +1120,12 @@
         setStoryIndex(storyIndex, false);
       }
 
-      // ===== SEEKER WALL =====
+      // Seeker wall
       let gateTargetValue = 0;
 
       function gateShow(){
         gate.setAttribute("aria-hidden","false");
         gate.classList.add("show");
-
         swipeHint.classList.add("dim");
 
         codeInputs.forEach((inp) => inp.value = "");
@@ -1169,13 +1203,12 @@
       gateEnter.addEventListener("click", (e) => {
         e.preventDefault();
         if(gateEnter.disabled) return;
-
         storeToken();
         gateHide();
         startMain();
       }, { passive:false });
 
-      // ===== Pull-to-refresh =====
+      // Pull-to-refresh
       function showRefresh(){ refreshBar.classList.add("show"); }
       function hideRefresh(){ refreshBar.classList.remove("show"); }
 
@@ -1189,7 +1222,7 @@
         setTimeout(() => { location.reload(); }, 220);
       }
 
-      // ===== Swipe handling (forward = swipe LEFT) =====
+      // Swipe handling (forward = swipe LEFT)
       let dragging = false;
       let lockedAxis = null;
       let startX=0, startY=0, lastX=0;
@@ -1259,7 +1292,7 @@
 
         const dx = lastX - startX;
 
-        // FORWARD = swipe LEFT (dx negative)
+        // forward = swipe LEFT
         if(dx < -READER.swipeThresholdPx){
           if(mode === "public" && storyIndex >= pages.length - 1){
             setStoryIndex(storyIndex, true);
@@ -1270,7 +1303,7 @@
           return;
         }
 
-        // BACK = swipe RIGHT (dx positive)
+        // back = swipe RIGHT
         if(dx > READER.swipeThresholdPx){
           setStoryIndex(storyIndex - 1, true);
           return;
@@ -1296,7 +1329,7 @@
         setStoryIndex(storyIndex,true);
       }, { passive:true });
 
-      // ===== Loading cover logic =====
+      // Loading cover logic
       let loadingHidden = false;
       function hideLoading(){
         if(loadingHidden) return;
@@ -1308,10 +1341,9 @@
         e.preventDefault();
         hideLoading();
       }, { passive:false });
-
       setTimeout(() => { hideLoading(); }, READER.loadingMaxMs);
 
-      // ===== Flow control =====
+      // Flow control
       function startPublic(){
         resetReader("public");
         mode = "public";
@@ -1339,15 +1371,6 @@
         }
       }
 
-      function boot(){
-        updateStageReserve();
-        if(hasValidToken()){
-          startMain();
-        }else{
-          startPublic();
-        }
-      }
-
       function onLayoutChange(){
         setOrientationClass();
         updateStageReserve();
@@ -1355,8 +1378,14 @@
       window.addEventListener("resize", onLayoutChange, { passive:true });
       window.addEventListener("orientationchange", onLayoutChange, { passive:true });
 
-      // start
-      boot();
+      // Boot
+      updateStageReserve();
+      if(hasValidToken()){
+        startMain();
+      }else{
+        startPublic();
+      }
+
       console.log("SANCTUM", VERSION);
     })();
   </script>
