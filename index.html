@@ -7,134 +7,117 @@
 
   <style>
     :root{
-      --v: "v0.41.0";
+      --v: "v0.41.2";
       --safe-top: env(safe-area-inset-top, 0px);
       --safe-bottom: env(safe-area-inset-bottom, 0px);
 
-      --bg:#000;
-      --max-w: 860px;
+      --bg: #000;
       --shadow: 0 16px 40px rgba(0,0,0,.35);
+
+      /* Cinematic mask (hard edges) */
+      --mask-top-h: 54px;
+      --mask-bottom-h: 84px;
+      --mask-black: #000;
+
+      --max-w: 860px;
+
+      /* ===== PLAYER SCALE =====
+         Portrait: -30% => 0.70
+         Landscape: much smaller => 0.40
+      */
+      --player-scale: 0.70;
+
+      /* Player base sizes (unscaled) */
+      --player-collapsed-base: 78px;
+      --player-expanded-h-base: 240px;
+      --player-lowered-h-base: 150px;
+      --player-expanded-w-base: 640px;
+
+      /* Scaled sizes (computed) */
+      --player-collapsed: calc(var(--player-collapsed-base) * var(--player-scale));
+      --player-expanded-h: calc(var(--player-expanded-h-base) * var(--player-scale));
+      --player-lowered-h: calc(var(--player-lowered-h-base) * var(--player-scale));
+      --player-expanded-w: calc(var(--player-expanded-w-base) * var(--player-scale));
+
+      /* RESERVED space under panel so player NEVER overlaps panel */
+      --stage-reserve: 0px; /* runtime updated */
+      --reserve-gap: 16px;  /* air between panel + player area */
+      --dock-bottom: 12px;
     }
 
-    html,body{
+    html, body{
       margin:0;
       height:100%;
       background:#000;
       color:#fff;
-      font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      -webkit-tap-highlight-color: transparent;
       overflow:hidden;
+
       user-select:none;
       -webkit-user-select:none;
       -webkit-touch-callout:none;
     }
 
-    /* ===============================
-       SEEKER GATE (SIMPLIFIED)
-    =============================== */
-    .gate{
+    body{
+      background: var(--bg);
+    }
+
+    /* Landscape scale override */
+    body.landscape{
+      --player-scale: 0.40;
+      --player-collapsed: calc(var(--player-collapsed-base) * var(--player-scale));
+      --player-expanded-h: calc(var(--player-expanded-h-base) * var(--player-scale));
+      --player-lowered-h: calc(var(--player-lowered-h-base) * var(--player-scale));
+      --player-expanded-w: calc(var(--player-expanded-w-base) * var(--player-scale));
+    }
+
+    /* ===== LOADING (optional cover) ===== */
+    .loading{
       position:fixed;
       inset:0;
-      z-index:9999;
+      z-index:9000;
       display:flex;
       align-items:center;
       justify-content:center;
       background: rgba(0,0,0,.55);
       backdrop-filter: blur(16px);
       -webkit-backdrop-filter: blur(16px);
-      padding:16px;
-      box-sizing:border-box;
+      opacity:1;
+      transition: opacity .35s ease;
     }
-
-    .gateCard{
-      width: min(92vw, 420px);
+    .loading.hidden{
+      opacity:0;
+      pointer-events:none;
+    }
+    .loadingCard{
+      width: min(92vw, 520px);
       border-radius: 22px;
-      padding: 18px;
-      background: rgba(0,0,0,.75);
-      border:1px solid rgba(255,255,255,.18);
+      overflow:hidden;
+      border: 1px solid rgba(255,255,255,.16);
       box-shadow: 0 30px 70px rgba(0,0,0,.6);
+      background: rgba(0,0,0,.55);
+      position:relative;
     }
-
-    .keeper{
+    .loadingCard img{ width:100%; height:auto; display:block; }
+    .enterHint{
+      position:absolute;
+      left:50%;
+      transform: translateX(-50%);
+      bottom: 14px;
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: rgba(0,0,0,.60);
+      border: 1px solid rgba(255,255,255,.18);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
       font-weight: 900;
-      letter-spacing:.06em;
-      opacity:.9;
-      margin-bottom: 6px;
+      letter-spacing: .02em;
+      font-size: 13px;
+      white-space: nowrap;
     }
 
-    .gateQ{
-      font-size: 14px;
-      opacity:.85;
-      margin-bottom: 14px;
-    }
-
-    .codePanel{
-      display:flex;
-      gap:8px;
-      justify-content:center;
-      margin-bottom: 14px;
-    }
-
-    .codePanel input{
-      width:46px;
-      height:54px;
-      text-align:center;
-      font-size:22px;
-      font-weight:900;
-      border-radius:10px;
-      border:1px solid rgba(255,255,255,.25);
-      background: rgba(255,255,255,.08);
-      color:#fff;
-      outline:none;
-    }
-
-    .sliderWrap{
-      margin: 14px 0;
-      padding:12px;
-      border-radius:16px;
-      background: rgba(255,255,255,.08);
-      border:1px solid rgba(255,255,255,.16);
-    }
-
-    .sliderTop{
-      display:flex;
-      justify-content:space-between;
-      font-size:12px;
-      opacity:.85;
-      margin-bottom:6px;
-    }
-
-    input[type=range]{
-      width:100%;
-    }
-
-    .gateBtn{
-      width:100%;
-      margin-top:12px;
-      padding:14px;
-      border-radius:999px;
-      border:1px solid rgba(255,255,255,.25);
-      background: rgba(255,255,255,.15);
-      color:#fff;
-      font-weight:900;
-      letter-spacing:.04em;
-      cursor:pointer;
-    }
-
-    .gateBtn:disabled{
-      opacity:.4;
-      cursor:not-allowed;
-    }
-
-    .gateMsg{
-      margin-top:10px;
-      font-size:12px;
-      min-height:16px;
-      opacity:.8;
-    }
-
-    /* ===============================
-       READER
-    =============================== */
+    /* ===== STAGE ===== */
     .stage{
       position:relative;
       height:100%;
@@ -142,177 +125,1160 @@
       display:flex;
       align-items:center;
       justify-content:center;
+      padding-top: var(--safe-top);
+      padding-bottom: calc(20px + var(--safe-bottom) + var(--stage-reserve));
+      box-sizing:border-box;
+      touch-action: pan-y;
+      overscroll-behavior: none;
     }
-
-    .frame{
+    .rail{
+      position:relative;
       width: min(100vw, var(--max-w));
       height:100%;
-      overflow:hidden;
-      background:#000;
-    }
-
-    .track{
-      display:flex;
-      height:100%;
-      transition: transform .3s ease;
-    }
-
-    .slide{
-      flex:0 0 100%;
       display:flex;
       align-items:center;
       justify-content:center;
     }
-
-    .slide img{
+    .panelFrame{
+      position:relative;
       width:100%;
       height:100%;
-      object-fit:contain;
+      overflow:hidden;
       background:#000;
-      pointer-events:none;
+      transform: translateZ(0);
+      backface-visibility:hidden;
+      -webkit-backface-visibility:hidden;
     }
+    .track{
+      display:flex;
+      flex-direction:row;
+      height:100%;
+      width:100%;
+      transform: translate3d(0,0,0);
+      transition: transform 280ms ease;
+      will-change: transform;
+    }
+    .track.dragging{ transition:none; }
+    .slide{
+      flex:0 0 100%;
+      height:100%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background:#000;
+    }
+    .panelShell{
+      position:relative;
+      width:100%;
+      height:100%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background:#000;
+    }
+    .panelImg{
+      width:100%;
+      height:100%;
+      object-fit: contain;
+      display:block;
+      background:#000;
+      -webkit-user-drag:none;
+      -webkit-touch-callout:none;
+      user-select:none;
+      pointer-events:auto;
+    }
+    .cinematicMask{
+      position:absolute;
+      inset:0;
+      pointer-events:none;
+      z-index:10;
+    }
+    .cinematicMask .top,
+    .cinematicMask .bottom{
+      position:absolute;
+      left:0;
+      width:100%;
+      background: var(--mask-black);
+    }
+    .cinematicMask .top{ top:0; height: var(--mask-top-h); }
+    .cinematicMask .bottom{ bottom:0; height: var(--mask-bottom-h); }
 
+    /* ===== HUD ===== */
     .hud{
       position:fixed;
-      top:12px;
-      left:12px;
-      font-weight:900;
-      opacity:.9;
-      z-index:50;
+      left: 12px;
+      top: calc(12px + var(--safe-top));
+      z-index:80;
+      font-weight: 900;
+      letter-spacing:.02em;
+      opacity:.90;
+      pointer-events:none;
+      text-shadow: 0 10px 30px rgba(0,0,0,.55);
     }
+
+    /* ===== SEEKER WALL (simplified keeper + 4-digit + slider) ===== */
+    .gate{
+      position:fixed;
+      inset:0;
+      z-index:9500;
+      display:none;
+      align-items:center;
+      justify-content:center;
+      padding: calc(16px + var(--safe-top)) 14px calc(16px + var(--safe-bottom)) 14px;
+      box-sizing:border-box;
+      background: rgba(0,0,0,.55);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+    }
+    .gate.show{ display:flex; }
+
+    .gateCard{
+      width: min(92vw, 460px);
+      border-radius: 22px;
+      padding: 16px;
+      background: rgba(0,0,0,.72);
+      border: 1px solid rgba(255,255,255,.18);
+      box-shadow: 0 30px 70px rgba(0,0,0,.6);
+      position:relative;
+    }
+    .gateTitle{
+      font-weight: 950;
+      letter-spacing: .06em;
+      font-size: 13px;
+      opacity:.9;
+    }
+    .gateQ{
+      margin-top: 8px;
+      font-size: 14px;
+      opacity:.86;
+      line-height:1.35;
+    }
+
+    .codePanel{
+      margin-top: 12px;
+      padding: 12px;
+      border-radius: 18px;
+      background: rgba(255,255,255,.07);
+      border: 1px solid rgba(255,255,255,.14);
+    }
+    .codeLabel{
+      font-size: 12px;
+      opacity:.78;
+      margin-bottom: 10px;
+      letter-spacing:.02em;
+    }
+    .codeRow{
+      display:flex;
+      gap:10px;
+      justify-content:center;
+      align-items:center;
+    }
+    .codeRow input{
+      width: 52px;
+      height: 58px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,.20);
+      background: rgba(0,0,0,.22);
+      color:#fff;
+      font-weight: 950;
+      font-size: 22px;
+      text-align:center;
+      outline:none;
+    }
+
+    .sliderWrap{
+      margin-top: 12px;
+      padding: 12px;
+      border-radius: 18px;
+      background: rgba(255,255,255,.07);
+      border: 1px solid rgba(255,255,255,.14);
+    }
+    .sliderTop{
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      font-size: 12px;
+      opacity:.82;
+      margin-bottom: 8px;
+    }
+    .pill{
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(0,0,0,.35);
+      border: 1px solid rgba(255,255,255,.14);
+      font-weight: 900;
+      letter-spacing:.02em;
+      white-space:nowrap;
+    }
+    .gateSlider{
+      width:100%;
+      height: 36px;
+      accent-color: #fff;
+    }
+
+    .gateBtn{
+      margin-top: 12px;
+      width:100%;
+      padding: 14px 14px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.18);
+      background: rgba(255,255,255,.12);
+      color:#fff;
+      font-weight: 950;
+      letter-spacing:.03em;
+      cursor:pointer;
+      box-shadow: 0 16px 40px rgba(0,0,0,.35);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+    .gateBtn:disabled{
+      opacity:.45;
+      cursor:not-allowed;
+      box-shadow:none;
+    }
+
+    .gateMsg{
+      margin-top: 10px;
+      min-height: 18px;
+      font-size: 12px;
+      opacity:.82;
+    }
+    .gateMsg.ok{ color:#7CFF9A; font-weight:900; opacity:1; }
+    .gateMsg.bad{ color:#FF7C7C; font-weight:900; opacity:1; }
+
+    /* ===== PLAYER DOCK (unchanged from your system) ===== */
+    .playerDock{
+      position:fixed;
+      left:50%;
+      bottom: calc(var(--dock-bottom) + var(--safe-bottom));
+      transform: translateX(-50%);
+      z-index:70;
+      display:flex;
+      align-items:flex-end;
+      justify-content:center;
+      pointer-events:auto;
+      transition: left .22s ease, right .22s ease, transform .22s ease;
+      will-change: left, right, transform;
+      touch-action:none;
+      max-width: min(100vw, var(--max-w));
+    }
+    body.landscape .playerDock{
+      left:auto;
+      right: calc((100vw - min(100vw, var(--max-w))) / 2);
+      transform: translateX(0);
+      justify-content:flex-end;
+    }
+    .player{
+      position:relative;
+      width: var(--player-collapsed);
+      height: var(--player-collapsed);
+      border-radius:999px;
+      background: rgba(255,255,255,.10);
+      border: 1px solid rgba(255,255,255,.18);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      overflow:hidden;
+      transition: width .28s ease, height .28s ease, border-radius .28s ease, background .28s ease;
+    }
+    .player .meta,
+    .player .embedWrap,
+    .player .openBtn,
+    .player .closeBtn{ display:none; }
+    .playerBtn{
+      width:100%;
+      height:100%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      cursor:pointer;
+      user-select:none;
+    }
+    .playIcon{
+      width:0;height:0;
+      border-top: calc(12px * var(--player-scale)) solid transparent;
+      border-bottom: calc(12px * var(--player-scale)) solid transparent;
+      border-left: calc(18px * var(--player-scale)) solid rgba(0,0,0,.92);
+      transform: translateX(2px);
+      filter: drop-shadow(0 2px 6px rgba(0,0,0,.25));
+    }
+    .player.expanded{
+      width: min(92vw, var(--player-expanded-w));
+      height: var(--player-expanded-h);
+      border-radius: calc(20px * var(--player-scale));
+      background: rgba(255,255,255,.12);
+    }
+    body.landscape .player.expanded{
+      width: min(92vw, min(var(--max-w), var(--player-expanded-w)));
+    }
+    .player.expanded .meta,
+    .player.expanded .embedWrap,
+    .player.expanded .openBtn,
+    .player.expanded .closeBtn{ display:block; }
+    .player.expanded .playerBtn{ display:none !important; }
+
+    .meta{
+      position:absolute;
+      left: calc(12px * var(--player-scale));
+      top:  calc(10px * var(--player-scale));
+      right: calc(130px * var(--player-scale));
+      line-height: 1.05;
+      color:#111;
+      background: rgba(255,255,255,.78);
+      border-radius: calc(14px * var(--player-scale));
+      padding: calc(8px * var(--player-scale)) calc(10px * var(--player-scale));
+      box-shadow: 0 10px 18px rgba(0,0,0,.18);
+    }
+    .meta .t{ font-weight:900; letter-spacing:.03em; font-size: calc(16px * var(--player-scale)); color:#0d0d0d; }
+    .meta .a{ margin-top:2px; font-weight:700; opacity:.92; font-size: calc(12px * var(--player-scale)); color:#0d0d0d; }
+
+    .openBtn{
+      position:absolute;
+      top: calc(10px * var(--player-scale));
+      right: calc(54px * var(--player-scale));
+      padding: calc(8px * var(--player-scale)) calc(10px * var(--player-scale));
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.22);
+      background: rgba(0,0,0,.18);
+      color:#fff;
+      font-weight: 800;
+      font-size: calc(12px * var(--player-scale));
+      cursor:pointer;
+      text-decoration:none;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      white-space: nowrap;
+    }
+    .closeBtn{
+      position:absolute;
+      top: calc(10px * var(--player-scale));
+      right: calc(12px * var(--player-scale));
+      width: calc(34px * var(--player-scale));
+      height: calc(34px * var(--player-scale));
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.22);
+      background: rgba(0,0,0,.18);
+      color:#fff;
+      font-weight: 900;
+      font-size: calc(18px * var(--player-scale));
+      line-height: calc(32px * var(--player-scale));
+      text-align:center;
+      cursor:pointer;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      user-select:none;
+    }
+    .embedWrap{
+      position:absolute;
+      left:  calc(10px * var(--player-scale));
+      right: calc(10px * var(--player-scale));
+      bottom:calc(10px * var(--player-scale));
+      top:   calc(70px * var(--player-scale));
+      border-radius: calc(16px * var(--player-scale));
+      overflow:hidden;
+      border: 1px solid rgba(255,255,255,.18);
+      background: rgba(255,255,255,.08);
+    }
+    .embedWrap iframe{
+      width:100%;
+      height:100%;
+      border:0;
+      display:block;
+      background: transparent;
+    }
+    .player.lowered{
+      height: var(--player-lowered-h);
+      border-radius: calc(18px * var(--player-scale));
+    }
+    .player.lowered .embedWrap{
+      display:block !important;
+      top: calc(26px * var(--player-scale));
+      bottom: calc(10px * var(--player-scale));
+    }
+    .player.lowered .meta{ display:none !important; }
+    .player.lowered .openBtn{ display:none !important; }
+    .player.lowered .closeBtn{
+      display:block !important;
+      top: calc(6px * var(--player-scale));
+      right: calc(8px * var(--player-scale));
+    }
+    .grabHandle{
+      position:absolute;
+      left: calc(10px * var(--player-scale));
+      right: calc(52px * var(--player-scale));
+      top: calc(6px * var(--player-scale));
+      height: calc(18px * var(--player-scale));
+      border-radius: 999px;
+      background: rgba(0,0,0,.30);
+      border: 1px solid rgba(255,255,255,.12);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      gap: calc(8px * var(--player-scale));
+      z-index:9;
+      user-select:none;
+      cursor:pointer;
+    }
+    .grabDot{
+      width: calc(22px * var(--player-scale));
+      height: calc(4px * var(--player-scale));
+      border-radius: 999px;
+      background: rgba(255,255,255,.55);
+      opacity:.9;
+    }
+    .grabTxt{
+      font-weight: 900;
+      font-size: calc(11px * var(--player-scale));
+      letter-spacing:.02em;
+      opacity:.92;
+    }
+    .player.lowered .grabHandle{ display:flex; }
+
   </style>
 </head>
 
 <body>
 
-<!-- SEEKER GATE -->
-<div id="gate" class="gate">
-  <div class="gateCard">
-    <div class="keeper">KEEPER</div>
-    <div class="gateQ">Do you have the tethercode to enter?</div>
-
-    <div class="codePanel">
-      <input maxlength="1" />
-      <input maxlength="1" />
-      <input maxlength="1" />
-      <input maxlength="1" />
+  <!-- OPTIONAL COVER / LOADING -->
+  <div id="loading" class="loading" aria-hidden="false">
+    <div id="loadingCard" class="loadingCard" role="button" aria-label="Enter SANCTUM">
+      <img id="coverImg" src="./manga/chapter-00-public/cover.jpg" alt="SANCTUM Cover" />
+      <div class="enterHint">Tap to continue</div>
     </div>
+  </div>
 
-    <div class="sliderWrap">
-      <div class="sliderTop">
-        <span>Human verify</span>
-        <span id="targetLbl">target: —</span>
+  <!-- HUD -->
+  <div class="hud" id="hud">page 01 / 01</div>
+
+  <!-- STAGE -->
+  <div class="stage" id="stage">
+    <div class="rail">
+      <div class="panelFrame" id="panelFrame">
+        <div class="track" id="track"></div>
       </div>
-      <input id="slider" type="range" min="0" max="100" value="0" />
     </div>
-
-    <button id="enterBtn" class="gateBtn" disabled>ENTER SANCTUM</button>
-    <div id="gateMsg" class="gateMsg"></div>
   </div>
-</div>
 
-<!-- HUD -->
-<div class="hud" id="hud">page 01 / 01</div>
+  <!-- SEEKER WALL -->
+  <div id="gate" class="gate" aria-hidden="true">
+    <div class="gateCard" role="dialog" aria-label="Seeker Wall">
+      <div class="gateTitle">KEEPER</div>
+      <div class="gateQ">Do you have the tethercode to enter?</div>
 
-<!-- STAGE -->
-<div class="stage">
-  <div class="frame">
-    <div class="track" id="track"></div>
+      <div class="codePanel" aria-label="Tethercode panel (design placeholder)">
+        <div class="codeLabel">4-digit tethercode</div>
+        <div class="codeRow">
+          <input class="codeIn" inputmode="numeric" pattern="[0-9]*" maxlength="1" aria-label="Digit 1" />
+          <input class="codeIn" inputmode="numeric" pattern="[0-9]*" maxlength="1" aria-label="Digit 2" />
+          <input class="codeIn" inputmode="numeric" pattern="[0-9]*" maxlength="1" aria-label="Digit 3" />
+          <input class="codeIn" inputmode="numeric" pattern="[0-9]*" maxlength="1" aria-label="Digit 4" />
+        </div>
+      </div>
+
+      <div class="sliderWrap">
+        <div class="sliderTop">
+          <span>Human verify</span>
+          <span class="pill" id="gateTarget">target: —</span>
+        </div>
+        <input id="gateSlider" class="gateSlider" type="range" min="0" max="100" value="0" />
+      </div>
+
+      <button id="gateEnter" class="gateBtn" disabled>ENTER SANCTUM</button>
+      <div id="gateMsg" class="gateMsg"></div>
+    </div>
   </div>
-</div>
 
-<script>
-(function(){
-  /* ===============================
-     GATE LOGIC
-  =============================== */
-  const gate = document.getElementById("gate");
-  const codeInputs = [...document.querySelectorAll(".codePanel input")];
-  const slider = document.getElementById("slider");
-  const targetLbl = document.getElementById("targetLbl");
-  const btn = document.getElementById("enterBtn");
-  const msg = document.getElementById("gateMsg");
+  <!-- PLAYER -->
+  <div id="playerDock" class="playerDock">
+    <div id="player" class="player" aria-label="Player">
+      <div id="playerBtn" class="playerBtn" title="Play">
+        <div class="playIcon" aria-hidden="true"></div>
+      </div>
 
-  const TARGET = 20 + Math.floor(Math.random()*61);
-  targetLbl.textContent = "target: " + TARGET;
+      <div class="meta" aria-hidden="true">
+        <div class="t" id="trackTitle">SENTINEL</div>
+        <div class="a" id="trackArtist">DAVID RAVENSON</div>
+      </div>
 
-  codeInputs.forEach((i,idx)=>{
-    i.addEventListener("input", ()=>{
-      if(i.value && idx < 3) codeInputs[idx+1].focus();
-      checkGate();
-    });
-  });
+      <a class="openBtn"
+         id="scOpen"
+         href="https://soundcloud.com/user-543596862/sentinel-2"
+         target="_blank"
+         rel="noopener noreferrer"
+         aria-hidden="true"
+      >Open on SoundCloud</a>
 
-  slider.addEventListener("input", checkGate);
+      <div id="closeBtn" class="closeBtn" aria-hidden="true" title="Close">×</div>
 
-  function checkGate(){
-    const codeOk = codeInputs.every(i => i.value.match(/^\d$/));
-    const sliderOk = Math.abs(slider.value - TARGET) <= 2;
+      <div class="embedWrap" aria-hidden="true">
+        <iframe
+          id="scFrame"
+          allow="autoplay"
+          scrolling="no"
+          frameborder="no"
+          src="https://w.soundcloud.com/player/?url=https%3A//soundcloud.com/user-543596862/sentinel-2&color=%23000000&auto_play=false&hide_related=true&show_comments=false&show_user=false&show_reposts=false&show_teaser=false&visual=true"
+          title="SoundCloud player"
+        ></iframe>
 
-    btn.disabled = !(codeOk && sliderOk);
+        <div id="grabHandle" class="grabHandle" aria-label="Raise player">
+          <div class="grabDot" aria-hidden="true"></div>
+          <div class="grabTxt">tap / swipe up</div>
+        </div>
+      </div>
+    </div>
+  </div>
 
-    msg.textContent = !codeOk
-      ? "Enter a 4-digit tethercode."
-      : !sliderOk
-        ? "Match the slider to the target."
-        : "Verified.";
-  }
+  <script>
+    (function(){
+      /* =========================================================
+         v0.41.2 — 2-ORDNER FLOW (PUBLIC INTRO -> GATE -> MAIN)
 
-  btn.addEventListener("click", ()=>{
-    gate.style.display = "none";
-    initReader();
-  });
+         FILE STRUCTURE:
+           ./manga/chapter-00-public/
+             SANCTUMPILOTBYDAVIDRAVENSON0.jpg
+             SANCTUMPILOTBYDAVIDRAVENSON1.jpg
+             cover.jpg (optional)
+           ./manga/chapter-00/
+             SANCTUMPILOTBYDAVIDRAVENSON0.jpg
+             SANCTUMPILOTBYDAVIDRAVENSON1.jpg
+             SANCTUMPILOTBYDAVIDRAVENSON2.jpg
+             ... (0..n)
 
-  /* ===============================
-     READER
-  =============================== */
-  function initReader(){
-    const track = document.getElementById("track");
-    const hud = document.getElementById("hud");
+         STORY FLOW:
+           - Website loads PUBLIC intro (2 pages)
+           - After page 2, next swipe triggers SEEKER WALL
+           - After verified, MAIN pilot starts (page 0..auto-discovery)
+           - Token stored for 24h:
+             returning seekers jump directly to MAIN (skip public+gate)
 
-    const BASE = "./manga/chapter-00/SANCTUMPILOTBYDAVIDRAVENSON";
-    const EXT = ".jpg";
+         TETHERCODE:
+           - Placeholder in this build.
+           - To enforce real subscriber codes, fill VALID_CODES.
 
-    let pages = [];
-    let index = 0;
+         NOTE:
+           - No true screenshot blocking exists on the open web.
+      ========================================================= */
 
-    function addPage(n){
-      const img = new Image();
-      img.src = BASE + n + EXT;
-      img.onload = ()=>{
+      const VERSION = "v0.41.2";
+
+      const STORAGE_KEY = "sanctum_seeker_token_v1";
+      const TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
+
+      // === OPTIONAL: enforce codes (subscriber list). Empty => accept any 4 digits.
+      const VALID_CODES = [
+        // "1337",
+        // "0420",
+      ];
+
+      const READER = {
+        baseRoot: "./manga/",
+        folderPublic: "chapter-00-public",
+        folderMain: "chapter-00",
+        filePrefix: "SANCTUMPILOTBYDAVIDRAVENSON",
+        ext: ".jpg",
+
+        publicPages: [0,1],           // exactly two pages on website before the wall
+        mainSeed: [0,1],              // main starts here
+        probeMax: 500,                // how far to try
+        stopAfterConsecutiveMisses: 3,
+
+        swipeThresholdPx: 44,
+        axisLockPx: 10,
+        rubberbandPct: 8,
+        preloadAhead: 2,
+
+        loadingMinMs: 500,            // short. (cover tap is the main beat)
+        loadingMaxMs: 2500,
+        playerRaiseSwipePx: 26
+      };
+
+      const $ = (id) => document.getElementById(id);
+      const clamp = (n,a,b) => Math.max(a, Math.min(b,n));
+      const pad2 = (n) => String(n).padStart(2,"0");
+      const nowMs = () => Date.now ? Date.now() : (new Date()).getTime();
+
+      // mild friction (doesn't "secure", only discourages casual actions)
+      document.addEventListener("contextmenu", (e) => e.preventDefault(), { passive:false });
+      document.addEventListener("dragstart", (e) => e.preventDefault(), { passive:false });
+      document.addEventListener("selectstart", (e) => e.preventDefault(), { passive:false });
+
+      function setOrientationClass(){
+        const isLand = window.matchMedia && window.matchMedia("(orientation: landscape)").matches;
+        document.body.classList.toggle("landscape", !!isLand);
+      }
+      window.addEventListener("resize", setOrientationClass, { passive:true });
+      window.addEventListener("orientationchange", setOrientationClass, { passive:true });
+      setOrientationClass();
+
+      function hasValidToken(){
+        try{
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if(!raw) return false;
+          const obj = JSON.parse(raw);
+          return obj && obj.exp && obj.exp > nowMs();
+        }catch(_){ return false; }
+      }
+      function storeToken(){
+        try{
+          localStorage.setItem(STORAGE_KEY, JSON.stringify({ exp: nowMs() + TOKEN_TTL_MS, v: VERSION }));
+        }catch(_){}
+      }
+
+      // ===== DOM =====
+      const loading = $("loading");
+      const loadingCard = $("loadingCard");
+      const hud = $("hud");
+      const stage = $("stage");
+      const frame = $("panelFrame");
+      const track = $("track");
+
+      const gate = $("gate");
+      const gateTarget = $("gateTarget");
+      const gateSlider = $("gateSlider");
+      const gateEnter = $("gateEnter");
+      const gateMsg = $("gateMsg");
+      const codeInputs = Array.from(document.querySelectorAll(".codeIn"));
+
+      const player = $("player");
+      const playerBtn = $("playerBtn");
+      const closeBtn = $("closeBtn");
+      const scFrame = $("scFrame");
+      const grabHandle = $("grabHandle");
+
+      // ===== Player reserve system =====
+      function cssNum(varName, fallback){
+        const raw = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+        const n = parseFloat(raw);
+        return isFinite(n) ? n : fallback;
+      }
+      function isExpanded(){ return player.classList.contains("expanded"); }
+      function isLowered(){ return player.classList.contains("lowered"); }
+      function updateStageReserve(){
+        const gap = cssNum("--reserve-gap", 16);
+        if(!isExpanded()){
+          document.documentElement.style.setProperty("--stage-reserve", "0px");
+          return;
+        }
+        const h = isLowered()
+          ? cssNum("--player-lowered-h", 105)
+          : cssNum("--player-expanded-h", 168);
+        document.documentElement.style.setProperty("--stage-reserve", (h + gap) + "px");
+      }
+      function setLowered(on){
+        if(on) player.classList.add("lowered");
+        else player.classList.remove("lowered");
+        updateStageReserve();
+      }
+      function raise(){ setLowered(false); }
+
+      // grip behavior
+      let hTouch = null;
+      grabHandle.addEventListener("click", (e) => {
+        if(!isExpanded() || !isLowered()) return;
+        e.preventDefault(); e.stopPropagation();
+        raise();
+      }, { passive:false });
+
+      grabHandle.addEventListener("touchstart", (e) => {
+        if(!isExpanded() || !isLowered()) return;
+        const t = e.touches && e.touches[0];
+        if(!t) return;
+        hTouch = { x: t.clientX, y: t.clientY };
+      }, { passive:true });
+
+      grabHandle.addEventListener("touchmove", (e) => {
+        if(!hTouch) return;
+        const t = e.touches && e.touches[0];
+        if(!t) return;
+        const dx = t.clientX - hTouch.x;
+        const dy = t.clientY - hTouch.y;
+        if(Math.abs(dy) > Math.abs(dx) && dy < -READER.playerRaiseSwipePx){
+          e.preventDefault(); e.stopPropagation();
+          hTouch = null;
+          raise();
+        }
+      }, { passive:false });
+
+      grabHandle.addEventListener("touchend", () => { hTouch=null; }, { passive:true });
+      grabHandle.addEventListener("touchcancel", () => { hTouch=null; }, { passive:true });
+
+      // ===== SoundCloud =====
+      let widget = null;
+      let widgetReady = false;
+      let scScriptLoaded = false;
+
+      function loadSoundCloudAPI(){
+        return new Promise((resolve) => {
+          if(scScriptLoaded || window.SC){ scScriptLoaded = true; return resolve(); }
+          const s = document.createElement("script");
+          s.src = "https://w.soundcloud.com/player/api.js";
+          s.async = true;
+          s.onload = () => { scScriptLoaded = true; resolve(); };
+          s.onerror = () => resolve();
+          document.head.appendChild(s);
+        });
+      }
+      async function initWidget(){
+        await loadSoundCloudAPI();
+        try{
+          if(window.SC && scFrame){
+            widget = SC.Widget(scFrame);
+            widget.bind(SC.Widget.Events.READY, function(){ widgetReady = true; });
+          }
+        }catch(_){}
+      }
+      initWidget();
+
+      function openAndPlay(){
+        player.classList.add("expanded");
+        player.classList.remove("lowered");
+        updateStageReserve();
+        if(widget){
+          if(widgetReady){ try{ widget.play(); }catch(_){} }
+          else{
+            try{
+              widget.bind(SC.Widget.Events.READY, function(){
+                widgetReady = true;
+                try{ widget.play(); }catch(_){}
+              });
+            }catch(_){}
+          }
+        }
+      }
+      function closePlayer(){
+        player.classList.remove("expanded");
+        player.classList.remove("lowered");
+        updateStageReserve();
+        if(widget){ try{ widget.pause(); }catch(_){} }
+      }
+      playerBtn.addEventListener("click", (e) => {
+        e.preventDefault(); e.stopPropagation();
+        openAndPlay();
+      }, { passive:false });
+      closeBtn.addEventListener("click", (e) => {
+        e.preventDefault(); e.stopPropagation();
+        closePlayer();
+      }, { passive:false });
+
+      document.addEventListener("click", (e) => {
+        if(!isExpanded()) return;
+        if(e.target && e.target.classList && e.target.classList.contains("panelImg")){
+          if(isLowered()) player.classList.remove("lowered");
+          else player.classList.add("lowered");
+          updateStageReserve();
+        }
+      }, { passive:true });
+
+      // ===== Reader model =====
+      let mode = "public"; // "public" or "main"
+      let pages = [];      // { n, url, ok, imgEl }
+      let storyIndex = 0;
+      let domCount = 0;
+
+      function basePathForMode(m){
+        const folder = (m === "public") ? READER.folderPublic : READER.folderMain;
+        return READER.baseRoot + folder + "/";
+      }
+      function pageURL(m, n){
+        return basePathForMode(m) + READER.filePrefix + String(n) + READER.ext;
+      }
+      function bust(url){
+        const s = (Date.now() + Math.random()).toString(36);
+        return url + (url.includes("?") ? "&" : "?") + "v=" + encodeURIComponent(s);
+      }
+
+      function domIndexFromStory(i){ return (domCount - 1) - i; }
+
+      function updateHud(){
+        const total = Math.max(1, pages.length);
+        hud.textContent = "page " + pad2(storyIndex+1) + " / " + pad2(total);
+      }
+
+      function preloadAround(i){
+        for(let k=1; k<=READER.preloadAhead; k++){
+          const p = pages[i + k];
+          if(p && p.ok !== false){
+            const img = new Image();
+            img.decoding = "async";
+            img.src = p.url;
+          }
+        }
+      }
+
+      function setStoryIndex(next, animate=true){
+        storyIndex = clamp(next, 0, Math.max(0, pages.length-1));
+        const di = domIndexFromStory(storyIndex);
+        if(!animate) track.classList.add("dragging");
+        track.style.transform = "translate3d(" + (-(di * 100)) + "%,0,0)";
+        if(!animate) requestAnimationFrame(() => track.classList.remove("dragging"));
+        updateHud();
+        preloadAround(storyIndex);
+      }
+
+      function makeSlide(p){
         const slide = document.createElement("div");
         slide.className = "slide";
-        slide.appendChild(img);
-        track.appendChild(slide);
-        pages.push(n);
+
+        const shell = document.createElement("div");
+        shell.className = "panelShell";
+
+        const img = document.createElement("img");
+        img.className = "panelImg";
+        img.alt = "Page " + String(p.n);
+        img.decoding = "async";
+        img.loading = "lazy";
+        img.src = p.url;
+
+        const mask = document.createElement("div");
+        mask.className = "cinematicMask";
+        mask.setAttribute("aria-hidden","true");
+        mask.innerHTML = '<div class="top"></div><div class="bottom"></div>';
+
+        img.addEventListener("load", () => { p.ok = true; }, { passive:true });
+        img.addEventListener("error", () => { p.ok = false; }, { passive:true });
+
+        p.imgEl = img;
+
+        shell.appendChild(img);
+        shell.appendChild(mask);
+        slide.appendChild(shell);
+        return slide;
+      }
+
+      function renderAll(){
+        track.innerHTML = "";
+        const domPages = pages.slice().reverse();
+        domPages.forEach(p => track.appendChild(makeSlide(p)));
+        domCount = domPages.length;
         updateHud();
-        addPage(n+1);
-      };
-    }
+        setStoryIndex(storyIndex, false);
+      }
 
-    function updateHud(){
-      hud.textContent =
-        "page " + String(index+1).padStart(2,"0") +
-        " / " + String(pages.length).padStart(2,"0");
-    }
+      function resetReader(newMode){
+        mode = newMode;
+        pages = [];
+        storyIndex = 0;
+        domCount = 0;
+        track.style.transform = "translate3d(0,0,0)";
+        renderAll();
+      }
 
-    addPage(0);
+      function addPage(n){
+        const url = pageURL(mode, n);
+        if(pages.some(x => x.n === n)) return;
+        pages.push({ n, url, ok: null, imgEl: null });
+        pages.sort((a,b) => a.n - b.n);
+      }
 
-    let startX=0;
-    track.addEventListener("touchstart", e=>{
-      startX = e.touches[0].clientX;
-    });
+      async function headOK(url){
+        try{
+          const res = await fetch(bust(url), { method:"HEAD", cache:"no-store" });
+          return res && res.ok;
+        }catch(_){
+          try{
+            const res2 = await fetch(bust(url), { method:"GET", cache:"no-store" });
+            return res2 && res2.ok;
+          }catch(__){ return false; }
+        }
+      }
 
-    track.addEventListener("touchend", e=>{
-      const dx = e.changedTouches[0].clientX - startX;
-      if(dx < -40 && index < pages.length-1) index++;
-      if(dx > 40 && index > 0) index--;
-      track.style.transform = "translateX(" + (-index*100) + "%)";
-      updateHud();
-    });
-  }
-})();
-</script>
+      async function probeMainPanels(){
+        let misses = 0;
+        let startN = pages.length ? (Math.max(...pages.map(p => p.n)) + 1) : 0;
+
+        for(let n=startN; n<=READER.probeMax; n++){
+          const url = pageURL("main", n);
+          const ok = await headOK(url);
+          if(ok){
+            misses = 0;
+            // temporarily switch URL-building without toggling mode yet
+            const savedMode = mode;
+            mode = "main";
+            addPage(n);
+            mode = savedMode;
+            renderAll();
+          }else{
+            misses++;
+            if(misses >= READER.stopAfterConsecutiveMisses) break;
+          }
+        }
+        setStoryIndex(storyIndex, false);
+      }
+
+      // ===== SEEKER WALL =====
+      let gateTargetValue = 0;
+
+      function gateShow(){
+        gate.setAttribute("aria-hidden","false");
+        gate.classList.add("show");
+
+        // reset gate UI
+        codeInputs.forEach((inp) => inp.value = "");
+        codeInputs[0].focus();
+
+        gateTargetValue = 15 + Math.floor(Math.random() * 71); // 15..85
+        gateTarget.textContent = "target: " + gateTargetValue;
+        gateSlider.value = "0";
+
+        gateEnter.disabled = true;
+        gateMsg.className = "gateMsg";
+        gateMsg.textContent = "Enter the tethercode. Match the slider to the target (±2).";
+      }
+
+      function gateHide(){
+        gate.setAttribute("aria-hidden","true");
+        gate.classList.remove("show");
+      }
+
+      function getCode(){
+        return codeInputs.map(i => String(i.value || "").replace(/\D/g,"")).join("");
+      }
+
+      function codeLooksOk(code){
+        if(!/^\d{4}$/.test(code)) return false;
+        if(Array.isArray(VALID_CODES) && VALID_CODES.length){
+          return VALID_CODES.includes(code);
+        }
+        return true; // placeholder mode: any 4 digits
+      }
+
+      function gateEvaluate(){
+        const code = getCode();
+        const codeOk = codeLooksOk(code);
+        const sliderOk = Math.abs(parseInt(gateSlider.value,10) - gateTargetValue) <= 2;
+
+        gateEnter.disabled = !(codeOk && sliderOk);
+
+        if(!/^\d{4}$/.test(code)){
+          gateMsg.className = "gateMsg";
+          gateMsg.textContent = "Four digits. No more, no less.";
+          return;
+        }
+        if(Array.isArray(VALID_CODES) && VALID_CODES.length && !codeOk){
+          gateMsg.className = "gateMsg bad";
+          gateMsg.textContent = "Invalid tethercode.";
+          return;
+        }
+        if(!sliderOk){
+          gateMsg.className = "gateMsg";
+          gateMsg.textContent = "Match the slider to the target (±2).";
+          return;
+        }
+        gateMsg.className = "gateMsg ok";
+        gateMsg.textContent = "Verified. The door is open.";
+      }
+
+      codeInputs.forEach((inp, idx) => {
+        inp.addEventListener("input", () => {
+          inp.value = String(inp.value || "").replace(/\D/g,"").slice(0,1);
+          if(inp.value && idx < codeInputs.length - 1) codeInputs[idx+1].focus();
+          gateEvaluate();
+        }, { passive:true });
+
+        inp.addEventListener("keydown", (e) => {
+          if(e.key === "Backspace" && !inp.value && idx > 0){
+            codeInputs[idx-1].focus();
+          }
+        }, { passive:true });
+      });
+
+      gateSlider.addEventListener("input", gateEvaluate, { passive:true });
+
+      gateEnter.addEventListener("click", (e) => {
+        e.preventDefault();
+        if(gateEnter.disabled) return;
+
+        storeToken();
+        gateHide();
+
+        // Switch to MAIN
+        startMain();
+      }, { passive:false });
+
+      // ===== Swipe handling (RTL track) =====
+      let dragging = false;
+      let lockedAxis = null;
+      let startX=0, startY=0, lastX=0;
+
+      function onStart(t){
+        // if gate is open: no swipes
+        if(gate.classList.contains("show")) return;
+
+        dragging = true;
+        lockedAxis = null;
+        startX = lastX = t.clientX;
+        startY = t.clientY;
+        track.classList.add("dragging");
+      }
+
+      function onMove(t, e){
+        if(!dragging) return;
+
+        const dx = t.clientX - startX;
+        const dy = t.clientY - startY;
+
+        if(!lockedAxis){
+          if(Math.abs(dx) > READER.axisLockPx || Math.abs(dy) > READER.axisLockPx){
+            lockedAxis = (Math.abs(dx) >= Math.abs(dy)) ? "x" : "y";
+          }else return;
+        }
+        if(lockedAxis === "y"){
+          return; // allow scroll-ish (though we hide overflow)
+        }
+
+        e.preventDefault();
+        lastX = t.clientX;
+
+        const w = frame.clientWidth || window.innerWidth || 1;
+        const deltaPct = (dx / w) * 100;
+
+        const di = domIndexFromStory(storyIndex);
+        const basePct = di * 100;
+        const movedPct = basePct - deltaPct;
+
+        const minPct = 0;
+        const maxPct = Math.max(0, (domCount-1) * 100);
+        const clamped = clamp(movedPct, minPct - READER.rubberbandPct, maxPct + READER.rubberbandPct);
+
+        track.style.transform = "translate3d(" + (-clamped) + "%,0,0)";
+      }
+
+      function onEnd(){
+        if(!dragging) return;
+        dragging = false;
+        track.classList.remove("dragging");
+
+        if(lockedAxis !== "x"){
+          setStoryIndex(storyIndex, true);
+          return;
+        }
+
+        const dx = lastX - startX;
+
+        // swipe right -> next story page (storyIndex + 1)
+        if(dx > READER.swipeThresholdPx){
+          // If public and already at last public page, opening the next should trigger gate
+          if(mode === "public" && storyIndex >= pages.length - 1){
+            // Story wants to go forward, but gate stands there.
+            setStoryIndex(storyIndex, true);
+            gateShow();
+            return;
+          }
+          setStoryIndex(storyIndex + 1, true);
+          return;
+        }
+
+        // swipe left -> previous story page
+        if(dx < -READER.swipeThresholdPx){
+          setStoryIndex(storyIndex - 1, true);
+          return;
+        }
+
+        setStoryIndex(storyIndex, true);
+      }
+
+      stage.addEventListener("touchstart", (e) => {
+        if(!e.touches || e.touches.length !== 1) return;
+        onStart(e.touches[0]);
+      }, { passive:true });
+
+      stage.addEventListener("touchmove", (e) => {
+        if(!e.touches || e.touches.length !== 1) return;
+        onMove(e.touches[0], e);
+      }, { passive:false });
+
+      stage.addEventListener("touchend", onEnd, { passive:true });
+      stage.addEventListener("touchcancel", () => {
+        dragging=false;
+        setStoryIndex(storyIndex,true);
+      }, { passive:true });
+
+      // ===== Flow control =====
+      function hideLoading(force=false){
+        if(!loading) return;
+        loading.classList.add("hidden");
+        setTimeout(() => { loading.style.display = "none"; }, 380);
+      }
+
+      // cover tap makes it feel like "instagram -> panel continues"
+      let loadingHidden = false;
+      function maybeHideLoading(){
+        if(loadingHidden) return;
+        loadingHidden = true;
+        hideLoading(false);
+      }
+      loadingCard.addEventListener("click", (e) => {
+        e.preventDefault();
+        maybeHideLoading();
+      }, { passive:false });
+
+      setTimeout(() => { maybeHideLoading(); }, READER.loadingMaxMs);
+
+      function startPublic(){
+        resetReader("public");
+
+        // add exactly 2 public pages
+        mode = "public";
+        READER.publicPages.forEach(n => addPage(n));
+        renderAll();
+        setStoryIndex(0, false);
+      }
+
+      function startMain(){
+        resetReader("main");
+
+        mode = "main";
+        READER.mainSeed.forEach(n => addPage(n));
+        renderAll();
+        setStoryIndex(0, false);
+
+        // discover more in idle
+        const goProbe = () => {
+          const savedMode = mode;
+          mode = "main";
+          probeMainPanels().finally(() => { mode = savedMode; });
+        };
+        if("requestIdleCallback" in window){
+          requestIdleCallback(goProbe, { timeout: 1200 });
+        }else{
+          setTimeout(goProbe, 650);
+        }
+      }
+
+      // ===== Boot =====
+      function boot(){
+        updateStageReserve();
+
+        // returning seekers: skip public+gate, go main
+        if(hasValidToken()){
+          // hide cover fast
+          setTimeout(() => { maybeHideLoading(); }, READER.loadingMinMs);
+          startMain();
+          return;
+        }
+
+        // new visitors: show public intro (2 pages), then gate on next swipe
+        setTimeout(() => { maybeHideLoading(); }, READER.loadingMinMs);
+        startPublic();
+      }
+
+      // keep reserve correct
+      function onLayoutChange(){
+        setOrientationClass();
+        updateStageReserve();
+      }
+      window.addEventListener("resize", onLayoutChange, { passive:true });
+      window.addEventListener("orientationchange", onLayoutChange, { passive:true });
+
+      // start
+      boot();
+
+      // log
+      console.log("SANCTUM", VERSION);
+    })();
+  </script>
 
 </body>
 </html>
